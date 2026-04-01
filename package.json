@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev:adtaboo": "concurrently \"pnpm --filter @games/adtaboo-server dev\" \"pnpm --filter @games/adtaboo-client dev\"",
     "dev:landing": "pnpm --filter @games/landing dev",
