@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { games, type GameEntry } from './gameRegistry';
 
+const vibesColors = ['#6366f1', '#f59e0b', '#10b981', '#06b6d4', '#f43f5e'];
+
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -53,18 +55,36 @@ function Hero() {
           >
             GAMES
           </span>
-          <span className="block text-lg sm:text-xl lg:text-2xl tracking-[0.35em] text-gray-500 mt-1.5">AND VIBES</span>
+          <span className="block tracking-[0.35em] mt-2 text-lg sm:text-xl lg:text-2xl">
+            <span className="text-gray-500">AND </span>
+            {'VIBES'.split('').map((letter, i) => (
+              <motion.span
+                key={i}
+                className="inline-block"
+                style={{
+                  color: vibesColors[i],
+                  textShadow: `0 0 20px ${vibesColors[i]}44`,
+                }}
+                animate={{
+                  textShadow: [
+                    `0 0 12px ${vibesColors[i]}33`,
+                    `0 0 24px ${vibesColors[i]}66`,
+                    `0 0 12px ${vibesColors[i]}33`,
+                  ],
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  delay: i * 0.3,
+                  ease: 'easeInOut',
+                }}
+              >
+                {letter}
+              </motion.span>
+            ))}
+          </span>
         </h1>
       </motion.div>
-
-      <motion.p
-        className="relative z-10 mt-5 text-gray-500/80 text-sm sm:text-base tracking-wide"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.25, duration: 0.4 }}
-      >
-        Party games for your crew
-      </motion.p>
 
       {/* Thin separator line */}
       <motion.div
