@@ -1,0 +1,38 @@
+services:
+  taboo:
+    build:
+      context: .
+      dockerfile: games/taboo/Dockerfile
+      args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+    env_file: .env
+    container_name: adversarial-taboo
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "4040:4040"
+    volumes:
+      - ./games/taboo/data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=4040
+      - LOG_LEVEL=info
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+    container_name: games-landing
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
