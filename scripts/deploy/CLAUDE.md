@@ -1,0 +1,34 @@
+# scripts/deploy
+
+Webhook-triggered deploy system for the games monorepo. Runs as `games-deploy` systemd service.
+
+## Key Constraints
+
+- **Python stdlib only** — no pip packages, runs on bare system Python 3.13+
+- **Single file** — `deploy.py` is both the HTTP listener (port 9877) and the deploy executor
+- **No auth needed** — n8n webhook workflow handles authentication upstream
+- **IMAGES list** — `["games-adtaboo", "games-landing"]` must match container names in `docker-compose.yml`
+
+## Log Rotation
+
+`RotatingFileHandler` on `deploy.log`: 5 MB max, 3 backups (~20 MB total cap).
+
+## After Changes
+
+```bash
+sudo systemctl restart games-deploy
+systemctl status games-deploy
+```
+
+## Testing Locally
+
+```bash
+# Run directly
+python3 scripts/deploy/deploy.py
+
+# Trigger in another terminal
+curl -X POST http://localhost:9877
+
+# Check logs
+tail -f scripts/deploy/deploy.log
+```
