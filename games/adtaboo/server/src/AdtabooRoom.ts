@@ -1,14 +1,16 @@
 import { BaseRoom } from '@games/server-core';
-import type { TeamId } from '@games/shared-types';
 import {
+  type TeamId,
+  type AdtabooPlayer,
+  type AdtabooPlayerDTO,
   GamePhase,
-  GameState,
-  ChallengeSetup,
-  TurnScoreData,
-  TeamRoundData,
-  RoundArchiveEntry,
-  AdtabooSettings,
-  AdtabooRoomDTO,
+  type GameState,
+  type ChallengeSetup,
+  type TurnScoreData,
+  type TeamRoundData,
+  type RoundArchiveEntry,
+  type AdtabooSettings,
+  type AdtabooRoomDTO,
 } from '@games/adtaboo-shared';
 import { fetchWords } from './words/index.js';
 
@@ -23,7 +25,7 @@ function emptyChallenge(): ChallengeSetup {
   };
 }
 
-export class AdtabooRoom extends BaseRoom {
+export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
   declare settings: AdtabooSettings;
   game: GameState | null = null;
   tabooMasters: { A: string | null; B: string | null } = { A: null, B: null };
@@ -35,6 +37,66 @@ export class AdtabooRoom extends BaseRoom {
 
   constructor(code: string, hostId: string) {
     super(code, hostId, { rounds: 3, timerSeconds: 60, wordsPerTurn: 5, maxTabooWords: 20 });
+  }
+
+  // --- Player management (team-aware) ---
+
+  override addPlayer(id: string, name: string, socketId: string): AdtabooPlayer {
+    const player: AdtabooPlayer = { id, name, team: null, socketId, connected: true };
+    this.players.set(id, player);
+    this.touch();
+    return player;
+  }
+
+  getTeamPlayers(team: TeamId): AdtabooPlayer[] {
+    return Array.from(this.players.values()).filter((p) => p.team === team && p.connected);
+  }
+
+  getOpposingTeam(team: TeamId): TeamId {
+    return team === 'A' ? 'B' : 'A';
+  }
+
+  override playerDTOs(): AdtabooPlayerDTO[] {
+    return Array.from(this.players.values()).map((p) => ({
+      id: p.id,
+      name: p.name,
+      team: p.team,
+      connected: p.connected,
+    }));
+  }
+
+  override toJSON(): object {
+    return {
+      code: this.code,
+      hostId: this.hostId,
+      lastActivity: this.lastActivity,
+      settings: this.settings,
+      players: Array.from(this.players.values()).map((p) => ({
+        id: p.id,
+        name: p.name,
+        team: p.team,
+        connected: p.connected,
+        disconnectedAt: p.disconnectedAt,
+        removed: p.removed,
+      })),
+      ...this.serializeGameState(),
+    };
+  }
+
+  override restorePlayers(data: {
+    players?: Array<{ id: string; name: string; team: TeamId | null; removed?: boolean }>;
+  }) {
+    for (const p of data.players ?? []) {
+      this.players.set(p.id, {
+        id: p.id,
+        name: p.name,
+        team: p.team ?? null,
+        socketId: '',
+        connected: false,
+        disconnectedAt: Date.now(),
+        removed: p.removed ?? false,
+      });
+    }
   }
 
   // --- BaseRoom abstract implementations ---
@@ -60,7 +122,7 @@ export class AdtabooRoom extends BaseRoom {
     };
   }
 
-  clearTimer(): void {
+  override clearTimer(): void {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;

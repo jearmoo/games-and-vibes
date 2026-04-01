@@ -1,6 +1,14 @@
-import type { Player, PlayerDTO, RoomSettings as BaseRoomSettings } from '@games/shared-types';
+import type { BasePlayer, BasePlayerDTO, RoomSettings } from '@games/server-core';
 
-export type { Player, PlayerDTO };
+export type TeamId = 'A' | 'B';
+
+export interface AdtabooPlayer extends BasePlayer {
+  team: TeamId | null;
+}
+
+export interface AdtabooPlayerDTO extends BasePlayerDTO {
+  team: TeamId | null;
+}
 
 export const GamePhase = {
   LOBBY: 'LOBBY',
@@ -38,7 +46,9 @@ export interface TurnScoreData {
   points: number;
 }
 
-export interface AdtabooSettings extends BaseRoomSettings {
+export interface AdtabooSettings extends RoomSettings {
+  rounds: number;
+  timerSeconds: number;
   wordsPerTurn: number;
   maxTabooWords: number;
 }
@@ -70,7 +80,7 @@ export interface RoundArchiveEntry {
 export interface AdtabooRoomDTO {
   code: string;
   hostId: string;
-  players: PlayerDTO[];
+  players: AdtabooPlayerDTO[];
   settings: AdtabooSettings;
   phase: GamePhase | null;
   tabooMasters: { A: string | null; B: string | null };

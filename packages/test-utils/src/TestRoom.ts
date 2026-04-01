@@ -11,7 +11,7 @@ export class TestRoom extends BaseRoom {
   timerCleared = false;
 
   constructor(code = 'TEST', hostId = 'host1') {
-    super(code, hostId, { rounds: 3, timerSeconds: 60 });
+    super(code, hostId, {});
   }
 
   protected onPlayerRemoved(playerId: string): void {
@@ -38,7 +38,7 @@ export class TestRoom extends BaseRoom {
     }
   }
 
-  clearTimer(): void {
+  override clearTimer(): void {
     this.timerCleared = true;
   }
 

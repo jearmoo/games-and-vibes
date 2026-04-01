@@ -5,22 +5,46 @@ Detailed code patterns established in the adtaboo reference implementation. Read
 ## BaseRoom Contract
 
 **File**: `packages/server-core/src/BaseRoom.ts`
+**Types**: `packages/server-core/src/types.ts`
 
-BaseRoom provides player management, teams, host tracking, settings, and serialization. Games extend it with game-specific state and logic.
+BaseRoom is generic over player type: `BaseRoom<P extends BasePlayer = BasePlayer>`. It provides player management, host tracking, settings, and serialization. Games extend it with their own player type and game-specific state.
+
+### Base Types
+
+```typescript
+interface BasePlayer {
+  id: string;
+  name: string;
+  socketId: string;
+  connected: boolean;
+  disconnectedAt?: number;
+  removed?: boolean;
+}
+
+interface BasePlayerDTO {
+  id: string;
+  name: string;
+  connected: boolean;
+}
+
+type RoomSettings = Record<string, unknown>;
+```
+
+Games extend `BasePlayer` for game-specific fields (e.g., `team`) and `RoomSettings` for game-specific settings (e.g., `rounds`, `timerSeconds`).
 
 ### Provided Methods (don't override unless extending with `super`)
 
 | Method | Purpose |
 |--------|---------|
-| `addPlayer(id, name, socketId)` | Register player, return Player object |
+| `addPlayer(id, name, socketId)` | Register player, return Player object. Override to add game-specific fields. |
 | `removePlayer(id)` | Soft-remove during active game, hard-delete in lobby |
 | `getActivePlayers()` | Players not marked `removed` |
 | `getPlayer(id)` / `getPlayerByName(name)` | Lookups |
-| `getTeamPlayers(team)` | Connected players on a team |
-| `getOpposingTeam(team)` | Returns `'A'` or `'B'` |
-| `playerDTOs()` / `toDTO()` | Client-safe serialization (strips `socketId`) |
-| `toJSON()` / `restorePlayers(data)` | Persistence (calls `serializeGameState()`) |
+| `playerDTOs()` | Client-safe serialization (strips `socketId`). Override to include game-specific fields. |
+| `toDTO()` | Full room DTO. Override to add game-specific fields. |
+| `toJSON()` / `restorePlayers(data)` | Persistence (calls `serializeGameState()`). Override to handle game-specific player fields. |
 | `touch()` | Update `lastActivity` for stale room cleanup |
+| `clearTimer()` | No-op by default. Override if the game uses timers. |
 
 ### Abstract Methods (must implement)
 
@@ -40,30 +64,47 @@ abstract serializeGameState(): object;
 
 // Reset everything and return to lobby phase
 abstract resetToLobby(): void;
-
-// Cancel active timers — called during cleanup and lobby reset
-abstract clearTimer(): void;
 ```
 
 ### Extension Pattern
 
 ```typescript
-// Override toDTO to include game-specific fields
-toDTO(): MyGameRoomDTO {
-  return {
-    ...super.toDTO(),
-    myField: this.myField,
-  };
-}
+import { BaseRoom } from '@games/server-core';
+import type { GamePlayer, GamePlayerDTO, GameSettings, GameRoomDTO } from '@games/mygame-shared';
 
-// Static factory for crash recovery — NOT an abstract method, but required
-static fromJSON(data: any): MyGameRoom {
-  const room = new MyGameRoom(data.code, data.hostId);
-  room.restorePlayers(data);  // Rebuilds player Map from serialized array
-  room.settings = data.settings;
-  room.lastActivity = data.lastActivity;
-  room.game = data.game;
-  return room;
+class MyGameRoom extends BaseRoom<GamePlayer> {
+  declare settings: GameSettings;
+
+  override addPlayer(id: string, name: string, socketId: string): GamePlayer {
+    const player: GamePlayer = { id, name, team: null, socketId, connected: true };
+    this.players.set(id, player);
+    this.touch();
+    return player;
+  }
+
+  override playerDTOs(): GamePlayerDTO[] {
+    return Array.from(this.players.values()).map(p => ({
+      id: p.id, name: p.name, team: p.team, connected: p.connected,
+    }));
+  }
+
+  // Override toDTO to include game-specific fields
+  override toDTO(): GameRoomDTO {
+    return {
+      ...super.toDTO(),
+      myField: this.myField,
+    };
+  }
+
+  // Static factory for crash recovery — NOT an abstract method, but required
+  static fromJSON(data: any): MyGameRoom {
+    const room = new MyGameRoom(data.code, data.hostId);
+    room.restorePlayers(data);  // Rebuilds player Map from serialized array
+    room.settings = data.settings;
+    room.lastActivity = data.lastActivity;
+    room.game = data.game;
+    return room;
+  }
 }
 ```
 
@@ -131,6 +172,9 @@ lobbyCallbacks: {
 
   // Optional: called after player successfully reconnects
   onPlayerReconnect?: (room: T, playerId: string, io: Server) => void;
+
+  // Optional: called when player joins/rejoins for extra socket room assignments (e.g., team rooms)
+  onPlayerSocketJoin?: (room: T, playerId: string, socket: Socket) => void;
 }
 ```
 
@@ -145,6 +189,9 @@ connectionCallbacks: {
 
   // Optional: custom host reassignment logic
   onHostReassign?: (room: T, oldHostId: string) => string | undefined;
+
+  // Optional: clean up extra socket rooms before player leaves (e.g., team rooms)
+  onBeforePlayerLeave?: (room: T, playerId: string, socket: Socket) => void;
 }
 ```
 
@@ -247,11 +294,13 @@ for (const p of room.getTeamPlayers('B')) {
 }
 ```
 
+Note: `getTeamPlayers()` is a game-specific method on `AdtabooRoom`, not on `BaseRoom`. Your game defines its own player grouping methods as needed.
+
 ### Socket Event Naming Convention
 
 Events follow `namespace:action` pattern:
 - `room:*` — Room lifecycle (create, join, rejoin, leave)
-- `team:*` — Team management
+- `team:*` — Team management (game-specific)
 - `settings:*` — Game settings
 - `game:*` — Game lifecycle (start, reset, play-again)
 - `<phase>:*` — Phase-specific actions (e.g., `setup:suggest`, `clue:got-it`, `taboo:buzz`)

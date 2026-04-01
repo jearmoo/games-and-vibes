@@ -49,9 +49,17 @@ createGameServer<AdtabooRoom>({
 
   lobbyCallbacks: {
     buildGameState,
+    onPlayerSocketJoin: (room, playerId, socket) => {
+      const player = room.getPlayer(playerId);
+      if (player?.team) socket.join(`${room.code}:team${player.team}`);
+    },
   },
 
   connectionCallbacks: {
+    onBeforePlayerLeave: (room, playerId, socket) => {
+      const player = room.getPlayer(playerId);
+      if (player?.team) socket.leave(`${room.code}:team${player.team}`);
+    },
     onPlayerDisconnect: (room, playerId, io) => {
       const player = room.getPlayer(playerId);
       if (!player?.team || !room.game) return;

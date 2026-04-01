@@ -1,13 +1,27 @@
 import type { SocketContext } from '@games/server-core';
 import { logger } from '@games/server-core';
-import type { TeamId } from '@games/shared-types';
+import type { TeamId } from '@games/adtaboo-shared';
 import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
 import { emitSetupCards } from './setupHandlers.js';
 
-/** Taboo-specific lobby handlers (game:start, taboo-master:set, settings:update) */
+/** Taboo-specific lobby handlers (game:start, taboo-master:set, settings:update, team:join) */
 export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
   const { io, socket, rooms, metrics } = ctx;
+
+  socket.on('team:join', ({ team }: { team: TeamId }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    const player = room.getPlayer(playerId);
+    if (!player) return;
+    if (player.team) socket.leave(`${room.code}:team${player.team}`);
+    player.team = team;
+    socket.join(`${room.code}:team${team}`);
+    io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
+    logger.info('room', 'Player joined team', { room: room.code, player: player.name, team });
+  });
 
   socket.on('taboo-master:set', ({ team, masterId }: { team: TeamId; masterId: string }) => {
     const playerId = ctx.getPlayerId();

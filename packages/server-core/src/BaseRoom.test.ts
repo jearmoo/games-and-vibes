@@ -8,8 +8,6 @@ describe('BaseRoom', () => {
     room = new TestRoom('TEST', 'host1');
     room.addPlayer('host1', 'Host', 'sock1');
     room.addPlayer('p2', 'Player2', 'sock2');
-    room.getPlayer('host1')!.team = 'A';
-    room.getPlayer('p2')!.team = 'B';
   });
 
   describe('addPlayer', () => {
@@ -21,7 +19,6 @@ describe('BaseRoom', () => {
     it('sets default connected state', () => {
       const p = room.getPlayer('host1')!;
       expect(p.connected).toBe(true);
-      expect(p.team).toBe('A');
     });
 
     it('updates lastActivity', () => {
@@ -63,17 +60,6 @@ describe('BaseRoom', () => {
       expect(room.getPlayerByName('Host')?.id).toBe('host1');
       expect(room.getPlayerByName('Nobody')).toBeUndefined();
     });
-
-    it('getTeamPlayers filters by team and connected', () => {
-      expect(room.getTeamPlayers('A')).toHaveLength(1);
-      room.getPlayer('host1')!.connected = false;
-      expect(room.getTeamPlayers('A')).toHaveLength(0);
-    });
-
-    it('getOpposingTeam flips A/B', () => {
-      expect(room.getOpposingTeam('A')).toBe('B');
-      expect(room.getOpposingTeam('B')).toBe('A');
-    });
   });
 
   describe('serialization', () => {
@@ -106,7 +92,7 @@ describe('BaseRoom', () => {
     });
 
     it('restorePlayers sets all as disconnected', () => {
-      const data = { players: [{ id: 'x1', name: 'X', team: 'A' as const }] };
+      const data = { players: [{ id: 'x1', name: 'X' }] };
       const newRoom = new TestRoom('R2', 'x1');
       newRoom.restorePlayers(data);
       const p = newRoom.getPlayer('x1')!;

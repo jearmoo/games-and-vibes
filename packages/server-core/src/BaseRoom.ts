@@ -1,9 +1,9 @@
-import type { Player, PlayerDTO, TeamId, RoomSettings, RoomDTO } from '@games/shared-types';
+import type { BasePlayer, BasePlayerDTO, RoomSettings, RoomDTO } from './types.js';
 
-export abstract class BaseRoom {
+export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
   code: string;
   hostId: string;
-  players: Map<string, Player> = new Map();
+  players: Map<string, P> = new Map();
   settings: RoomSettings;
   lastActivity: number = Date.now();
 
@@ -17,8 +17,8 @@ export abstract class BaseRoom {
     this.lastActivity = Date.now();
   }
 
-  addPlayer(id: string, name: string, socketId: string): Player {
-    const player: Player = { id, name, team: null, socketId, connected: true };
+  addPlayer(id: string, name: string, socketId: string): P {
+    const player = { id, name, socketId, connected: true } as P;
     this.players.set(id, player);
     this.touch();
     return player;
@@ -37,31 +37,22 @@ export abstract class BaseRoom {
     this.touch();
   }
 
-  getActivePlayers(): Player[] {
+  getActivePlayers(): P[] {
     return Array.from(this.players.values()).filter((p) => !p.removed);
   }
 
-  getPlayer(id: string): Player | undefined {
+  getPlayer(id: string): P | undefined {
     return this.players.get(id);
   }
 
-  getPlayerByName(name: string): Player | undefined {
+  getPlayerByName(name: string): P | undefined {
     return Array.from(this.players.values()).find((p) => p.name === name);
   }
 
-  getTeamPlayers(team: TeamId): Player[] {
-    return Array.from(this.players.values()).filter((p) => p.team === team && p.connected);
-  }
-
-  getOpposingTeam(team: TeamId): TeamId {
-    return team === 'A' ? 'B' : 'A';
-  }
-
-  playerDTOs(): PlayerDTO[] {
+  playerDTOs(): BasePlayerDTO[] {
     return Array.from(this.players.values()).map((p) => ({
       id: p.id,
       name: p.name,
-      team: p.team,
       connected: p.connected,
     }));
   }
@@ -85,7 +76,6 @@ export abstract class BaseRoom {
       players: Array.from(this.players.values()).map((p) => ({
         id: p.id,
         name: p.name,
-        team: p.team,
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
@@ -94,17 +84,16 @@ export abstract class BaseRoom {
     };
   }
 
-  restorePlayers(data: { players?: Array<{ id: string; name: string; team: 'A' | 'B' | null; removed?: boolean }> }) {
+  restorePlayers(data: { players?: Array<{ id: string; name: string; removed?: boolean; [key: string]: unknown }> }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,
         name: p.name,
-        team: p.team,
         socketId: '',
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
-      });
+      } as P);
     }
   }
 
@@ -123,6 +112,6 @@ export abstract class BaseRoom {
   /** Clear game state and return to lobby */
   abstract resetToLobby(): void;
 
-  /** Clean up timers */
-  abstract clearTimer(): void;
+  /** Clean up timers. Override if the game uses timers. */
+  clearTimer(): void {}
 }

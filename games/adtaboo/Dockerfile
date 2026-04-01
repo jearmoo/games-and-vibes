@@ -10,7 +10,6 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 
 # Copy all package.jsons for workspace resolution
-COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/server-core/package.json packages/server-core/
 COPY packages/client-core/package.json packages/client-core/
 COPY games/adtaboo/shared/package.json games/adtaboo/shared/
@@ -24,7 +23,6 @@ COPY packages/ packages/
 COPY games/adtaboo/ games/adtaboo/
 
 # Build shared packages first, then taboo
-RUN pnpm --filter @games/shared-types build
 RUN pnpm --filter @games/adtaboo-shared build
 RUN pnpm --filter @games/server-core build
 RUN pnpm --filter @games/adtaboo-server build
@@ -41,7 +39,6 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/server-core/package.json packages/server-core/
 COPY games/adtaboo/shared/package.json games/adtaboo/shared/
 COPY games/adtaboo/server/package.json games/adtaboo/server/
@@ -49,7 +46,6 @@ COPY games/adtaboo/server/package.json games/adtaboo/server/
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy built artifacts
-COPY --from=build /app/packages/shared-types/dist packages/shared-types/dist
 COPY --from=build /app/games/adtaboo/shared/dist games/adtaboo/shared/dist
 COPY --from=build /app/packages/server-core/dist packages/server-core/dist
 COPY --from=build /app/games/adtaboo/server/dist games/adtaboo/server/dist

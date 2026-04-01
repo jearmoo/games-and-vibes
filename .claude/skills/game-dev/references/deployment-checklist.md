@@ -20,7 +20,6 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 
 # Copy ALL package.jsons needed for workspace resolution
-COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/server-core/package.json packages/server-core/
 COPY packages/client-core/package.json packages/client-core/
 COPY games/<name>/shared/package.json games/<name>/shared/
@@ -34,7 +33,6 @@ COPY packages/ packages/
 COPY games/<name>/ games/<name>/
 
 # Build in dependency order
-RUN pnpm --filter @games/shared-types build
 RUN pnpm --filter @games/<name>-shared build
 RUN pnpm --filter @games/server-core build
 RUN pnpm --filter @games/<name>-server build
@@ -55,7 +53,6 @@ WORKDIR /app
 
 # Only copy package.jsons needed for production install
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/server-core/package.json packages/server-core/
 COPY games/<name>/shared/package.json games/<name>/shared/
 COPY games/<name>/server/package.json games/<name>/server/
@@ -63,7 +60,6 @@ COPY games/<name>/server/package.json games/<name>/server/
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy built artifacts only
-COPY --from=build /app/packages/shared-types/dist packages/shared-types/dist
 COPY --from=build /app/games/<name>/shared/dist games/<name>/shared/dist
 COPY --from=build /app/packages/server-core/dist packages/server-core/dist
 COPY --from=build /app/games/<name>/server/dist games/<name>/server/dist

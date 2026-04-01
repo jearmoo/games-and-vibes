@@ -1,3 +1,4 @@
+import { Socket } from 'socket.io';
 import { SocketContext } from './socketContext.js';
 import { BaseRoom } from './BaseRoom.js';
 import { logger } from './logger.js';
@@ -9,6 +10,8 @@ export interface ConnectionCallbacks<T extends BaseRoom> {
   onPlayerDisconnect?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
   /** Called when host needs reassignment. Return new host id or undefined. */
   onHostReassign?: (room: T, oldHostId: string) => string | undefined;
+  /** Called before a player leaves, for cleaning up extra socket rooms (e.g., team rooms). */
+  onBeforePlayerLeave?: (room: T, playerId: string, socket: Socket) => void;
 }
 
 export function registerConnectionHandlers<T extends BaseRoom>(
@@ -17,7 +20,7 @@ export function registerConnectionHandlers<T extends BaseRoom>(
 ) {
   const { io, socket, rooms } = ctx;
 
-  socket.on('room:leave', () => handleLeave(ctx));
+  socket.on('room:leave', () => handleLeave(ctx, callbacks));
 
   socket.on('disconnect', () => {
     const playerId = ctx.getPlayerId();
@@ -55,19 +58,18 @@ export function registerConnectionHandlers<T extends BaseRoom>(
     setTimeout(() => {
       if (player.connected) return;
       logger.info('conn', 'Player removed after grace period', { room: room.code, player: player.name });
-      handleLeave(ctx);
+      handleLeave(ctx, callbacks);
     }, RECONNECT_GRACE_MS);
   });
 }
 
-function handleLeave<T extends BaseRoom>(ctx: SocketContext<T>) {
+function handleLeave<T extends BaseRoom>(ctx: SocketContext<T>, callbacks?: ConnectionCallbacks<T>) {
   const { io, socket, rooms } = ctx;
   const playerId = ctx.getPlayerId();
   if (!playerId) return;
   const room = rooms.getRoomForPlayer(playerId);
   if (!room) return;
-  const player = room.getPlayer(playerId);
-  if (player?.team) socket.leave(`${room.code}:team${player.team}`);
+  callbacks?.onBeforePlayerLeave?.(room, playerId, socket);
   socket.leave(room.code);
   room.removePlayer(playerId);
   const softRemoved = !!room.getPlayer(playerId);

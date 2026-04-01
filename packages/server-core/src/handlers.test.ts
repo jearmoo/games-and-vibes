@@ -71,17 +71,6 @@ describe('lobbyHandlers', () => {
     expect(errorEmit).toBeDefined();
     expect((errorEmit![0] as any).message).toBe('Room not found');
   });
-
-  it('team:join assigns team and broadcasts', () => {
-    socket.trigger('room:create', { playerName: 'Host' });
-    socket.trigger('team:join', { team: 'A' });
-
-    const room = Array.from(rooms['rooms'] as any).pop()?.[1] as TestRoom | undefined;
-    if (room) {
-      const hostPlayer = Array.from(room.players.values()).find((p) => p.name === 'Host');
-      expect(hostPlayer?.team).toBe('A');
-    }
-  });
 });
 
 describe('connectionHandlers', () => {

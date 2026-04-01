@@ -29,7 +29,7 @@ Create these files:
     "build": "tsc"
   },
   "dependencies": {
-    "@games/shared-types": "workspace:*"
+    "@games/server-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "~5.7.0"
@@ -41,9 +41,22 @@ Create these files:
 Copy from `games/adtaboo/shared/tsconfig.json` — extends `../../../tsconfig.base.json`.
 
 ### `src/index.ts`
-Define all game-specific types:
+Define all game-specific types, extending base types from `@games/server-core`:
 
-1. **GamePhase** — const object + type union. Always include LOBBY and GAME_OVER:
+1. **Game player** — extend `BasePlayer` with game-specific fields:
+   ```typescript
+   import type { BasePlayer, BasePlayerDTO, RoomSettings } from '@games/server-core';
+
+   export interface GamePlayer extends BasePlayer {
+     team: 'A' | 'B' | null;  // or whatever your game needs
+   }
+
+   export interface GamePlayerDTO extends BasePlayerDTO {
+     team: 'A' | 'B' | null;
+   }
+   ```
+
+2. **GamePhase** — const object + type union. Always include LOBBY and GAME_OVER:
    ```typescript
    export const GamePhase = {
      LOBBY: 'LOBBY',
@@ -53,39 +66,34 @@ Define all game-specific types:
    export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
    ```
 
-2. **Game settings** — extend `RoomSettings` from `@games/shared-types`:
+3. **Game settings** — extend `RoomSettings` from `@games/server-core`:
    ```typescript
-   export interface MyGameSettings extends BaseRoomSettings {
+   export interface MyGameSettings extends RoomSettings {
+     rounds: number;
+     timerSeconds: number;
      // game-specific settings with defaults
    }
    ```
 
-3. **Game state** — the full server-side game state:
+4. **Game state** — the full server-side game state:
    ```typescript
    export interface GameState {
      phase: GamePhase;
      round: number;
-     scores: { A: number; B: number };
      // ... game-specific state
    }
    ```
 
-4. **Room DTO** — what clients receive:
+5. **Room DTO** — what clients receive:
    ```typescript
    export interface MyGameRoomDTO {
      code: string;
      hostId: string;
-     players: PlayerDTO[];
+     players: GamePlayerDTO[];
      settings: MyGameSettings;
      phase: GamePhase | null;
      // ... game-specific public fields
    }
-   ```
-
-5. **Re-export** shared types that game code needs:
-   ```typescript
-   import type { Player, PlayerDTO, RoomSettings as BaseRoomSettings } from '@games/shared-types';
-   export type { Player, PlayerDTO };
    ```
 
 ## 3. Create Server Package
@@ -99,7 +107,6 @@ Key dependencies:
 {
   "dependencies": {
     "@games/server-core": "workspace:*",
-    "@games/shared-types": "workspace:*",
     "@games/<name>-shared": "workspace:*",
     "express": "^4.21.0",
     "socket.io": "^4.8.0"
@@ -120,22 +127,35 @@ Copy from `games/adtaboo/server/tsconfig.json` — extends base, excludes `**/*.
 
 ### `src/<Name>Room.ts`
 
-Extend `BaseRoom`. This is where ALL game state lives.
+Extend `BaseRoom<GamePlayer>`. This is where ALL game state lives.
 
 ```typescript
 import { BaseRoom } from '@games/server-core';
-import type { MyGameSettings, GameState } from '@games/<name>-shared';
+import type { GamePlayer, GamePlayerDTO, MyGameSettings, GameState } from '@games/<name>-shared';
 
-export class MyGameRoom extends BaseRoom {
+export class MyGameRoom extends BaseRoom<GamePlayer> {
   declare settings: MyGameSettings;
   game: GameState | null = null;
 
   constructor(code: string, hostId: string) {
     super(code, hostId, {
-      rounds: 3,
-      timerSeconds: 60,
       // ... default settings
     });
+  }
+
+  // --- Player management (override to add game-specific fields) ---
+
+  override addPlayer(id: string, name: string, socketId: string): GamePlayer {
+    const player: GamePlayer = { id, name, team: null, socketId, connected: true };
+    this.players.set(id, player);
+    this.touch();
+    return player;
+  }
+
+  override playerDTOs(): GamePlayerDTO[] {
+    return Array.from(this.players.values()).map(p => ({
+      id: p.id, name: p.name, team: p.team, connected: p.connected,
+    }));
   }
 
   // --- Abstract method implementations ---
@@ -168,13 +188,15 @@ export class MyGameRoom extends BaseRoom {
     // ... reset any other game state
   }
 
-  clearTimer(): void {
+  // --- Optional overrides ---
+
+  override clearTimer(): void {
     // clearTimeout(this.timer); this.timer = null;
   }
 
   // --- Serialization ---
 
-  toDTO() {
+  override toDTO() {
     return {
       ...super.toDTO(),
       // ... game-specific public fields
@@ -201,6 +223,7 @@ export class MyGameRoom extends BaseRoom {
 Create handler files organized by game phase:
 
 **`lobbyHandlers.ts`** — Game-specific lobby events:
+- `team:join` — Assign player to team (if your game uses teams)
 - `settings:update` — Validate and update game settings
 - `game:start` — Validate readiness (enough players, teams balanced, roles assigned), initialize GameState, transition to first gameplay phase
 
@@ -245,10 +268,20 @@ createGameServer<MyGameRoom>({
       if (!room.game) return null;
       return { /* game state snapshot for reconnecting players */ };
     },
+    // If your game uses team socket rooms:
+    onPlayerSocketJoin: (room, playerId, socket) => {
+      const player = room.getPlayer(playerId);
+      if (player?.team) socket.join(`${room.code}:team${player.team}`);
+    },
   },
   connectionCallbacks: {
     onPlayerDisconnect: (room, playerId, io) => {
       // Handle active player disconnecting mid-game
+    },
+    // If your game uses team socket rooms:
+    onBeforePlayerLeave: (room, playerId, socket) => {
+      const player = room.getPlayer(playerId);
+      if (player?.team) socket.leave(`${room.code}:team${player.team}`);
     },
   },
   onRoomRestored: (room, io) => {

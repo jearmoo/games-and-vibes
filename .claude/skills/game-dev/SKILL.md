@@ -17,19 +17,17 @@ Read `references/new-game-checklist.md` and follow it sequentially. Use `/featur
 **Existing game feature** — User wants to add or modify gameplay, UI, or server logic for a game that already exists.
 Identify which layer(s) the change touches (see Layer Guide below), then work through them in dependency order.
 
-**Cross-cutting change** — User wants to modify shared packages (`server-core`, `client-core`, `shared-types`, `test-utils`).
+**Cross-cutting change** — User wants to modify shared packages (`server-core`, `client-core`, `test-utils`).
 These affect all games. Read `references/architecture-patterns.md` for the contracts that must be preserved. Run the full test suite after changes.
 
 ## Monorepo Quick Reference
 
 ```
-shared-types          Pure TS types, no runtime
+server-core           Base types + room infrastructure
    |
-   +---> <game>-shared    Game-specific types (extends shared-types)
+   +---> <game>-shared    Game-specific types (extends server-core base types)
    |        |
-   +---> server-core      BaseRoom, RoomManager, createGameServer, handlers
-   |        |
-   |        +---> <game>-server   GameRoom extends BaseRoom + handlers + entry
+   |        +---> <game>-server   GameRoom extends BaseRoom<GamePlayer> + handlers + entry
    |
    +---> client-core      createSocket, sessionStore, Tailwind preset, shared components
             |
@@ -57,8 +55,8 @@ Changes almost always flow through multiple layers. Work in this order:
 
 Always start with type definitions. They are the contract between server and client.
 
-- **Base types** (`packages/shared-types/src/index.ts`): `Player`, `PlayerDTO`, `TeamId`, `RoomSettings`, `RoomDTO`. Rarely changed.
-- **Game types** (`games/<name>/shared/src/index.ts`): `GamePhase` const + type, `GameState`, game-specific settings extending `RoomSettings`, game DTO extending `RoomDTO`.
+- **Base types** (`packages/server-core/src/types.ts`): `BasePlayer`, `BasePlayerDTO`, `RoomSettings`, `RoomDTO`. Game-agnostic — rarely changed.
+- **Game types** (`games/<name>/shared/src/index.ts`): Extend base types from `@games/server-core`. Define `GamePlayer extends BasePlayer` with game-specific fields, `GamePhase` const + type, `GameState`, game-specific settings, game DTO.
 
 Pattern for GamePhase:
 ```typescript
@@ -74,13 +72,18 @@ export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
 
 The room class owns all game state. Handlers never store state — they call room methods.
 
-Extend `BaseRoom` and implement 6 abstract methods:
+Extend `BaseRoom<GamePlayer>` and implement 5 abstract methods:
 - `onPlayerRemoved(playerId)` — Clean up role assignments (e.g., clear clue-giver)
 - `isGameActive()` — True during gameplay phases, false in lobby/game-over
 - `getPhase()` — Return current GamePhase string or null
 - `serializeGameState()` — Return game-specific state for JSON persistence
 - `resetToLobby()` — Clear all game state, return to lobby
-- `clearTimer()` — Cancel any active setTimeout
+
+Optionally override:
+- `clearTimer()` — Cancel any active setTimeout (no-op by default)
+- `addPlayer()` — Extend to add game-specific player fields
+- `playerDTOs()` — Extend to include game-specific fields in the DTO
+- `toJSON()` / `restorePlayers()` — Extend to serialize/restore game-specific player fields
 
 Also implement:
 - `static fromJSON(data)` — Factory that calls `restorePlayers(data)` and restores game state
@@ -108,7 +111,7 @@ socket.on('event:name', (payload) => {
 ```
 
 Typical handler files:
-- `lobbyHandlers.ts` — Game-specific lobby events (settings, game start, role assignment)
+- `lobbyHandlers.ts` — Game-specific lobby events (settings, game start, role assignment, team joining)
 - `gameHandlers.ts` — Core gameplay events
 - Additional files per phase as needed (e.g., `setupHandlers.ts`)
 
@@ -125,8 +128,14 @@ createGameServer<GameRoom>({
     registerMyLobbyHandlers(ctx);
     registerMyGameHandlers(ctx);
   },
-  lobbyCallbacks: { buildGameState },     // Return game state for reconnecting players
-  connectionCallbacks: { onPlayerDisconnect },  // Game-specific disconnect cleanup
+  lobbyCallbacks: {
+    buildGameState,     // Return game state for reconnecting players
+    onPlayerSocketJoin, // Extra socket room joins on reconnect (e.g., team rooms)
+  },
+  connectionCallbacks: {
+    onPlayerDisconnect,   // Game-specific disconnect cleanup
+    onBeforePlayerLeave,  // Clean up extra socket rooms on leave (e.g., team rooms)
+  },
   onRoomRestored: (room, io) => { /* restore timers after server restart */ },
 });
 ```
@@ -222,8 +231,6 @@ pnpm run format       # Auto-format
 These are architectural improvements to make as the platform grows:
 
 - **Storage backend abstraction**: `RoomStore`/`MetricsStore` interfaces are in place but only `JsonFileStore` exists. Implement Redis or Postgres adapters for multi-instance deployments with shared state.
-
-- **Shared game utilities**: Common patterns like team-based scoring, round advancement, and timer management repeat across games. Extract reusable logic into BaseRoom methods or composable utility functions in server-core.
 
 - **Landing page auto-discovery**: `apps/landing/src/gameRegistry.ts` is manually maintained. Consider generating it from game package metadata or a shared config file.
 

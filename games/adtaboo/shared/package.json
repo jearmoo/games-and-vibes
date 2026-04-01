@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@games/shared-types": "workspace:*"
+    "@games/server-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

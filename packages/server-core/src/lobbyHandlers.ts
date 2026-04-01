@@ -1,4 +1,4 @@
-import type { TeamId } from '@games/shared-types';
+import { Socket } from 'socket.io';
 import { SocketContext } from './socketContext.js';
 import { BaseRoom } from './BaseRoom.js';
 import { logger } from './logger.js';
@@ -9,6 +9,8 @@ export interface LobbyCallbacks<T extends BaseRoom> {
   buildGameState: (room: T) => object | null;
   /** Called after a player reconnects to an active game (optional). */
   onPlayerReconnect?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
+  /** Called when a player joins/rejoins, after socket joins the room. Use for extra socket room assignments (e.g., team rooms). */
+  onPlayerSocketJoin?: (room: T, playerId: string, socket: Socket) => void;
 }
 
 export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>, callbacks: LobbyCallbacks<T>) {
@@ -50,7 +52,7 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
         ctx.setPlayerId(existing.id);
         rooms.trackPlayer(existing.id, room.code);
         socket.join(room.code);
-        if (existing.team) socket.join(`${room.code}:team${existing.team}`);
+        callbacks.onPlayerSocketJoin?.(room, existing.id, socket);
 
         socket.emit('room:rejoined', {
           roomCode: room.code,
@@ -80,26 +82,11 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
       room.addPlayer(playerId, playerName, socket.id);
       rooms.trackPlayer(playerId, room.code);
       socket.join(room.code);
+      const playerDTO = room.playerDTOs().find((p) => p.id === playerId);
       socket.emit('room:joined', { roomCode: room.code, playerId, room: room.toDTO() });
-      socket.to(room.code).emit('room:player-joined', {
-        player: { id: playerId, name: playerName, team: null, connected: true },
-      });
+      socket.to(room.code).emit('room:player-joined', { player: playerDTO });
       metrics.playerJoined();
       logger.info('room', 'Player joined', { room: room.code, player: playerName });
     },
   );
-
-  socket.on('team:join', ({ team }: { team: TeamId }) => {
-    const playerId = ctx.getPlayerId();
-    if (!playerId) return;
-    const room = rooms.getRoomForPlayer(playerId);
-    if (!room) return;
-    const player = room.getPlayer(playerId);
-    if (!player) return;
-    if (player.team) socket.leave(`${room.code}:team${player.team}`);
-    player.team = team;
-    socket.join(`${room.code}:team${team}`);
-    io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
-    logger.info('room', 'Player joined team', { room: room.code, player: player.name, team });
-  });
 }

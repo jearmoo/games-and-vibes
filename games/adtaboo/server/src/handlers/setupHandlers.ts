@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import type { SocketContext } from '@games/server-core';
 import { logger } from '@games/server-core';
-import type { TeamId } from '@games/shared-types';
+import type { TeamId } from '@games/adtaboo-shared';
 import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
 

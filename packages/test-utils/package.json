@@ -9,7 +9,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@games/shared-types": "workspace:*",
     "@games/server-core": "workspace:*"
   },
   "devDependencies": {

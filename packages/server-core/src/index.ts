@@ -1,3 +1,4 @@
+export type { BasePlayer, BasePlayerDTO, RoomSettings, RoomDTO } from './types.js';
 export { BaseRoom } from './BaseRoom.js';
 export { RoomManager } from './RoomManager.js';
 export type { RoomManagerOptions } from './RoomManager.js';

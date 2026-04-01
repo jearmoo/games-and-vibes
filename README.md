@@ -18,8 +18,7 @@ A multiplayer party game platform — real-time browser games you play with frie
 
 ```
 packages/
-  shared-types/    # Pure TypeScript types shared by client + server
-  server-core/     # Room infrastructure: BaseRoom, RoomManager, socket handlers
+  server-core/     # Base types + room infrastructure: BaseRoom, RoomManager, socket handlers
   client-core/     # React utilities: socket factory, session store, Tailwind preset
   test-utils/      # TestRoom, MockStore, MockSocket for unit tests
 
@@ -45,7 +44,7 @@ pnpm run dev:landing  # Run landing page (3000)
 | Command | Description |
 |---------|-------------|
 | `pnpm install` | Install all workspace dependencies |
-| `pnpm -r build` | Build all packages (shared-types -> server-core -> games -> apps) |
+| `pnpm -r build` | Build all packages (server-core -> games -> apps) |
 | `pnpm -r test` | Run all tests |
 | `pnpm run lint` | ESLint across all packages |
 | `pnpm run typecheck` | TypeScript type checking |
@@ -77,8 +76,8 @@ Configure via `.env` file (see `.env.example`):
 
 ## Adding a Game
 
-1. Define types in `packages/shared-types/src/<game>.ts`
-2. Create `<Game>Room extends BaseRoom` in `games/<game>/server/`
+1. Define game types in `games/<game>/shared/` extending base types from `server-core`
+2. Create `<Game>Room extends BaseRoom<GamePlayer>` in `games/<game>/server/`
 3. Add game-specific socket handlers
 4. Build client with Zustand store + phase-based routing in `games/<game>/client/`
 5. Add Dockerfile, docker-compose entry, and cloudflared ingress rule
