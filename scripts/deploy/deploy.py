@@ -171,14 +171,23 @@ def run_deploy(target_sha: str) -> tuple[int, str]:
 
 class DeployHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        # Extract ref from query string (?ref=<sha>)
+        # Extract ref from query string (?ref=<sha>) or POST body {"ref": "<sha>"}
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         ref_list = params.get('ref', [])
         target_sha = ref_list[0] if ref_list else None
 
         if not target_sha:
-            self._respond(400, {'code': -1, 'output': 'Missing required query parameter: ref'})
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > 0:
+                try:
+                    body = json.loads(self.rfile.read(content_length))
+                    target_sha = body.get('ref')
+                except (json.JSONDecodeError, Exception):
+                    pass
+
+        if not target_sha:
+            self._respond(400, {'code': -1, 'output': 'Missing ref in query string or POST body'})
             return
 
         # Fetch latest so we have all commits for ancestry checks
