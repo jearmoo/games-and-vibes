@@ -22,9 +22,9 @@ RUN pnpm install --frozen-lockfile
 COPY packages/ packages/
 COPY games/adtaboo/ games/adtaboo/
 
-# Build shared packages first, then taboo
-RUN pnpm --filter @games/adtaboo-shared build
+# Build in dependency order
 RUN pnpm --filter @games/server-core build
+RUN pnpm --filter @games/adtaboo-shared build
 RUN pnpm --filter @games/adtaboo-server build
 
 ARG GA_MEASUREMENT_ID

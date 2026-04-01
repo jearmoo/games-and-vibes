@@ -33,8 +33,8 @@ COPY packages/ packages/
 COPY games/<name>/ games/<name>/
 
 # Build in dependency order
-RUN pnpm --filter @games/<name>-shared build
 RUN pnpm --filter @games/server-core build
+RUN pnpm --filter @games/<name>-shared build
 RUN pnpm --filter @games/<name>-server build
 
 ARG GA_MEASUREMENT_ID
