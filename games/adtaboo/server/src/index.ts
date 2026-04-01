@@ -42,9 +42,9 @@ createGameServer<AdtabooRoom>({
   metrics,
 
   registerGameHandlers: (ctx) => {
-    registerAdtabooLobbyHandlers(ctx, metrics);
+    registerAdtabooLobbyHandlers(ctx);
     registerSetupHandlers(ctx);
-    registerGameHandlers(ctx, metrics);
+    registerGameHandlers(ctx);
   },
 
   lobbyCallbacks: {

@@ -39,6 +39,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 - **`client-core/`** — Shared React + design primitives:
   - `createSocket()` — Socket.IO factory with auto-reconnect
   - `sessionStore` — localStorage session persistence
+  - `clientLogger` — structured browser logging (category-based, level-gated)
   - Tailwind preset, shared CSS (glassmorphism), Timer/ReconnectBanner/ErrorToast components
 - **`test-utils/`** — Shared test infrastructure:
   - `TestRoom` — concrete BaseRoom for testing abstract class
@@ -75,3 +76,13 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 - ESLint: unused vars warn (allow `_` prefix), `any` warn
 - Components: PascalCase, default exports
 - Team IDs: literal `'A' | 'B'`
+
+## Skills
+
+- `/game-dev` — Creating new games or developing existing ones. Covers architecture patterns, new game checklist, and deployment. Start here for any game development work.
+
+## Known TODOs
+
+- **Storage backend abstraction**: Only `JsonFileStore` exists. Implement Redis or Postgres adapters for `RoomStore`/`MetricsStore` interfaces to support multi-instance deployments.
+- **Shared game utilities**: Common patterns (team scoring, round advancement, timer management) repeat across games. Extract reusable logic into BaseRoom methods or utility functions in server-core.
+- **Landing page auto-discovery**: `apps/landing/src/gameRegistry.ts` is manually maintained. Consider generating from game package metadata or a shared config.

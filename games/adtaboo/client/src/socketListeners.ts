@@ -1,5 +1,6 @@
 import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
+import { clientLogger } from '@games/client-core';
 
 function saveSession() {
   const { roomCode, playerId, playerName } = useGameStore.getState();
@@ -159,7 +160,7 @@ socket.on('room:error', ({ message }) => {
       return;
     }
   }
-  console.error('Room error:', message);
+  clientLogger.error('room', 'Room error', { message });
   useGameStore.getState().setError(message);
 });
 

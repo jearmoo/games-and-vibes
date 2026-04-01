@@ -104,13 +104,14 @@ export function createGameServer<T extends BaseRoom>(opts: GameServerOptions<T>)
       io,
       socket,
       rooms,
+      metrics,
       getPlayerId: () => playerId,
       setPlayerId: (id) => {
         playerId = id;
       },
     };
 
-    registerLobbyHandlers(ctx, metrics, lobbyCallbacks);
+    registerLobbyHandlers(ctx, lobbyCallbacks);
     registerGameHandlers(ctx);
     registerConnectionHandlers(ctx, connectionCallbacks);
   });

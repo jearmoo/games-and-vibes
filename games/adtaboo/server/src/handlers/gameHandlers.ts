@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
-import type { SocketContext, MetricsCollector } from '@games/server-core';
-import { logger } from '@games/server-core';
+import type { SocketContext } from '@games/server-core';
+import { logger, MetricsCollector } from '@games/server-core';
 import type { TeamId } from '@games/shared-types';
 import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
@@ -32,8 +32,8 @@ export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, metri
   }
 }
 
-export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>, metrics: MetricsCollector) {
-  const { io, socket, rooms } = ctx;
+export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
+  const { io, socket, rooms, metrics } = ctx;
 
   socket.on('clue:begin', () => {
     const playerId = ctx.getPlayerId();

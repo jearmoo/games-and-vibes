@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { TestRoom, MockStore, createMockSocketContext } from '@games/test-utils';
+import { TestRoom, createMockSocketContext } from '@games/test-utils';
 import type { MockSocketClient, MockIO } from '@games/test-utils';
 import { RoomManager } from './RoomManager.js';
 import { MetricsCollector } from './metrics.js';
@@ -22,9 +22,9 @@ describe('lobbyHandlers', () => {
     socket = mock.socket;
     io = mock.io;
     rooms = mock.rooms;
-    metrics = new MetricsCollector(new MockStore());
+    metrics = mock.metrics;
 
-    registerLobbyHandlers(mock.ctx, metrics, {
+    registerLobbyHandlers(mock.ctx, {
       buildGameState: () => null,
     });
   });
@@ -95,9 +95,9 @@ describe('connectionHandlers', () => {
     socket = mock.socket;
     io = mock.io;
     rooms = mock.rooms;
-    metrics = new MetricsCollector(new MockStore());
+    metrics = mock.metrics;
 
-    registerLobbyHandlers(mock.ctx, metrics, {
+    registerLobbyHandlers(mock.ctx, {
       buildGameState: () => null,
     });
 

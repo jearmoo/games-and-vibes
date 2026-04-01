@@ -2,7 +2,6 @@ import type { TeamId } from '@games/shared-types';
 import { SocketContext } from './socketContext.js';
 import { BaseRoom } from './BaseRoom.js';
 import { logger } from './logger.js';
-import { MetricsCollector } from './metrics.js';
 import { randomUUID } from 'crypto';
 
 export interface LobbyCallbacks<T extends BaseRoom> {
@@ -14,10 +13,9 @@ export interface LobbyCallbacks<T extends BaseRoom> {
 
 export function registerLobbyHandlers<T extends BaseRoom>(
   ctx: SocketContext<T>,
-  metrics: MetricsCollector,
   callbacks: LobbyCallbacks<T>,
 ) {
-  const { io, socket, rooms } = ctx;
+  const { io, socket, rooms, metrics } = ctx;
 
   socket.on('room:create', ({ playerName }: { playerName: string }) => {
     const playerId = randomUUID();

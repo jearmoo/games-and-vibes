@@ -1,4 +1,4 @@
-import type { SocketContext, MetricsCollector } from '@games/server-core';
+import type { SocketContext } from '@games/server-core';
 import { logger } from '@games/server-core';
 import type { TeamId } from '@games/shared-types';
 import { GamePhase } from '@games/adtaboo-shared';
@@ -6,8 +6,8 @@ import { AdtabooRoom } from '../AdtabooRoom.js';
 import { emitSetupCards } from './setupHandlers.js';
 
 /** Taboo-specific lobby handlers (game:start, taboo-master:set, settings:update) */
-export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>, metrics: MetricsCollector) {
-  const { io, socket, rooms } = ctx;
+export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
+  const { io, socket, rooms, metrics } = ctx;
 
   socket.on('taboo-master:set', ({ team, masterId }: { team: TeamId; masterId: string }) => {
     const playerId = ctx.getPlayerId();

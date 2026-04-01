@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import type { SocketContext } from '@games/server-core';
-import { RoomManager } from '@games/server-core';
+import { RoomManager, MetricsCollector } from '@games/server-core';
 import { BaseRoom } from '@games/server-core';
 import { MockStore } from './MockStore.js';
 
@@ -101,6 +101,7 @@ export function createMockSocketContext<T extends BaseRoom>(
   io: MockIO;
   rooms: RoomManager<T>;
   store: MockStore;
+  metrics: MetricsCollector;
 } {
   const store = new MockStore();
   const rooms = new RoomManager<T>({
@@ -111,6 +112,7 @@ export function createMockSocketContext<T extends BaseRoom>(
 
   const socket = new MockSocketClient();
   const io = new MockIO();
+  const metrics = new MetricsCollector(store);
 
   let playerId: string | null = null;
 
@@ -118,11 +120,12 @@ export function createMockSocketContext<T extends BaseRoom>(
     io: io as any,
     socket: socket as any,
     rooms,
+    metrics,
     getPlayerId: () => playerId,
     setPlayerId: (id) => {
       playerId = id;
     },
   };
 
-  return { ctx, socket, io, rooms, store };
+  return { ctx, socket, io, rooms, store, metrics };
 }
