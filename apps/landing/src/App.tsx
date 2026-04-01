@@ -141,12 +141,17 @@ function GameCard({ game, index }: { game: GameEntry; index: number }) {
               y: -3,
               scale: 1.01,
               boxShadow: `0 0 30px ${game.accentGlow}, 0 4px 20px rgba(0,0,0,0.4)`,
+              transition: { duration: 0.15, ease: 'easeOut' },
             }
           : undefined
       }
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: isAvailable ? 1 : 0.4, y: 0 }}
-      transition={{ delay: 0.8 + index * 0.08, duration: 0.45, ease: 'easeOut' }}
+      animate={{
+        opacity: isAvailable ? 1 : 0.4,
+        y: 0,
+        transition: { delay: 0.8 + index * 0.08, duration: 0.45, ease: 'easeOut' },
+      }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
     >
       {/* Accent stripe */}
       <div
