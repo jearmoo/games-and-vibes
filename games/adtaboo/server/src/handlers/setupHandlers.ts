@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 import type { SocketContext } from '@games/server-core';
 import { logger } from '@games/server-core';
 import type { TeamId } from '@games/shared-types';
-import { GamePhase } from '@games/shared-types/adtaboo';
+import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
 
 export function registerSetupHandlers(ctx: SocketContext<AdtabooRoom>) {

@@ -3,7 +3,7 @@ import { AdtabooRoom } from './AdtabooRoom.js';
 import { registerSetupHandlers } from './handlers/setupHandlers.js';
 import { registerGameHandlers, handleTurnEnd } from './handlers/gameHandlers.js';
 import { registerAdtabooLobbyHandlers } from './handlers/lobbyHandlers.js';
-import { GamePhase } from '@games/shared-types/adtaboo';
+import { GamePhase } from '@games/adtaboo-shared';
 
 const ROOMS_PATH = process.env.ROOMS_PATH || '/data/rooms.json';
 const METRICS_PATH = process.env.METRICS_PATH || '/data/metrics.json';

@@ -9,7 +9,7 @@ import {
   RoundArchiveEntry,
   AdtabooSettings,
   AdtabooRoomDTO,
-} from '@games/shared-types/adtaboo';
+} from '@games/adtaboo-shared';
 import { fetchWords } from './words/index.js';
 
 function emptyChallenge(): ChallengeSetup {

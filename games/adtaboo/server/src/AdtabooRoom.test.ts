@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AdtabooRoom } from './AdtabooRoom';
-import { GamePhase } from '@games/shared-types/adtaboo';
+import { GamePhase } from '@games/adtaboo-shared';
 
 function createTestRoom(): AdtabooRoom {
   const room = new AdtabooRoom('TEST', 'host1');

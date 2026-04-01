@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@games/adtaboo-shared": "workspace:*",
     "@games/server-core": "workspace:*",
     "@games/shared-types": "workspace:*",
     "express": "^4.21.0",

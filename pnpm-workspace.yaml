@@ -2,4 +2,5 @@ packages:
   - 'packages/*'
   - 'games/*/client'
   - 'games/*/server'
+  - 'games/*/shared'
   - 'apps/*'

@@ -1,15 +1,17 @@
-import type { Player, PlayerDTO, RoomSettings as BaseRoomSettings } from './index.js';
+import type { Player, PlayerDTO, RoomSettings as BaseRoomSettings } from '@games/shared-types';
 
 export type { Player, PlayerDTO };
 
-export enum GamePhase {
-  LOBBY = 'LOBBY',
-  PARALLEL_SETUP = 'PARALLEL_SETUP',
-  CLUING_A = 'CLUING_A',
-  CLUING_B = 'CLUING_B',
-  ROUND_RESULT = 'ROUND_RESULT',
-  GAME_OVER = 'GAME_OVER',
-}
+export const GamePhase = {
+  LOBBY: 'LOBBY',
+  PARALLEL_SETUP: 'PARALLEL_SETUP',
+  CLUING_A: 'CLUING_A',
+  CLUING_B: 'CLUING_B',
+  ROUND_RESULT: 'ROUND_RESULT',
+  GAME_OVER: 'GAME_OVER',
+} as const;
+
+export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
 
 export interface WordCard {
   word: string;

@@ -1,7 +1,10 @@
 import { create } from 'zustand';
+import type { WordCard, AdtabooBuzzes, TurnScoreData, TeamRoundData, RoundArchiveEntry } from '@games/adtaboo-shared';
+import { GamePhase } from '@games/adtaboo-shared';
 export { SESSION_KEY } from './constants';
+export { GamePhase };
+export type { WordCard, AdtabooBuzzes, TurnScoreData, TeamRoundData, RoundArchiveEntry };
 
-export type GamePhase = 'LOBBY' | 'PARALLEL_SETUP' | 'CLUING_A' | 'CLUING_B' | 'ROUND_RESULT' | 'GAME_OVER';
 export type TeamId = 'A' | 'B';
 
 export interface Player {
@@ -11,39 +14,9 @@ export interface Player {
   connected: boolean;
 }
 
-export interface WordCard {
-  word: string;
-  result: 'correct' | null;
-}
-
-export interface AdtabooBuzzes {
-  [word: string]: number;
-}
-
-export interface TurnScore {
-  correct: number;
-  missed: number;
-  buzzes: number;
-  points: number;
-}
-
 export interface SetupStatus {
   A: { ready: boolean; tabooCount: number; hasClueGiver: boolean };
   B: { ready: boolean; tabooCount: number; hasClueGiver: boolean };
-}
-
-export interface TeamRoundData {
-  cards: WordCard[];
-  tabooWords: string[];
-  tabooBuzzes: AdtabooBuzzes;
-  turnScore: TurnScore;
-  clueGiverName: string;
-  tabooMasterName: string;
-}
-
-export interface RoundArchiveEntry {
-  round: number;
-  teams: { A: TeamRoundData; B: TeamRoundData };
 }
 
 export interface GameStore {
@@ -73,7 +46,7 @@ export interface GameStore {
   tabooBuzzes: AdtabooBuzzes;
   timerEnd: number | null;
 
-  turnResults: { A: TurnScore | null; B: TurnScore | null };
+  turnResults: { A: TurnScoreData | null; B: TurnScoreData | null };
   roundHistory: RoundArchiveEntry[];
 
   error: string | null;
