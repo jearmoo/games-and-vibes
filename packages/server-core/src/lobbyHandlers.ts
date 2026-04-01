@@ -11,10 +11,7 @@ export interface LobbyCallbacks<T extends BaseRoom> {
   onPlayerReconnect?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
 }
 
-export function registerLobbyHandlers<T extends BaseRoom>(
-  ctx: SocketContext<T>,
-  callbacks: LobbyCallbacks<T>,
-) {
+export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>, callbacks: LobbyCallbacks<T>) {
   const { io, socket, rooms, metrics } = ctx;
 
   socket.on('room:create', ({ playerName }: { playerName: string }) => {
