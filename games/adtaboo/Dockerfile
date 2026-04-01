@@ -13,23 +13,23 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/server-core/package.json packages/server-core/
 COPY packages/client-core/package.json packages/client-core/
-COPY games/taboo/server/package.json games/taboo/server/
-COPY games/taboo/client/package.json games/taboo/client/
+COPY games/adtaboo/server/package.json games/adtaboo/server/
+COPY games/adtaboo/client/package.json games/adtaboo/client/
 
 RUN pnpm install --frozen-lockfile
 
 # Copy source
 COPY packages/ packages/
-COPY games/taboo/ games/taboo/
+COPY games/adtaboo/ games/adtaboo/
 
 # Build shared packages first, then taboo
 RUN pnpm --filter @games/shared-types build
 RUN pnpm --filter @games/server-core build
-RUN pnpm --filter @games/taboo-server build
+RUN pnpm --filter @games/adtaboo-server build
 
 ARG GA_MEASUREMENT_ID
 ENV VITE_GA_ID=$GA_MEASUREMENT_ID
-RUN pnpm --filter @games/taboo-client build
+RUN pnpm --filter @games/adtaboo-client build
 
 # Stage 2: Production
 FROM node:20-alpine
@@ -39,18 +39,18 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/shared-types/package.json packages/shared-types/
 COPY packages/server-core/package.json packages/server-core/
-COPY games/taboo/server/package.json games/taboo/server/
+COPY games/adtaboo/server/package.json games/adtaboo/server/
 
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy built artifacts
 COPY --from=build /app/packages/shared-types/dist packages/shared-types/dist
 COPY --from=build /app/packages/server-core/dist packages/server-core/dist
-COPY --from=build /app/games/taboo/server/dist games/taboo/server/dist
-COPY --from=build /app/games/taboo/client/dist games/taboo/server/public
+COPY --from=build /app/games/adtaboo/server/dist games/adtaboo/server/dist
+COPY --from=build /app/games/adtaboo/client/dist games/adtaboo/server/public
 
 ENV NODE_ENV=production
 ENV PORT=4040
 EXPOSE 4040
-WORKDIR /app/games/taboo/server
+WORKDIR /app/games/adtaboo/server
 CMD ["node", "dist/index.js"]

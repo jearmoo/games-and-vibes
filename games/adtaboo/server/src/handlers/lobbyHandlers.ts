@@ -1,12 +1,12 @@
 import type { SocketContext, MetricsCollector } from '@games/server-core';
 import { logger } from '@games/server-core';
 import type { TeamId } from '@games/shared-types';
-import { GamePhase } from '@games/shared-types/taboo';
-import { TabooRoom } from '../TabooRoom.js';
+import { GamePhase } from '@games/shared-types/adtaboo';
+import { AdtabooRoom } from '../AdtabooRoom.js';
 import { emitSetupCards } from './setupHandlers.js';
 
 /** Taboo-specific lobby handlers (game:start, taboo-master:set, settings:update) */
-export function registerTabooLobbyHandlers(ctx: SocketContext<TabooRoom>, metrics: MetricsCollector) {
+export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>, metrics: MetricsCollector) {
   const { io, socket, rooms } = ctx;
 
   socket.on('taboo-master:set', ({ team, masterId }: { team: TeamId; masterId: string }) => {

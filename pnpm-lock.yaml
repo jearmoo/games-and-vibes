@@ -70,7 +70,7 @@ importers:
         specifier: ^5.4.0
         version: 5.4.21(@types/node@22.19.15)
 
-  games/taboo/client:
+  games/adtaboo/client:
     dependencies:
       '@games/client-core':
         specifier: workspace:*
@@ -119,7 +119,7 @@ importers:
         specifier: ^5.4.0
         version: 5.4.21(@types/node@22.19.15)
 
-  games/taboo/server:
+  games/adtaboo/server:
     dependencies:
       '@games/server-core':
         specifier: workspace:*

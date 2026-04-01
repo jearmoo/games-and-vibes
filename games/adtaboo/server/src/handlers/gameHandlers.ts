@@ -2,11 +2,11 @@ import { Server } from 'socket.io';
 import type { SocketContext, MetricsCollector } from '@games/server-core';
 import { logger } from '@games/server-core';
 import type { TeamId } from '@games/shared-types';
-import { GamePhase } from '@games/shared-types/taboo';
-import { TabooRoom } from '../TabooRoom.js';
+import { GamePhase } from '@games/shared-types/adtaboo';
+import { AdtabooRoom } from '../AdtabooRoom.js';
 import { prepareCluingPhase, emitSetupCards } from './setupHandlers.js';
 
-export function handleTurnEnd(room: TabooRoom, team: TeamId, io: Server, metrics: MetricsCollector) {
+export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, metrics: MetricsCollector) {
   const result = room.endCluing();
   if (!room.game) return;
   logger.info('game', 'Cluing ended', { room: room.code, team, turnScore: result.turnScore });
@@ -32,7 +32,7 @@ export function handleTurnEnd(room: TabooRoom, team: TeamId, io: Server, metrics
   }
 }
 
-export function registerGameHandlers(ctx: SocketContext<TabooRoom>, metrics: MetricsCollector) {
+export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>, metrics: MetricsCollector) {
   const { io, socket, rooms } = ctx;
 
   socket.on('clue:begin', () => {

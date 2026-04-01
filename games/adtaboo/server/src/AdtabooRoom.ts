@@ -7,9 +7,9 @@ import {
   TurnScoreData,
   TeamRoundData,
   RoundArchiveEntry,
-  TabooSettings,
-  TabooRoomDTO,
-} from '@games/shared-types/taboo';
+  AdtabooSettings,
+  AdtabooRoomDTO,
+} from '@games/shared-types/adtaboo';
 import { fetchWords } from './words/index.js';
 
 function emptyChallenge(): ChallengeSetup {
@@ -23,8 +23,8 @@ function emptyChallenge(): ChallengeSetup {
   };
 }
 
-export class TabooRoom extends BaseRoom {
-  declare settings: TabooSettings;
+export class AdtabooRoom extends BaseRoom {
+  declare settings: AdtabooSettings;
   game: GameState | null = null;
   tabooMasters: { A: string | null; B: string | null } = { A: null, B: null };
   roundHistory: RoundArchiveEntry[] = [];
@@ -80,7 +80,7 @@ export class TabooRoom extends BaseRoom {
 
   // --- Taboo-specific DTO ---
 
-  override toDTO(): TabooRoomDTO {
+  override toDTO(): AdtabooRoomDTO {
     return {
       code: this.code,
       hostId: this.hostId,
@@ -411,8 +411,8 @@ export class TabooRoom extends BaseRoom {
 
   // --- Serialization ---
 
-  static fromJSON(data: any): TabooRoom {
-    const room = new TabooRoom(data.code, data.hostId);
+  static fromJSON(data: any): AdtabooRoom {
+    const room = new AdtabooRoom(data.code, data.hostId);
     room.lastActivity = data.lastActivity ?? Date.now();
     room.settings = { ...room.settings, ...data.settings };
     room.tabooMasters = data.tabooMasters ?? { A: null, B: null };

@@ -1,5 +1,5 @@
 {
-  "name": "@games/taboo-server",
+  "name": "@games/adtaboo-server",
   "version": "0.1.0",
   "private": true,
   "type": "module",

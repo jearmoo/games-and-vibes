@@ -1,9 +1,9 @@
 import { createGameServer, RoomManager, MetricsCollector, JsonFileStore, logger } from '@games/server-core';
-import { TabooRoom } from './TabooRoom.js';
+import { AdtabooRoom } from './AdtabooRoom.js';
 import { registerSetupHandlers } from './handlers/setupHandlers.js';
 import { registerGameHandlers, handleTurnEnd } from './handlers/gameHandlers.js';
-import { registerTabooLobbyHandlers } from './handlers/lobbyHandlers.js';
-import { GamePhase } from '@games/shared-types/taboo';
+import { registerAdtabooLobbyHandlers } from './handlers/lobbyHandlers.js';
+import { GamePhase } from '@games/shared-types/adtaboo';
 
 const ROOMS_PATH = process.env.ROOMS_PATH || '/data/rooms.json';
 const METRICS_PATH = process.env.METRICS_PATH || '/data/metrics.json';
@@ -12,14 +12,14 @@ const roomStore = new JsonFileStore(ROOMS_PATH);
 const metricsStore = new JsonFileStore(METRICS_PATH);
 const metrics = new MetricsCollector(metricsStore);
 
-const rooms = new RoomManager<TabooRoom>({
+const rooms = new RoomManager<AdtabooRoom>({
   store: roomStore,
   snapshotPath: ROOMS_PATH,
-  roomFactory: (code, hostId) => new TabooRoom(code, hostId),
-  roomFromJSON: (data) => TabooRoom.fromJSON(data),
+  roomFactory: (code, hostId) => new AdtabooRoom(code, hostId),
+  roomFromJSON: (data) => AdtabooRoom.fromJSON(data),
 });
 
-function buildGameState(room: TabooRoom) {
+function buildGameState(room: AdtabooRoom) {
   if (!room.game) return null;
   return {
     phase: room.game.phase,
@@ -36,13 +36,13 @@ function buildGameState(room: TabooRoom) {
   };
 }
 
-createGameServer<TabooRoom>({
+createGameServer<AdtabooRoom>({
   gameName: 'Adversarial Taboo',
   rooms,
   metrics,
 
   registerGameHandlers: (ctx) => {
-    registerTabooLobbyHandlers(ctx, metrics);
+    registerAdtabooLobbyHandlers(ctx, metrics);
     registerSetupHandlers(ctx);
     registerGameHandlers(ctx, metrics);
   },

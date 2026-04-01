@@ -16,7 +16,7 @@ export interface WordCard {
   result: 'correct' | null;
 }
 
-export interface TabooBuzzes {
+export interface AdtabooBuzzes {
   [tabooWord: string]: number;
 }
 
@@ -24,7 +24,7 @@ export interface ChallengeSetup {
   cards: WordCard[];
   tabooWords: string[];
   tabooSuggestions: string[];
-  tabooBuzzes: TabooBuzzes;
+  tabooBuzzes: AdtabooBuzzes;
   ready: boolean;
   clueGiverId: string | null;
 }
@@ -36,7 +36,7 @@ export interface TurnScoreData {
   points: number;
 }
 
-export interface TabooSettings extends BaseRoomSettings {
+export interface AdtabooSettings extends BaseRoomSettings {
   wordsPerTurn: number;
   maxTabooWords: number;
 }
@@ -54,7 +54,7 @@ export interface GameState {
 export interface TeamRoundData {
   cards: WordCard[];
   tabooWords: string[];
-  tabooBuzzes: TabooBuzzes;
+  tabooBuzzes: AdtabooBuzzes;
   turnScore: TurnScoreData;
   clueGiverName: string;
   tabooMasterName: string;
@@ -65,11 +65,11 @@ export interface RoundArchiveEntry {
   teams: { A: TeamRoundData; B: TeamRoundData };
 }
 
-export interface TabooRoomDTO {
+export interface AdtabooRoomDTO {
   code: string;
   hostId: string;
   players: PlayerDTO[];
-  settings: TabooSettings;
+  settings: AdtabooSettings;
   phase: GamePhase | null;
   tabooMasters: { A: string | null; B: string | null };
 }

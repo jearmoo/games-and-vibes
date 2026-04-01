@@ -4,7 +4,7 @@ A multiplayer party game platform — real-time browser games you play with frie
 
 ## Games
 
-- **[Adversarial Taboo](games/taboo/)** — Teams give clues while the opposing team chooses the forbidden words. Live at [adtaboo.jerpi.org](https://adtaboo.jerpi.org).
+- **[Adversarial Taboo](games/adtaboo/)** — Teams give clues while the opposing team chooses the forbidden words. Live at [adtaboo.jerpi.org](https://adtaboo.jerpi.org).
 
 ## Tech Stack
 
@@ -24,7 +24,7 @@ packages/
   test-utils/      # TestRoom, MockStore, MockSocket for unit tests
 
 games/
-  taboo/           # Adversarial Taboo (server + client)
+  adtaboo/         # Adversarial Taboo (server + client)
 
 apps/
   landing/         # games.jerpi.org hub page
@@ -36,7 +36,7 @@ apps/
 
 ```bash
 pnpm install          # Install all workspace dependencies
-pnpm run dev:taboo    # Run Taboo server (4040) + client (5173)
+pnpm run dev:adtaboo  # Run Adtaboo server (4040) + client (5173)
 pnpm run dev:landing  # Run landing page (3000)
 ```
 
@@ -61,7 +61,7 @@ docker compose up -d --build
 
 | Service | Port | URL |
 |---------|------|-----|
-| Taboo | 4040 | adtaboo.jerpi.org |
+| Adtaboo | 4040 | adtaboo.jerpi.org |
 | Landing | 3000 | games.jerpi.org |
 
 ## Environment Variables

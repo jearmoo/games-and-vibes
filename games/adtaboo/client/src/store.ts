@@ -16,7 +16,7 @@ export interface WordCard {
   result: 'correct' | null;
 }
 
-export interface TabooBuzzes {
+export interface AdtabooBuzzes {
   [word: string]: number;
 }
 
@@ -35,7 +35,7 @@ export interface SetupStatus {
 export interface TeamRoundData {
   cards: WordCard[];
   tabooWords: string[];
-  tabooBuzzes: TabooBuzzes;
+  tabooBuzzes: AdtabooBuzzes;
   turnScore: TurnScore;
   clueGiverName: string;
   tabooMasterName: string;
@@ -70,7 +70,7 @@ export interface GameStore {
   activeCluingClueGiverId: string | null;
   cards: WordCard[];
   tabooWords: string[];
-  tabooBuzzes: TabooBuzzes;
+  tabooBuzzes: AdtabooBuzzes;
   timerEnd: number | null;
 
   turnResults: { A: TurnScore | null; B: TurnScore | null };

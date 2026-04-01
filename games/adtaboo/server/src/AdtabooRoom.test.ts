@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TabooRoom } from './TabooRoom';
-import { GamePhase } from '@games/shared-types/taboo';
+import { AdtabooRoom } from './AdtabooRoom';
+import { GamePhase } from '@games/shared-types/adtaboo';
 
-function createTestRoom(): TabooRoom {
-  const room = new TabooRoom('TEST', 'host1');
+function createTestRoom(): AdtabooRoom {
+  const room = new AdtabooRoom('TEST', 'host1');
   room.addPlayer('host1', 'Host', 'sock1');
   room.addPlayer('p2', 'Player2', 'sock2');
   room.addPlayer('p3', 'Player3', 'sock3');
@@ -20,8 +20,8 @@ function createTestRoom(): TabooRoom {
   return room;
 }
 
-describe('TabooRoom', () => {
-  let room: TabooRoom;
+describe('AdtabooRoom', () => {
+  let room: AdtabooRoom;
 
   beforeEach(() => {
     room = createTestRoom();
@@ -254,7 +254,7 @@ describe('TabooRoom', () => {
     it('round-trips through toJSON/fromJSON', () => {
       room.startGame();
       const json = room.toJSON();
-      const restored = TabooRoom.fromJSON(json);
+      const restored = AdtabooRoom.fromJSON(json);
 
       expect(restored.code).toBe('TEST');
       expect(restored.hostId).toBe('host1');
@@ -265,7 +265,7 @@ describe('TabooRoom', () => {
 
     it('restores players as disconnected', () => {
       const json = room.toJSON();
-      const restored = TabooRoom.fromJSON(json);
+      const restored = AdtabooRoom.fromJSON(json);
 
       for (const [, player] of restored.players) {
         expect(player.connected).toBe(false);
@@ -352,7 +352,7 @@ describe('TabooRoom', () => {
       room.startGame();
       room.removePlayer('p4');
       const json = room.toJSON();
-      const restored = TabooRoom.fromJSON(json);
+      const restored = AdtabooRoom.fromJSON(json);
       expect(restored.getPlayer('p4')?.removed).toBe(true);
       expect(restored.getPlayerByName('Player4')?.removed).toBe(true);
     });

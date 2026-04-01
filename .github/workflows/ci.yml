@@ -42,8 +42,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build taboo image
-        run: docker build -f games/taboo/Dockerfile -t taboo .
+      - name: Build adtaboo image
+        run: docker build -f games/adtaboo/Dockerfile -t adtaboo .
 
       - name: Build landing image
         run: docker build -f apps/landing/Dockerfile -t landing .

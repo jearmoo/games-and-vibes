@@ -2,10 +2,10 @@ import { Server } from 'socket.io';
 import type { SocketContext } from '@games/server-core';
 import { logger } from '@games/server-core';
 import type { TeamId } from '@games/shared-types';
-import { GamePhase } from '@games/shared-types/taboo';
-import { TabooRoom } from '../TabooRoom.js';
+import { GamePhase } from '@games/shared-types/adtaboo';
+import { AdtabooRoom } from '../AdtabooRoom.js';
 
-export function registerSetupHandlers(ctx: SocketContext<TabooRoom>) {
+export function registerSetupHandlers(ctx: SocketContext<AdtabooRoom>) {
   const { io, socket, rooms } = ctx;
 
   function getChallengeTarget(): TeamId | null {
@@ -153,7 +153,7 @@ export function registerSetupHandlers(ctx: SocketContext<TabooRoom>) {
   });
 }
 
-export function prepareCluingPhase(room: TabooRoom, team: TeamId, io: Server) {
+export function prepareCluingPhase(room: AdtabooRoom, team: TeamId, io: Server) {
   if (!room.game) return;
   const opposingTeam = room.getOpposingTeam(team);
   const challenge = room.game.challenges[team];
@@ -198,7 +198,7 @@ export function prepareCluingPhase(room: TabooRoom, team: TeamId, io: Server) {
   }
 }
 
-export function emitSetupCards(room: TabooRoom, io: Server) {
+export function emitSetupCards(room: AdtabooRoom, io: Server) {
   if (!room.game) return;
   for (const team of ['A', 'B'] as TeamId[]) {
     const opposing = room.getOpposingTeam(team);

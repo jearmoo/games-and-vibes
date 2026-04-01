@@ -7,19 +7,19 @@ This file provides guidance to Claude Code when working with code in this reposi
 ```bash
 pnpm install              # Install all workspace dependencies
 pnpm -r build             # Build all packages (shared-types → server-core → games → apps)
-pnpm -r test              # Run all tests (server-core, client-core, taboo-server)
+pnpm -r test              # Run all tests (server-core, client-core, adtaboo-server)
 pnpm run lint             # ESLint across all packages
 pnpm run typecheck        # tsc --noEmit in all packages
 pnpm run format           # Prettier auto-format
 pnpm run format:check     # Check formatting
 
 # Game-specific
-pnpm run dev:taboo        # Run taboo server (4040) + client (5173) concurrently
+pnpm run dev:adtaboo      # Run adtaboo server (4040) + client (5173) concurrently
 pnpm run dev:landing      # Run landing page (3000)
 
 # Single test file
 cd packages/server-core && npx vitest run src/BaseRoom.test.ts
-cd games/taboo/server && npx vitest run src/TabooRoom.test.ts
+cd games/adtaboo/server && npx vitest run src/AdtabooRoom.test.ts
 ```
 
 ## Architecture
@@ -28,7 +28,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 
 ### Shared Packages (`packages/`)
 
-- **`shared-types/`** — Pure TypeScript types, no runtime. Generic types in `index.ts`, game-specific in `taboo.ts`. Single source of truth for client+server.
+- **`shared-types/`** — Pure TypeScript types, no runtime. Generic types in `index.ts`, game-specific in `adtaboo.ts`. Single source of truth for client+server.
 - **`server-core/`** — Room infrastructure reused by all games:
   - `BaseRoom` (abstract) — player management, teams, host, settings, serialization
   - `RoomManager<T>` — room lifecycle, persistence via `RoomStore` interface, cleanup
@@ -47,8 +47,8 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 
 ### Games (`games/`)
 
-- **`taboo/server/`** — `TabooRoom extends BaseRoom`, game handlers, word providers
-- **`taboo/client/`** — React SPA with Zustand store, phase-based routing, Tailwind theming
+- **`adtaboo/server/`** — `AdtabooRoom extends BaseRoom`, game handlers, word providers
+- **`adtaboo/client/`** — React SPA with Zustand store, phase-based routing, Tailwind theming
 
 ### Apps (`apps/`)
 
@@ -65,7 +65,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 
 - Docker Compose at repo root with per-game containers
 - Cloudflared tunnel routes subdomains to localhost ports
-- Taboo: port 4040, adtaboo.jerpi.org
+- Adtaboo: port 4040, adtaboo.jerpi.org
 - Landing: port 3000, games.jerpi.org
 
 ## Code Style

@@ -1,8 +1,8 @@
 services:
-  taboo:
+  adtaboo:
     build:
       context: .
-      dockerfile: games/taboo/Dockerfile
+      dockerfile: games/adtaboo/Dockerfile
       args:
         GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
     env_file: .env
@@ -12,7 +12,7 @@ services:
     ports:
       - "4040:4040"
     volumes:
-      - ./games/taboo/data:/data
+      - ./games/adtaboo/data:/data
     environment:
       - NODE_ENV=production
       - PORT=4040

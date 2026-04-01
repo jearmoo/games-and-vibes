@@ -10,9 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./taboo": {
-      "types": "./dist/taboo.d.ts",
-      "import": "./dist/taboo.js"
+    "./adtaboo": {
+      "types": "./dist/adtaboo.d.ts",
+      "import": "./dist/adtaboo.js"
     }
   },
   "scripts": {

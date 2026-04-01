@@ -11,7 +11,7 @@ export interface GameEntry {
 
 export const games: GameEntry[] = [
   {
-    id: 'taboo',
+    id: 'adtaboo',
     name: 'Adversarial Taboo',
     tagline: 'Make your friends guess words while the enemy sets traps',
     url: 'https://adtaboo.jerpi.org',

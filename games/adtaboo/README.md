@@ -48,13 +48,13 @@ Game settings are configurable by the host in the lobby:
 
 ```bash
 # From the repo root
-pnpm run dev:taboo    # Run server (4040) + client (5173) concurrently
+pnpm run dev:adtaboo  # Run server (4040) + client (5173) concurrently
 
 # Run tests
-cd games/taboo/server && npx vitest run
+cd games/adtaboo/server && npx vitest run
 
 # Run a single test file
-cd games/taboo/server && npx vitest run src/TabooRoom.test.ts
+cd games/adtaboo/server && npx vitest run src/AdtabooRoom.test.ts
 ```
 
 The client proxies Socket.IO connections to the server via Vite's dev proxy.
@@ -62,12 +62,12 @@ The client proxies Socket.IO connections to the server via Vite's dev proxy.
 ## Project Structure
 
 ```
-taboo/
+adtaboo/
 ├── server/
 │   └── src/
-│       ├── index.ts          # Express + Socket.IO entry point
-│       ├── TabooRoom.ts      # Game state machine (extends BaseRoom)
-│       ├── TabooRoom.test.ts # Unit tests
+│       ├── index.ts            # Express + Socket.IO entry point
+│       ├── AdtabooRoom.ts      # Game state machine (extends BaseRoom)
+│       ├── AdtabooRoom.test.ts # Unit tests
 │       ├── handlers.ts       # Socket.IO game handler orchestrator
 │       └── words/            # Word provider (randomwordgenerator.com)
 ├── client/
