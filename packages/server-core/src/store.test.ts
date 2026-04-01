@@ -19,8 +19,16 @@ describe('JsonFileStore', () => {
 
   afterEach(() => {
     for (const p of paths) {
-      try { unlinkSync(p); } catch { /* ok */ }
-      try { unlinkSync(p + '.tmp'); } catch { /* ok */ }
+      try {
+        unlinkSync(p);
+      } catch {
+        /* ok */
+      }
+      try {
+        unlinkSync(p + '.tmp');
+      } catch {
+        /* ok */
+      }
     }
     paths.length = 0;
   });

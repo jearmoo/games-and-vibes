@@ -22,7 +22,12 @@ export const charadesProvider: WordProvider = async (count, difficulty) => {
   const csrf = csrfMatch[1];
 
   const setCookie = pageRes.headers.get('set-cookie');
-  const cookie = setCookie ? setCookie.split(',').map((c) => c.split(';')[0].trim()).join('; ') : '';
+  const cookie = setCookie
+    ? setCookie
+        .split(',')
+        .map((c) => c.split(';')[0].trim())
+        .join('; ')
+    : '';
 
   const body = new URLSearchParams({
     _csrf: csrf,

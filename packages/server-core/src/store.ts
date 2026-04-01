@@ -50,8 +50,16 @@ export class JsonFileStore implements RoomStore, MetricsStore {
   }
 
   clear(): void {
-    try { unlinkSync(this.path); } catch { /* ok */ }
-    try { unlinkSync(this.path + '.tmp'); } catch { /* ok */ }
+    try {
+      unlinkSync(this.path);
+    } catch {
+      /* ok */
+    }
+    try {
+      unlinkSync(this.path + '.tmp');
+    } catch {
+      /* ok */
+    }
   }
 
   load(): object | null {

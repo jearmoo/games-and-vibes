@@ -14,9 +14,10 @@ function Confetti({ color }: { color: 'A' | 'B' }) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const colors = color === 'A'
-      ? ['#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe', '#fbbf24']
-      : ['#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fbbf24'];
+    const colors =
+      color === 'A'
+        ? ['#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe', '#fbbf24']
+        : ['#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fbbf24'];
 
     const pieces = Array.from({ length: 80 }, () => ({
       x: Math.random() * canvas.width,
@@ -45,7 +46,7 @@ function Confetti({ color }: { color: 'A' | 'B' }) {
         ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
         ctx.restore();
       }
-      if (pieces.some(p => p.y < canvas.height + 20)) {
+      if (pieces.some((p) => p.y < canvas.height + 20)) {
         frame = requestAnimationFrame(animate);
       }
     };
@@ -57,7 +58,7 @@ function Confetti({ color }: { color: 'A' | 'B' }) {
 }
 
 export default function GameOverScreen() {
-  const scores = useGameStore(s => s.scores);
+  const scores = useGameStore((s) => s.scores);
   const winner = scores.A > scores.B ? 'A' : scores.B > scores.A ? 'B' : null;
   const isHost = useIsHost();
   const teamA = useTeamPlayers('A');
@@ -73,10 +74,14 @@ export default function GameOverScreen() {
       {winner && <Confetti color={winner} />}
 
       <div className="text-center relative z-10 animate-score-pop">
-        <h1 className="font-display text-4xl text-white tracking-wider mb-2"
-            style={{ textShadow: winner
+        <h1
+          className="font-display text-4xl text-white tracking-wider mb-2"
+          style={{
+            textShadow: winner
               ? `0 0 40px ${winner === 'A' ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}`
-              : undefined }}>
+              : undefined,
+          }}
+        >
           {winner ? `Team ${winner} Wins!` : "It's a Tie!"}
         </h1>
       </div>
@@ -85,16 +90,12 @@ export default function GameOverScreen() {
         <div className={`transition-all ${winner === 'A' ? 'scale-110' : winner === 'B' ? 'opacity-50' : ''}`}>
           <div className="text-team-a-glow font-display text-sm tracking-wider">Team A</div>
           <div className="font-display text-5xl text-white mt-1">{scores.A}</div>
-          <div className="text-gray-600 text-xs mt-2">
-            {teamA.map(p => p.name).join(', ')}
-          </div>
+          <div className="text-gray-600 text-xs mt-2">{teamA.map((p) => p.name).join(', ')}</div>
         </div>
         <div className={`transition-all ${winner === 'B' ? 'scale-110' : winner === 'A' ? 'opacity-50' : ''}`}>
           <div className="text-team-b-glow font-display text-sm tracking-wider">Team B</div>
           <div className="font-display text-5xl text-white mt-1">{scores.B}</div>
-          <div className="text-gray-600 text-xs mt-2">
-            {teamB.map(p => p.name).join(', ')}
-          </div>
+          <div className="text-gray-600 text-xs mt-2">{teamB.map((p) => p.name).join(', ')}</div>
         </div>
       </div>
 

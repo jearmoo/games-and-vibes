@@ -9,15 +9,23 @@ function saveSession() {
 }
 
 // Connection
-socket.on('connect', () => { useGameStore.setState({ connected: true }); });
-socket.on('disconnect', () => { useGameStore.setState({ connected: false }); });
+socket.on('connect', () => {
+  useGameStore.setState({ connected: true });
+});
+socket.on('disconnect', () => {
+  useGameStore.setState({ connected: false });
+});
 
 // Room lifecycle
 socket.on('room:created', ({ roomCode, playerId, room }) => {
   useGameStore.setState({
-    roomCode, playerId, hostId: room.hostId,
-    players: room.players, settings: room.settings,
-    tabooMasters: room.tabooMasters, phase: 'LOBBY',
+    roomCode,
+    playerId,
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    tabooMasters: room.tabooMasters,
+    phase: 'LOBBY',
   });
   saveSession();
   window.history.replaceState(null, '', `/${roomCode}`);
@@ -25,9 +33,13 @@ socket.on('room:created', ({ roomCode, playerId, room }) => {
 
 socket.on('room:joined', ({ roomCode, playerId, room }) => {
   useGameStore.setState({
-    roomCode, playerId, hostId: room.hostId,
-    players: room.players, settings: room.settings,
-    tabooMasters: room.tabooMasters, phase: room.phase || 'LOBBY',
+    roomCode,
+    playerId,
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    tabooMasters: room.tabooMasters,
+    phase: room.phase || 'LOBBY',
   });
   saveSession();
   window.history.replaceState(null, '', `/${roomCode}`);
@@ -36,9 +48,13 @@ socket.on('room:joined', ({ roomCode, playerId, room }) => {
 socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
   clearAutoReconnecting();
   const update: Record<string, unknown> = {
-    roomCode, playerId, hostId: room.hostId,
-    players: room.players, settings: room.settings,
-    tabooMasters: room.tabooMasters, phase: room.phase || 'LOBBY',
+    roomCode,
+    playerId,
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    tabooMasters: room.tabooMasters,
+    phase: room.phase || 'LOBBY',
   };
   if (game) {
     update.phase = game.phase;
@@ -56,7 +72,10 @@ socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
       const challengeForOpposing = game.challenges[opposingTeam];
       const challengeForMyTeam = game.challenges[myTeam];
 
-      update.challengeCards = challengeForOpposing.cards.map((c: { word: string; result: string | null }) => ({ word: c.word, result: c.result }));
+      update.challengeCards = challengeForOpposing.cards.map((c: { word: string; result: string | null }) => ({
+        word: c.word,
+        result: c.result,
+      }));
       update.tabooSuggestions = challengeForOpposing.tabooSuggestions;
       update.ownClueGiverId = challengeForMyTeam.clueGiverId;
       update.setupStatus = {
@@ -88,7 +107,10 @@ socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
         }));
         update.tabooWords = [];
       } else {
-        update.cards = challenge.cards.map((c: { word: string; result: string | null }) => ({ word: c.word, result: c.result }));
+        update.cards = challenge.cards.map((c: { word: string; result: string | null }) => ({
+          word: c.word,
+          result: c.result,
+        }));
         update.tabooWords = challenge.tabooWords;
       }
     }
@@ -100,19 +122,19 @@ socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
 
 // Player updates
 socket.on('room:player-joined', ({ player }) => {
-  useGameStore.setState(s => ({ players: [...s.players, player] }));
+  useGameStore.setState((s) => ({ players: [...s.players, player] }));
 });
 socket.on('room:player-left', ({ hostId, players }) => {
   useGameStore.setState({ players, hostId });
 });
 socket.on('room:player-disconnected', ({ playerId: pid }) => {
-  useGameStore.setState(s => ({
-    players: s.players.map(p => p.id === pid ? { ...p, connected: false } : p),
+  useGameStore.setState((s) => ({
+    players: s.players.map((p) => (p.id === pid ? { ...p, connected: false } : p)),
   }));
 });
 socket.on('room:player-reconnected', ({ playerId: pid }) => {
-  useGameStore.setState(s => ({
-    players: s.players.map(p => p.id === pid ? { ...p, connected: true } : p),
+  useGameStore.setState((s) => ({
+    players: s.players.map((p) => (p.id === pid ? { ...p, connected: true } : p)),
   }));
 });
 socket.on('room:host-updated', ({ hostId }) => {
@@ -120,9 +142,15 @@ socket.on('room:host-updated', ({ hostId }) => {
 });
 
 // Lobby
-socket.on('team:updated', ({ players }) => { useGameStore.setState({ players }); });
-socket.on('settings:updated', ({ settings }) => { useGameStore.setState({ settings }); });
-socket.on('taboo-master:updated', ({ tabooMasters }) => { useGameStore.setState({ tabooMasters }); });
+socket.on('team:updated', ({ players }) => {
+  useGameStore.setState({ players });
+});
+socket.on('settings:updated', ({ settings }) => {
+  useGameStore.setState({ settings });
+});
+socket.on('taboo-master:updated', ({ tabooMasters }) => {
+  useGameStore.setState({ tabooMasters });
+});
 socket.on('room:error', ({ message }) => {
   if (autoReconnecting.current) {
     clearAutoReconnecting();
@@ -138,13 +166,23 @@ socket.on('room:error', ({ message }) => {
 // --- Parallel Setup ---
 socket.on('setup:started', ({ phase, round, scores, challengeCards, tabooMasters }) => {
   useGameStore.setState({
-    phase, round, scores, tabooMasters,
+    phase,
+    round,
+    scores,
+    tabooMasters,
     challengeCards,
     tabooSuggestions: [],
     ownClueGiverId: null,
-    setupStatus: { A: { ready: false, tabooCount: 0, hasClueGiver: false }, B: { ready: false, tabooCount: 0, hasClueGiver: false } },
-    cards: [], tabooWords: [], tabooBuzzes: {},
-    timerEnd: null, cluingTeam: null, activeCluingClueGiverId: null,
+    setupStatus: {
+      A: { ready: false, tabooCount: 0, hasClueGiver: false },
+      B: { ready: false, tabooCount: 0, hasClueGiver: false },
+    },
+    cards: [],
+    tabooWords: [],
+    tabooBuzzes: {},
+    timerEnd: null,
+    cluingTeam: null,
+    activeCluingClueGiverId: null,
     turnResults: { A: null, B: null },
   });
 });
@@ -155,7 +193,7 @@ socket.on('setup:status', (status) => {
 
 socket.on('setup:clue-giver-set', ({ team, clueGiverId }) => {
   const me = useGameStore.getState();
-  const myTeam = me.players.find(p => p.id === me.playerId)?.team;
+  const myTeam = me.players.find((p) => p.id === me.playerId)?.team;
   if (myTeam === team) {
     useGameStore.setState({ ownClueGiverId: clueGiverId });
   }
@@ -171,7 +209,15 @@ socket.on('setup:cards-updated', ({ cards }) => {
 
 // --- Cluing ---
 socket.on('clue:start', ({ clueGiverId, timerEnd, phase, team, cards, tabooWords, tabooBuzzes }) => {
-  useGameStore.setState({ activeCluingClueGiverId: clueGiverId, timerEnd, phase, cluingTeam: team, cards, tabooWords, tabooBuzzes });
+  useGameStore.setState({
+    activeCluingClueGiverId: clueGiverId,
+    timerEnd,
+    phase,
+    cluingTeam: team,
+    cards,
+    tabooWords,
+    tabooBuzzes,
+  });
 });
 
 socket.on('clue:timer-started', ({ timerEnd }) => {
@@ -179,7 +225,7 @@ socket.on('clue:timer-started', ({ timerEnd }) => {
 });
 
 socket.on('clue:card-resolved', ({ cardIndex, word, result, scores }) => {
-  useGameStore.setState(s => {
+  useGameStore.setState((s) => {
     const newCards = [...s.cards];
     newCards[cardIndex] = { word, result };
     return { cards: newCards, scores };
@@ -187,7 +233,7 @@ socket.on('clue:card-resolved', ({ cardIndex, word, result, scores }) => {
 });
 
 socket.on('clue:card-undone', ({ cardIndex, scores }) => {
-  useGameStore.setState(s => {
+  useGameStore.setState((s) => {
     const newCards = [...s.cards];
     if (newCards[cardIndex]) newCards[cardIndex] = { ...newCards[cardIndex], result: null };
     return { cards: newCards, scores };
@@ -203,17 +249,26 @@ socket.on('taboo:unbuzzed', ({ scores, tabooBuzzes }) => {
 
 // --- Transitions ---
 socket.on('turn:transition', ({ phase, turnScore, scores }) => {
-  useGameStore.setState(s => ({
-    phase, scores,
+  useGameStore.setState((s) => ({
+    phase,
+    scores,
     turnResults: { ...s.turnResults, A: turnScore },
-    cards: [], tabooWords: [], tabooBuzzes: {}, timerEnd: null,
+    cards: [],
+    tabooWords: [],
+    tabooBuzzes: {},
+    timerEnd: null,
   }));
 });
 
 socket.on('round:ended', ({ phase, scores, round, turnResults, roundHistory }) => {
   useGameStore.setState({
-    phase, scores, round, turnResults,
-    timerEnd: null, cluingTeam: null, activeCluingClueGiverId: null,
+    phase,
+    scores,
+    round,
+    turnResults,
+    timerEnd: null,
+    cluingTeam: null,
+    activeCluingClueGiverId: null,
     ...(roundHistory ? { roundHistory } : {}),
   });
 });
@@ -224,9 +279,12 @@ socket.on('game:reset', ({ room }) => {
     connected: true,
     playerId: useGameStore.getState().playerId,
     playerName: useGameStore.getState().playerName,
-    roomCode: room.code, hostId: room.hostId,
-    players: room.players, settings: room.settings,
-    tabooMasters: room.tabooMasters, phase: 'LOBBY',
+    roomCode: room.code,
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    tabooMasters: room.tabooMasters,
+    phase: 'LOBBY',
     roundHistory: [],
   });
 });

@@ -6,10 +6,7 @@ import { BaseRoom } from './BaseRoom.js';
 import { RoomManager } from './RoomManager.js';
 import { SocketContext } from './socketContext.js';
 import { MetricsCollector } from './metrics.js';
-import {
-  registerConnectionHandlers,
-  ConnectionCallbacks,
-} from './connectionHandlers.js';
+import { registerConnectionHandlers, ConnectionCallbacks } from './connectionHandlers.js';
 import { registerLobbyHandlers, LobbyCallbacks } from './lobbyHandlers.js';
 import { logger } from './logger.js';
 

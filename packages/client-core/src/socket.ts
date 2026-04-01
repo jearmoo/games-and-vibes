@@ -34,7 +34,11 @@ export function createSocket(opts: SocketOptions): {
     const session = loadSession(opts.sessionKey);
     if (session) {
       autoReconnecting.current = true;
-      socket.emit('room:join', { roomCode: session.roomCode, playerName: session.playerName, sessionId: session.playerId });
+      socket.emit('room:join', {
+        roomCode: session.roomCode,
+        playerName: session.playerName,
+        sessionId: session.playerId,
+      });
     }
   });
 

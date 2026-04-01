@@ -13,10 +13,10 @@ import ScoreBoard from './components/ScoreBoard';
 import { HelpButton } from './components/HelpModal';
 
 export default function App() {
-  const phase = useGameStore(s => s.phase);
-  const connected = useGameStore(s => s.connected);
-  const error = useGameStore(s => s.error);
-  const roomCode = useGameStore(s => s.roomCode);
+  const phase = useGameStore((s) => s.phase);
+  const connected = useGameStore((s) => s.connected);
+  const error = useGameStore((s) => s.error);
+  const roomCode = useGameStore((s) => s.roomCode);
 
   if (!connected && !roomCode) {
     return (
@@ -26,14 +26,15 @@ export default function App() {
     );
   }
 
-  if (!phase) return (
-    <>
-      <HomeScreen />
-      <FloatingHelpButton />
-      {!connected && <ReconnectBanner />}
-      {error && <ErrorToast message={error} />}
-    </>
-  );
+  if (!phase)
+    return (
+      <>
+        <HomeScreen />
+        <FloatingHelpButton />
+        {!connected && <ReconnectBanner />}
+        {error && <ErrorToast message={error} />}
+      </>
+    );
 
   return (
     <div className="h-full flex flex-col">
@@ -110,14 +111,18 @@ function ErrorToast({ message }: { message: string }) {
 
 export class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
   render() {
     if (this.state.hasError) {
       return (
         <div className="h-full flex flex-col items-center justify-center p-6 gap-6">
           <div className="font-display text-2xl text-white tracking-wider">Something went wrong</div>
-          <button onClick={() => window.location.reload()}
-            className="btn-primary px-8 py-3 rounded-2xl text-white font-display tracking-wider">
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary px-8 py-3 rounded-2xl text-white font-display tracking-wider"
+          >
             Reload
           </button>
         </div>

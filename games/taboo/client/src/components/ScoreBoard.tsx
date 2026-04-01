@@ -6,7 +6,7 @@ import { HelpButton } from './HelpModal';
 
 const ROLE_LABELS: Record<string, string> = {
   'clue-giver': 'Clue-Giver',
-  'guesser': 'Guesser',
+  guesser: 'Guesser',
   'taboo-master': 'Taboo Master',
   'taboo-watcher': 'Watcher',
 };
@@ -14,14 +14,14 @@ const ROLE_LABELS: Record<string, string> = {
 export default function ScoreBoard() {
   const [expanded, setExpanded] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const scores = useGameStore(s => s.scores);
-  const round = useGameStore(s => s.round);
-  const settings = useGameStore(s => s.settings);
-  const phase = useGameStore(s => s.phase);
-  const cluingTeam = useGameStore(s => s.cluingTeam);
-  const tabooMasters = useGameStore(s => s.tabooMasters);
-  const hostId = useGameStore(s => s.hostId);
-  const roundHistory = useGameStore(s => s.roundHistory);
+  const scores = useGameStore((s) => s.scores);
+  const round = useGameStore((s) => s.round);
+  const settings = useGameStore((s) => s.settings);
+  const phase = useGameStore((s) => s.phase);
+  const cluingTeam = useGameStore((s) => s.cluingTeam);
+  const tabooMasters = useGameStore((s) => s.tabooMasters);
+  const hostId = useGameStore((s) => s.hostId);
+  const roundHistory = useGameStore((s) => s.roundHistory);
   const teamA = useTeamPlayers('A');
   const teamB = useTeamPlayers('B');
   const me = useMyPlayer();
@@ -42,7 +42,16 @@ export default function ScoreBoard() {
               title="Round History"
               aria-label="Round History"
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="8" cy="8" r="6.5" />
                 <polyline points="8,4.5 8,8 10.5,9.5" />
               </svg>
@@ -63,19 +72,19 @@ export default function ScoreBoard() {
       </div>
 
       {/* Score bar */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-2"
-      >
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-2">
         <div className={`flex items-center gap-2 ${cluingTeam && cluingTeam !== 'A' ? 'opacity-50' : ''}`}>
           <div className="w-2.5 h-2.5 rounded-full bg-team-a shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
           <span className="text-team-a-glow font-display text-sm tracking-wider">A: {scores.A}</span>
         </div>
         <div className="text-gray-600 text-[10px] tracking-[0.2em] uppercase font-medium">
-          {phase === 'PARALLEL_SETUP' ? 'Setup' :
-           phase === 'CLUING_A' ? 'Team A' :
-           phase === 'CLUING_B' ? 'Team B' :
-           `R${round}/${settings.rounds}`}
+          {phase === 'PARALLEL_SETUP'
+            ? 'Setup'
+            : phase === 'CLUING_A'
+              ? 'Team A'
+              : phase === 'CLUING_B'
+                ? 'Team B'
+                : `R${round}/${settings.rounds}`}
           <span className="ml-1.5 text-gray-700">{expanded ? '\u25B2' : '\u25BC'}</span>
         </div>
         <div className={`flex items-center gap-2 ${cluingTeam && cluingTeam !== 'B' ? 'opacity-50' : ''}`}>
@@ -86,10 +95,22 @@ export default function ScoreBoard() {
 
       {expanded && (
         <div className="flex gap-3 px-4 pb-3 animate-slide-up">
-          <RosterColumn team="A" players={teamA} myId={me?.id ?? null}
-            tabooMasterId={tabooMasters.A} hostId={hostId} phase={phase} />
-          <RosterColumn team="B" players={teamB} myId={me?.id ?? null}
-            tabooMasterId={tabooMasters.B} hostId={hostId} phase={phase} />
+          <RosterColumn
+            team="A"
+            players={teamA}
+            myId={me?.id ?? null}
+            tabooMasterId={tabooMasters.A}
+            hostId={hostId}
+            phase={phase}
+          />
+          <RosterColumn
+            team="B"
+            players={teamB}
+            myId={me?.id ?? null}
+            tabooMasterId={tabooMasters.B}
+            hostId={hostId}
+            phase={phase}
+          />
         </div>
       )}
 
@@ -99,8 +120,14 @@ export default function ScoreBoard() {
   );
 }
 
-
-function RosterColumn({ team, players, myId, tabooMasterId, hostId, phase }: {
+function RosterColumn({
+  team,
+  players,
+  myId,
+  tabooMasterId,
+  hostId,
+  phase,
+}: {
   team: 'A' | 'B';
   players: Array<{ id: string; name: string; connected: boolean }>;
   myId: string | null;
@@ -110,21 +137,22 @@ function RosterColumn({ team, players, myId, tabooMasterId, hostId, phase }: {
 }) {
   const borderColor = team === 'A' ? 'border-team-a/20' : 'border-team-b/20';
   const textColor = team === 'A' ? 'text-team-a-glow' : 'text-team-b-glow';
-  const isOnTeam = players.some(p => p.id === myId);
+  const isOnTeam = players.some((p) => p.id === myId);
 
   return (
     <div className={`flex-1 rounded-xl border ${borderColor} bg-surface/50 p-2`}>
-      <div className="text-[9px] uppercase tracking-wider text-gray-600 mb-1 px-1">
-        Team {team}
-      </div>
-      {players.map(p => {
+      <div className="text-[9px] uppercase tracking-wider text-gray-600 mb-1 px-1">Team {team}</div>
+      {players.map((p) => {
         const isTM = p.id === tabooMasterId;
         const isHost = p.id === hostId;
 
         return (
-          <div key={p.id} className={`flex items-center justify-between px-2 py-1 text-xs rounded-lg ${
-            p.id === myId ? `${textColor} font-semibold` : 'text-gray-400'
-          } ${!p.connected ? 'opacity-30' : ''}`}>
+          <div
+            key={p.id}
+            className={`flex items-center justify-between px-2 py-1 text-xs rounded-lg ${
+              p.id === myId ? `${textColor} font-semibold` : 'text-gray-400'
+            } ${!p.connected ? 'opacity-30' : ''}`}
+          >
             <span>
               {p.name}
               {isTM && <span className="text-accent text-[9px] ml-1">TM</span>}
@@ -132,8 +160,12 @@ function RosterColumn({ team, players, myId, tabooMasterId, hostId, phase }: {
             </span>
             {isOnTeam && !isTM && p.connected && (!phase || phase === 'LOBBY' || phase === 'ROUND_RESULT') && (
               <button
-                onClick={(e) => { e.stopPropagation(); socket.emit('taboo-master:set', { team, masterId: p.id }); }}
-                className="text-[9px] text-gray-600 hover:text-accent transition-colors">
+                onClick={(e) => {
+                  e.stopPropagation();
+                  socket.emit('taboo-master:set', { team, masterId: p.id });
+                }}
+                className="text-[9px] text-gray-600 hover:text-accent transition-colors"
+              >
                 Set TM
               </button>
             )}

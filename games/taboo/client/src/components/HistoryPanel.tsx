@@ -1,14 +1,20 @@
 import { useGameStore, type RoundArchiveEntry, type TeamRoundData } from '../store';
 
 export default function HistoryPanel({ onClose }: { onClose: () => void }) {
-  const roundHistory = useGameStore(s => s.roundHistory);
+  const roundHistory = useGameStore((s) => s.roundHistory);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-label="Round History" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Round History"
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
         className="relative glass-card rounded-t-2xl sm:rounded-2xl border border-white/10 w-full sm:max-w-md max-h-[85vh] overflow-hidden flex flex-col animate-slide-up"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 shrink-0">
@@ -32,9 +38,7 @@ export default function HistoryPanel({ onClose }: { onClose: () => void }) {
           {roundHistory.length === 0 ? (
             <div className="text-center text-gray-600 text-sm py-8">No completed rounds yet</div>
           ) : (
-            [...roundHistory].reverse().map(entry => (
-              <RoundCard key={entry.round} entry={entry} />
-            ))
+            [...roundHistory].reverse().map((entry) => <RoundCard key={entry.round} entry={entry} />)
           )}
         </div>
       </div>
@@ -55,11 +59,13 @@ function RoundCard({ entry }: { entry: RoundArchiveEntry }) {
         <span className="font-display text-xs text-gray-300 tracking-wider uppercase">Round {entry.round}</span>
         <div className="flex items-center gap-2.5 font-display text-xs tracking-wider">
           <span className={winA ? 'text-team-a-glow' : 'text-team-a-glow/40'}>
-            {ptsA >= 0 ? '+' : ''}{ptsA}
+            {ptsA >= 0 ? '+' : ''}
+            {ptsA}
           </span>
           <span className="text-gray-700">|</span>
           <span className={winB ? 'text-team-b-glow' : 'text-team-b-glow/40'}>
-            {ptsB >= 0 ? '+' : ''}{ptsB}
+            {ptsB >= 0 ? '+' : ''}
+            {ptsB}
           </span>
         </div>
       </div>
@@ -90,10 +96,14 @@ function TeamColumn({ team, data }: { team: 'A' | 'B'; data: TeamRoundData }) {
       <div className="space-y-0.5">
         {data.cards.map((card, i) => (
           <div key={i} className="flex items-center gap-1.5 text-[11px] leading-tight">
-            <span className={`w-3 text-center shrink-0 ${card.result === 'correct' ? 'text-emerald-400' : 'text-gray-700'}`}>
+            <span
+              className={`w-3 text-center shrink-0 ${card.result === 'correct' ? 'text-emerald-400' : 'text-gray-700'}`}
+            >
               {card.result === 'correct' ? '\u2713' : '\u2022'}
             </span>
-            <span className={`truncate ${card.result === 'correct' ? 'text-gray-300' : 'text-gray-600 line-through decoration-gray-800'}`}>
+            <span
+              className={`truncate ${card.result === 'correct' ? 'text-gray-300' : 'text-gray-600 line-through decoration-gray-800'}`}
+            >
               {card.word}
             </span>
           </div>
@@ -107,7 +117,7 @@ function TeamColumn({ team, data }: { team: 'A' | 'B'; data: TeamRoundData }) {
             Taboo <span className="normal-case text-gray-600">by {data.tabooMasterName}</span>
           </div>
           <div className="flex flex-wrap gap-1">
-            {data.tabooWords.map(word => {
+            {data.tabooWords.map((word) => {
               const buzzes = data.tabooBuzzes[word] || 0;
               return (
                 <span
@@ -118,7 +128,8 @@ function TeamColumn({ team, data }: { team: 'A' | 'B'; data: TeamRoundData }) {
                       : 'bg-white/[0.03] text-gray-600 border border-white/[0.04]'
                   }`}
                 >
-                  {word}{buzzes > 0 ? ` \u00d7${buzzes}` : ''}
+                  {word}
+                  {buzzes > 0 ? ` \u00d7${buzzes}` : ''}
                 </span>
               );
             })}
@@ -136,8 +147,11 @@ function TeamColumn({ team, data }: { team: 'A' | 'B'; data: TeamRoundData }) {
           </>
         )}
         <span className="text-gray-700">&middot;</span>
-        <span className={`font-display tracking-wider ${data.turnScore.points >= 0 ? 'text-emerald-400' : 'text-team-b-glow'}`}>
-          {data.turnScore.points >= 0 ? '+' : ''}{data.turnScore.points}
+        <span
+          className={`font-display tracking-wider ${data.turnScore.points >= 0 ? 'text-emerald-400' : 'text-team-b-glow'}`}
+        >
+          {data.turnScore.points >= 0 ? '+' : ''}
+          {data.turnScore.points}
         </span>
       </div>
     </div>

@@ -2,12 +2,12 @@ import { useGameStore, useIsHost, SESSION_KEY } from '../store';
 import { socket } from '../socket';
 
 export default function ScoringScreen() {
-  const turnResults = useGameStore(s => s.turnResults);
-  const scores = useGameStore(s => s.scores);
-  const round = useGameStore(s => s.round);
-  const settings = useGameStore(s => s.settings);
+  const turnResults = useGameStore((s) => s.turnResults);
+  const scores = useGameStore((s) => s.scores);
+  const round = useGameStore((s) => s.round);
+  const settings = useGameStore((s) => s.settings);
   const host = useIsHost();
-  const phase = useGameStore(s => s.phase);
+  const phase = useGameStore((s) => s.phase);
   const isGameOver = phase === 'GAME_OVER';
 
   return (
@@ -26,14 +26,22 @@ export default function ScoringScreen() {
       <div className="flex gap-10 text-center animate-score-pop">
         <div>
           <div className="text-team-a-glow font-display text-sm tracking-wider">Team A</div>
-          <div className="font-display text-4xl text-white mt-1"
-               style={{ textShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}>{scores.A}</div>
+          <div
+            className="font-display text-4xl text-white mt-1"
+            style={{ textShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}
+          >
+            {scores.A}
+          </div>
         </div>
         <div className="text-gray-700 font-display text-2xl self-end mb-1">vs</div>
         <div>
           <div className="text-team-b-glow font-display text-sm tracking-wider">Team B</div>
-          <div className="font-display text-4xl text-white mt-1"
-               style={{ textShadow: '0 0 20px rgba(239, 68, 68, 0.3)' }}>{scores.B}</div>
+          <div
+            className="font-display text-4xl text-white mt-1"
+            style={{ textShadow: '0 0 20px rgba(239, 68, 68, 0.3)' }}
+          >
+            {scores.B}
+          </div>
         </div>
       </div>
 
@@ -44,8 +52,10 @@ export default function ScoringScreen() {
       )}
 
       {host && !isGameOver && (
-        <button onClick={() => socket.emit('round:next')}
-          className="btn-primary w-full max-w-xs py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]">
+        <button
+          onClick={() => socket.emit('round:next')}
+          className="btn-primary w-full max-w-xs py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
+        >
           {round < settings.rounds ? 'Next Round' : 'See Final Results'}
         </button>
       )}
@@ -55,12 +65,21 @@ export default function ScoringScreen() {
 
       {isGameOver && (
         <div className="w-full max-w-xs space-y-3">
-          <button onClick={() => socket.emit('game:play-again')}
-            className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]">
+          <button
+            onClick={() => socket.emit('game:play-again')}
+            className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
+          >
             Play Again
           </button>
-          <button onClick={() => { socket.emit('room:leave'); useGameStore.getState().reset(); localStorage.removeItem(SESSION_KEY); window.history.replaceState(null, '', '/'); }}
-            className="w-full py-3 text-gray-500 hover:text-white transition-colors text-sm">
+          <button
+            onClick={() => {
+              socket.emit('room:leave');
+              useGameStore.getState().reset();
+              localStorage.removeItem(SESSION_KEY);
+              window.history.replaceState(null, '', '/');
+            }}
+            className="w-full py-3 text-gray-500 hover:text-white transition-colors text-sm"
+          >
             Leave Room
           </button>
         </div>
@@ -69,7 +88,13 @@ export default function ScoringScreen() {
   );
 }
 
-function TurnResult({ team, result }: { team: 'A' | 'B'; result: { correct: number; missed: number; buzzes: number; points: number } | null }) {
+function TurnResult({
+  team,
+  result,
+}: {
+  team: 'A' | 'B';
+  result: { correct: number; missed: number; buzzes: number; points: number } | null;
+}) {
   const color = team === 'A' ? 'border-team-a/20' : 'border-team-b/20';
   const textColor = team === 'A' ? 'text-team-a-glow' : 'text-team-b-glow';
 
@@ -90,7 +115,10 @@ function TurnResult({ team, result }: { team: 'A' | 'B'; result: { correct: numb
           )}
           <div className="border-t border-white/10 pt-1 flex justify-between">
             <span className="text-white font-medium">Turn</span>
-            <span className="font-display text-white">{result.points >= 0 ? '+' : ''}{result.points}</span>
+            <span className="font-display text-white">
+              {result.points >= 0 ? '+' : ''}
+              {result.points}
+            </span>
           </div>
         </div>
       ) : (

@@ -45,11 +45,7 @@ export class TabooRoom extends BaseRoom {
   }
 
   isGameActive(): boolean {
-    return !!(
-      this.game &&
-      this.game.phase !== GamePhase.LOBBY &&
-      this.game.phase !== GamePhase.GAME_OVER
-    );
+    return !!(this.game && this.game.phase !== GamePhase.LOBBY && this.game.phase !== GamePhase.GAME_OVER);
   }
 
   getPhase(): string | null {
@@ -356,8 +352,7 @@ export class TabooRoom extends BaseRoom {
   }
 
   endCluing(): { nextPhase: GamePhase; turnScore: TurnScoreData } {
-    if (!this.game)
-      return { nextPhase: GamePhase.LOBBY, turnScore: { correct: 0, missed: 0, buzzes: 0, points: 0 } };
+    if (!this.game) return { nextPhase: GamePhase.LOBBY, turnScore: { correct: 0, missed: 0, buzzes: 0, points: 0 } };
     this.clearTimer();
     const team = this.getCluingTeam()!;
     const score = this.turnScore(team);
@@ -394,9 +389,7 @@ export class TabooRoom extends BaseRoom {
       const challenge = this.game!.challenges[team];
       const opposingTeam = this.getOpposingTeam(team);
       const clueGiver = challenge.clueGiverId ? this.getPlayer(challenge.clueGiverId) : null;
-      const opposingTM = this.tabooMasters[opposingTeam]
-        ? this.getPlayer(this.tabooMasters[opposingTeam]!)
-        : null;
+      const opposingTM = this.tabooMasters[opposingTeam] ? this.getPlayer(this.tabooMasters[opposingTeam]!) : null;
       return {
         cards: challenge.cards.map((c) => ({ ...c })),
         tabooWords: [...challenge.tabooWords],

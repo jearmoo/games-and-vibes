@@ -81,18 +81,12 @@ function GameCard({ game, index }: { game: GameEntry; index: number }) {
     <motion.a
       href={isAvailable ? game.url : undefined}
       className={`group relative glass-card rounded-2xl overflow-hidden transition-all duration-300 ${
-        isAvailable
-          ? 'hover:-translate-y-1 cursor-pointer'
-          : 'opacity-50 cursor-default'
+        isAvailable ? 'hover:-translate-y-1 cursor-pointer' : 'opacity-50 cursor-default'
       }`}
       style={{
         boxShadow: isAvailable ? `0 0 0 rgba(0,0,0,0)` : undefined,
       }}
-      whileHover={
-        isAvailable
-          ? { boxShadow: `0 0 40px ${game.accentGlow}, 0 8px 32px rgba(0,0,0,0.3)` }
-          : undefined
-      }
+      whileHover={isAvailable ? { boxShadow: `0 0 40px ${game.accentGlow}, 0 8px 32px rgba(0,0,0,0.3)` } : undefined}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: isAvailable ? 1 : 0.5, y: 0 }}
       transition={{ delay: 0.15 + index * 0.08, duration: 0.5, ease: 'easeOut' }}
@@ -132,9 +126,5 @@ function GameCard({ game, index }: { game: GameEntry; index: number }) {
 }
 
 function Footer() {
-  return (
-    <footer className="text-center pb-8 text-gray-600 text-xs tracking-wide">
-      jerpi.org
-    </footer>
-  );
+  return <footer className="text-center pb-8 text-gray-600 text-xs tracking-wide">jerpi.org</footer>;
 }
