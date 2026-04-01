@@ -5,6 +5,7 @@ services:
       dockerfile: games/adtaboo/Dockerfile
       args:
         GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     env_file: .env
     container_name: adversarial-taboo
     restart: unless-stopped
@@ -27,6 +28,8 @@ services:
     build:
       context: .
       dockerfile: apps/landing/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     container_name: games-landing
     restart: unless-stopped
     ports:

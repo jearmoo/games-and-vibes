@@ -35,6 +35,8 @@ RUN pnpm --filter @games/adtaboo-client build
 
 # Stage 2: Production
 FROM node:20-alpine
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.revision=$GIT_COMMIT
 RUN npm install -g pnpm
 WORKDIR /app
 

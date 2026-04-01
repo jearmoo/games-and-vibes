@@ -19,6 +19,8 @@ RUN pnpm --filter @games/landing build
 
 # Stage 2: Serve with lightweight static server
 FROM node:20-alpine
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.revision=$GIT_COMMIT
 RUN npm install -g serve
 COPY --from=build /app/apps/landing/dist /app/dist
 
