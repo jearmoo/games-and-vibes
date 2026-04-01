@@ -3,7 +3,7 @@ import { games, type GameEntry } from './gameRegistry';
 
 export default function App() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Hero />
       <GameGrid />
       <Footer />
@@ -13,19 +13,19 @@ export default function App() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden py-24 sm:py-32 flex flex-col items-center justify-center text-center px-6">
+    <section className="relative overflow-hidden pt-20 pb-16 sm:pt-28 sm:pb-20 flex flex-col items-center justify-center text-center px-6">
       {/* Atmospheric glows */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-indigo-600/8 rounded-full blur-[160px]" />
-        <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-amber-500/6 rounded-full blur-[140px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-indigo-600/[0.07] rounded-full blur-[140px]" />
+        <div className="absolute top-1/2 left-1/4 w-[300px] h-[300px] bg-amber-500/[0.04] rounded-full blur-[120px]" />
       </div>
 
       {/* Constellation dots */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 30 }).map((_, i) => (
+        {Array.from({ length: 20 }).map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full bg-white/10 animate-pulse-slow"
+            className="absolute rounded-full bg-white/[0.08] animate-pulse-slow"
             style={{
               width: `${1 + Math.random() * 2}px`,
               height: `${1 + Math.random() * 2}px`,
@@ -38,34 +38,49 @@ function Hero() {
         ))}
       </div>
 
-      <motion.h1
-        className="relative z-10 font-display text-6xl sm:text-8xl tracking-widest text-white"
-        style={{
-          textShadow: '0 0 60px rgba(99, 102, 241, 0.3), 0 0 120px rgba(245, 158, 11, 0.15)',
-        }}
-        initial={{ opacity: 0, y: 20 }}
+      <motion.div
+        className="relative z-10"
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
       >
-        GAMES AND VIBES
-      </motion.h1>
+        <h1 className="font-display leading-none">
+          <span
+            className="block text-4xl sm:text-5xl lg:text-6xl tracking-[0.2em] text-white"
+            style={{
+              textShadow: '0 0 60px rgba(99, 102, 241, 0.25)',
+            }}
+          >
+            GAMES
+          </span>
+          <span className="block text-lg sm:text-xl lg:text-2xl tracking-[0.35em] text-gray-500 mt-1.5">AND VIBES</span>
+        </h1>
+      </motion.div>
 
       <motion.p
-        className="relative z-10 mt-4 text-gray-500 text-lg sm:text-xl tracking-wide"
+        className="relative z-10 mt-5 text-gray-500/80 text-sm sm:text-base tracking-wide"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
+        transition={{ delay: 0.25, duration: 0.4 }}
       >
         Party games for your crew
       </motion.p>
+
+      {/* Thin separator line */}
+      <motion.div
+        className="relative z-10 mt-10 w-12 h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent"
+        initial={{ opacity: 0, scaleX: 0 }}
+        animate={{ opacity: 1, scaleX: 1 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+      />
     </section>
   );
 }
 
 function GameGrid() {
   return (
-    <section className="max-w-5xl mx-auto px-6 pb-24">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <section className="max-w-4xl mx-auto px-6 pb-24 flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {games.map((game, i) => (
           <GameCard key={game.id} game={game} index={i} />
         ))}
@@ -80,40 +95,37 @@ function GameCard({ game, index }: { game: GameEntry; index: number }) {
   return (
     <motion.a
       href={isAvailable ? game.url : undefined}
-      className={`group relative glass-card rounded-2xl overflow-hidden transition-all duration-300 ${
-        isAvailable ? 'hover:-translate-y-1 cursor-pointer' : 'opacity-50 cursor-default'
+      className={`group relative glass-card rounded-xl overflow-hidden transition-all duration-300 ${
+        isAvailable ? 'hover:-translate-y-0.5 cursor-pointer' : 'opacity-40 cursor-default'
       }`}
-      style={{
-        boxShadow: isAvailable ? `0 0 0 rgba(0,0,0,0)` : undefined,
-      }}
-      whileHover={isAvailable ? { boxShadow: `0 0 40px ${game.accentGlow}, 0 8px 32px rgba(0,0,0,0.3)` } : undefined}
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: isAvailable ? 1 : 0.5, y: 0 }}
-      transition={{ delay: 0.15 + index * 0.08, duration: 0.5, ease: 'easeOut' }}
+      whileHover={isAvailable ? { boxShadow: `0 0 30px ${game.accentGlow}, 0 4px 20px rgba(0,0,0,0.4)` } : undefined}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: isAvailable ? 1 : 0.4, y: 0 }}
+      transition={{ delay: 0.2 + index * 0.06, duration: 0.45, ease: 'easeOut' }}
     >
       {/* Accent stripe */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-1 transition-all duration-300 group-hover:w-1.5"
+        className="absolute left-0 top-0 bottom-0 w-0.5 transition-all duration-300 group-hover:w-1"
         style={{ backgroundColor: game.accentColor }}
       />
 
-      <div className="p-6 pl-7">
+      <div className="p-5 pl-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-xl tracking-wider text-white">{game.name}</h3>
+          <h3 className="font-display text-base tracking-wider text-white">{game.name}</h3>
           {!isAvailable && (
-            <span className="shrink-0 text-[10px] uppercase tracking-widest text-gray-500 border border-gray-700 rounded-full px-2 py-0.5">
+            <span className="shrink-0 text-[9px] uppercase tracking-[0.15em] text-gray-600 border border-gray-700/60 rounded-full px-2 py-0.5">
               Soon
             </span>
           )}
         </div>
 
-        <p className="mt-2 text-gray-400 text-sm leading-relaxed">{game.tagline}</p>
+        <p className="mt-1.5 text-gray-500 text-xs leading-relaxed">{game.tagline}</p>
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-gray-500 tracking-wide">{game.playerCount}</span>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[11px] text-gray-600 tracking-wide">{game.playerCount}</span>
           {isAvailable && (
             <span
-              className="text-sm font-display tracking-wider transition-colors duration-200"
+              className="text-xs font-display tracking-wider transition-colors duration-200 opacity-60 group-hover:opacity-100"
               style={{ color: game.accentColor }}
             >
               Play &rarr;
@@ -126,5 +138,7 @@ function GameCard({ game, index }: { game: GameEntry; index: number }) {
 }
 
 function Footer() {
-  return <footer className="text-center pb-8 text-gray-600 text-xs tracking-wide">jerpi.org</footer>;
+  return (
+    <footer className="text-center pb-8 pt-4 text-gray-700 text-[11px] tracking-widest uppercase">jerpi.org</footer>
+  );
 }
