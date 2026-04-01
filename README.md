@@ -50,6 +50,7 @@ pnpm run dev:landing  # Run landing page (3000)
 | `pnpm run lint` | ESLint across all packages |
 | `pnpm run typecheck` | TypeScript type checking |
 | `pnpm run format` | Auto-format with Prettier |
+| `pnpm run format:check` | Check formatting without writing |
 
 ## Deployment
 
@@ -72,6 +73,7 @@ Configure via `.env` file (see `.env.example`):
 |----------|----------|---------|
 | `METRICS_TOKEN` | Yes | Bearer token for `/api/metrics` endpoint |
 | `GA_MEASUREMENT_ID` | No | Google Analytics measurement ID (build-time) |
+| `GIT_COMMIT` | No | Git commit hash injected at build time (defaults to `unknown`) |
 
 ## Adding a Game
 
