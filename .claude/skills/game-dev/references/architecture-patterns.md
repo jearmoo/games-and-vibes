@@ -95,6 +95,20 @@ interface RoomManagerOptions<T extends BaseRoom> {
 
 The factory sets up Express + Socket.IO + health/metrics endpoints + graceful shutdown. Games provide callbacks:
 
+### Server Endpoints
+
+`createGameServer()` automatically registers these endpoints — no per-game setup required.
+
+**`GET /api/health`** — Unauthenticated. Returns:
+```json
+{ "status": "ok", "game": "Adversarial Taboo", "uptime": 3600, "rooms": 5, "players": 12 }
+```
+
+**`GET /api/metrics`** — Requires `Authorization: Bearer $METRICS_TOKEN`. Optional `?days=N` query param to limit history. Returns aggregated stats plus live counts:
+```json
+{ "connections": 8, "activePlayers": 12, "activeRooms": 5, "...": "game-specific metrics" }
+```
+
 ### registerGameHandlers
 
 Called for every new socket connection. Register all game-specific event listeners here.

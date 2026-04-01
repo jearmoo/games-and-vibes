@@ -280,7 +280,19 @@ Copy these from `games/adtaboo/client/`, adjusting names and ports:
 - `vite.config.ts` — Change port and proxy target to match server port
 - `postcss.config.js` — Same (tailwindcss + autoprefixer)
 - `tailwind.config.js` — Extend `@games/client-core/tailwind-preset`, add game-specific colors
-- `index.html` — Update title
+- `index.html` — Update title and set up Google Analytics (see below)
+
+### Google Analytics (`index.html`)
+
+Copy the gtag `<script>` block from `games/adtaboo/client/index.html` into your `index.html` `<head>`. The key parts:
+
+- **`%VITE_GA_ID%`** — Vite substitutes this at build time from the `VITE_GA_ID` env var (set via `GA_MEASUREMENT_ID` Docker build arg)
+- **`game_name`** — Set this to your game's identifier in the `gtag('config', ...)` call so games are distinguishable in Google Analytics:
+  ```js
+  gtag('config', id, { 'game_name': '<name>' });
+  ```
+
+The script is a no-op when the ID is missing, so local dev works without it.
 
 ### `src/store.ts`
 

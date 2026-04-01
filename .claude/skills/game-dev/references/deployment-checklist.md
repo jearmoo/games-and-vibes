@@ -80,6 +80,7 @@ Key details:
 - Client build output goes to `games/<name>/server/public` — Express serves it as static files
 - Production stage does NOT include `client-core` or `client/` — only the built assets
 - The `GIT_COMMIT` label enables the deploy script to skip rebuilds when already current
+- **GA flow**: `GA_MEASUREMENT_ID` build arg → `VITE_GA_ID` env var → Vite substitutes `%VITE_GA_ID%` in `index.html` → gtag script loads conditionally. Set `game_name` in the `gtag('config', ...)` call to distinguish games in Analytics.
 
 ## 2. Docker Compose
 
