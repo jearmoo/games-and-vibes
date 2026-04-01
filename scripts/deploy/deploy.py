@@ -50,6 +50,7 @@ logger.addHandler(stream_handler)
 
 _deploy_active = threading.Lock()
 _pending_sha: str | None = None
+_active_sha: str | None = None
 _pending_lock = threading.Lock()
 
 
@@ -74,6 +75,8 @@ def run_cmd(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 def is_ancestor(older: str, newer: str) -> bool:
     """Return True if *older* is an ancestor of *newer* in git history."""
     result = run_cmd(['git', 'merge-base', '--is-ancestor', older, newer])
+    if result.returncode == 128:
+        logger.warning('is_ancestor: unknown commit(s) — older=%s newer=%s', older, newer)
     return result.returncode == 0
 
 
@@ -95,6 +98,9 @@ def set_pending_sha(sha: str) -> None:
     """Store *sha* as the next deploy target, keeping only the newest."""
     global _pending_sha
     with _pending_lock:
+        if _active_sha and (sha == _active_sha or is_ancestor(sha, _active_sha)):
+            logger.info('Skipping queue of %s — not newer than active deploy %s', sha[:12], _active_sha[:12])
+            return
         if _pending_sha is None or is_ancestor(_pending_sha, sha):
             _pending_sha = sha
         # else: existing pending SHA is already newer, keep it
@@ -201,6 +207,7 @@ class DeployHandler(BaseHTTPRequestHandler):
             self._respond(202, {'code': 0, 'output': f'Deploy in progress; queued {target_sha}'})
             return
 
+        global _active_sha
         try:
             code, output = self._deploy_loop(target_sha)
             status = 200 if code == 0 else 500
@@ -212,15 +219,18 @@ class DeployHandler(BaseHTTPRequestHandler):
             logger.exception('Deploy failed with exception')
             self._respond(500, {'code': -1, 'output': str(e)})
         finally:
+            _active_sha = None
             _deploy_active.release()
 
     def _deploy_loop(self, sha: str) -> tuple[int, str]:
         """Run deploy, then drain the queue if newer SHAs arrived."""
+        global _active_sha
         all_output: list[str] = []
         current_sha = sha
 
         for cycle in range(1, MAX_DEPLOY_CYCLES + 1):
             logger.info('Deploy cycle %d starting for %s', cycle, current_sha)
+            _active_sha = current_sha
             code, output = run_deploy(current_sha)
             all_output.append(f'--- cycle {cycle} ({current_sha[:12]}) ---')
             all_output.append(output)
