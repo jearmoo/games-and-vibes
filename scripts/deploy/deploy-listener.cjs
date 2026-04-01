@@ -1,8 +1,9 @@
 const http = require('http');
+const path = require('path');
 const { execFile } = require('child_process');
 
 const PORT = 9877;
-const SCRIPT = '/home/jer/games/scripts/deploy.sh';
+const SCRIPT = path.join(__dirname, 'deploy.sh');
 
 http
   .createServer((req, res) => {

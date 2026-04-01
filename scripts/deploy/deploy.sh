@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="/home/jer/games"
-LOG_FILE="/home/jer/games/scripts/deploy.log"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+LOG_FILE="$SCRIPT_DIR/deploy.log"
 IMAGES=("games-adtaboo" "games-landing")
 
 log() { echo "[$(date -Iseconds)] $1" | tee -a "$LOG_FILE"; }
