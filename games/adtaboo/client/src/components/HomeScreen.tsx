@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { socket } from '../socket';
 import { useGameStore, getRoomCodeFromUrl, SESSION_KEY } from '../store';
 
 export default function HomeScreen() {
   const urlCode = getRoomCodeFromUrl();
   const storedName = useGameStore((s) => s.playerName);
+  const error = useGameStore((s) => s.error);
   const [name, setName] = useState(storedName || '');
   const [joinCode, setJoinCode] = useState(urlCode || '');
   const [mode, setMode] = useState<'menu' | 'join'>(urlCode ? 'join' : 'menu');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (error) setLoading(false);
+  }, [error]);
 
   const handleCreate = () => {
     if (!name.trim() || loading) return;
