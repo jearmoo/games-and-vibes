@@ -34,11 +34,11 @@ export const games: GameEntry[] = [
     id: 'charades',
     name: 'Charades',
     tagline: 'Act it out without saying a word',
-    url: '#',
+    url: 'https://charades.jerpi.org',
     playerCount: '4-20 players',
     accentColor: '#10b981',
     accentGlow: 'rgba(16, 185, 129, 0.4)',
-    available: false,
+    available: true,
   },
   {
     id: 'hivemind',
