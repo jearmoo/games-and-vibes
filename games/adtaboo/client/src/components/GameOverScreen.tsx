@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { useGameStore, useTeamPlayers, useIsHost, useTeamName, SESSION_KEY } from '../store';
+import { useGameStore, useTeamPlayers, useIsHost, useTeamName } from '../store';
 import { socket } from '../socket';
+import LeaveRoomButton from './LeaveRoomButton';
 
 function Confetti({ color }: { color: 'A' | 'B' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -113,17 +114,7 @@ export default function GameOverScreen() {
         ) : (
           <div className="text-center text-gray-500 text-xs py-2">Waiting for host...</div>
         )}
-        <button
-          onClick={() => {
-            socket.emit('room:leave');
-            useGameStore.getState().reset();
-            localStorage.removeItem(SESSION_KEY);
-            window.history.replaceState(null, '', '/');
-          }}
-          className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm"
-        >
-          Leave Room
-        </button>
+        <LeaveRoomButton className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm" />
       </div>
     </div>
   );

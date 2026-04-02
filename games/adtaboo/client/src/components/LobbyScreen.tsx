@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '../store';
 import { socket } from '../socket';
+import LeaveRoomButton from './LeaveRoomButton';
 
 export default function LobbyScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
@@ -182,6 +183,8 @@ export default function LobbyScreen() {
           Waiting for host to start the game...
         </div>
       )}
+
+      <LeaveRoomButton className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm" />
     </div>
   );
 }
