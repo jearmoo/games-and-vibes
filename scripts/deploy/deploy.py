@@ -50,6 +50,7 @@ logger.addHandler(stream_handler)
 
 _deploy_active = threading.Lock()
 _pending_sha: str | None = None
+_active_sha: str | None = None
 _pending_lock = threading.Lock()
 
 
@@ -74,6 +75,8 @@ def run_cmd(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 def is_ancestor(older: str, newer: str) -> bool:
     """Return True if *older* is an ancestor of *newer* in git history."""
     result = run_cmd(['git', 'merge-base', '--is-ancestor', older, newer])
+    if result.returncode == 128:
+        logger.warning('is_ancestor: unknown commit(s) — older=%s newer=%s', older, newer)
     return result.returncode == 0
 
 
@@ -95,6 +98,9 @@ def set_pending_sha(sha: str) -> None:
     """Store *sha* as the next deploy target, keeping only the newest."""
     global _pending_sha
     with _pending_lock:
+        if _active_sha and (sha == _active_sha or is_ancestor(sha, _active_sha)):
+            logger.info('Skipping queue of %s — not newer than active deploy %s', sha[:12], _active_sha[:12])
+            return
         if _pending_sha is None or is_ancestor(_pending_sha, sha):
             _pending_sha = sha
         # else: existing pending SHA is already newer, keep it
@@ -171,14 +177,23 @@ def run_deploy(target_sha: str) -> tuple[int, str]:
 
 class DeployHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        # Extract ref from query string (?ref=<sha>)
+        # Extract ref from query string (?ref=<sha>) or POST body {"ref": "<sha>"}
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         ref_list = params.get('ref', [])
         target_sha = ref_list[0] if ref_list else None
 
         if not target_sha:
-            self._respond(400, {'code': -1, 'output': 'Missing required query parameter: ref'})
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > 0:
+                try:
+                    body = json.loads(self.rfile.read(content_length))
+                    target_sha = body.get('ref')
+                except (json.JSONDecodeError, Exception):
+                    pass
+
+        if not target_sha:
+            self._respond(400, {'code': -1, 'output': 'Missing ref in query string or POST body'})
             return
 
         # Fetch latest so we have all commits for ancestry checks
@@ -192,6 +207,7 @@ class DeployHandler(BaseHTTPRequestHandler):
             self._respond(202, {'code': 0, 'output': f'Deploy in progress; queued {target_sha}'})
             return
 
+        global _active_sha
         try:
             code, output = self._deploy_loop(target_sha)
             status = 200 if code == 0 else 500
@@ -203,15 +219,18 @@ class DeployHandler(BaseHTTPRequestHandler):
             logger.exception('Deploy failed with exception')
             self._respond(500, {'code': -1, 'output': str(e)})
         finally:
+            _active_sha = None
             _deploy_active.release()
 
     def _deploy_loop(self, sha: str) -> tuple[int, str]:
         """Run deploy, then drain the queue if newer SHAs arrived."""
+        global _active_sha
         all_output: list[str] = []
         current_sha = sha
 
         for cycle in range(1, MAX_DEPLOY_CYCLES + 1):
             logger.info('Deploy cycle %d starting for %s', cycle, current_sha)
+            _active_sha = current_sha
             code, output = run_deploy(current_sha)
             all_output.append(f'--- cycle {cycle} ({current_sha[:12]}) ---')
             all_output.append(output)

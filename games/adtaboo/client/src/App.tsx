@@ -9,6 +9,7 @@ import GuesserScreen from './components/GuesserScreen';
 import TabooWatcherScreen from './components/TabooWatcherScreen';
 import ScoringScreen from './components/ScoringScreen';
 import GameOverScreen from './components/GameOverScreen';
+import TeamSelectScreen from './components/TeamSelectScreen';
 import ScoreBoard from './components/ScoreBoard';
 import { HelpButton } from './components/HelpModal';
 
@@ -38,8 +39,8 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col">
-      {phase === 'LOBBY' && <FloatingHelpButton />}
-      {phase !== 'LOBBY' && <ScoreBoard />}
+      {(phase === 'LOBBY' || phase === 'TEAM_SELECT') && <FloatingHelpButton />}
+      {phase !== 'LOBBY' && phase !== 'TEAM_SELECT' && <ScoreBoard />}
       <div className="flex-1 min-h-0 overflow-auto">
         <AnimatePresence mode="wait">
           <motion.div
@@ -66,6 +67,8 @@ function ScreenRouter({ phase }: { phase: string }) {
   switch (phase) {
     case 'LOBBY':
       return <LobbyScreen />;
+    case 'TEAM_SELECT':
+      return <TeamSelectScreen />;
     case 'PARALLEL_SETUP':
       return <ParallelSetupScreen />;
     case 'CLUING_A':

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { useGameStore, useTeamPlayers, useIsHost, SESSION_KEY } from '../store';
+import { useGameStore, useTeamPlayers, useIsHost, useTeamName } from '../store';
 import { socket } from '../socket';
+import LeaveRoomButton from './LeaveRoomButton';
 
 function Confetti({ color }: { color: 'A' | 'B' }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,6 +64,8 @@ export default function GameOverScreen() {
   const isHost = useIsHost();
   const teamA = useTeamPlayers('A');
   const teamB = useTeamPlayers('B');
+  const teamAName = useTeamName('A');
+  const teamBName = useTeamName('B');
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-8 animate-fade-in">
@@ -82,20 +85,20 @@ export default function GameOverScreen() {
               : undefined,
           }}
         >
-          {winner ? `Team ${winner} Wins!` : "It's a Tie!"}
+          {winner ? `${winner === 'A' ? teamAName : teamBName} Wins!` : "It's a Tie!"}
         </h1>
       </div>
 
       <div className="flex gap-10 text-center relative z-10">
         <div className={`transition-all ${winner === 'A' ? 'scale-110' : winner === 'B' ? 'opacity-50' : ''}`}>
-          <div className="text-team-a-glow font-display text-sm tracking-wider">Team A</div>
+          <div className="text-team-a-glow font-display text-sm tracking-wider">{teamAName}</div>
           <div className="font-display text-5xl text-white mt-1">{scores.A}</div>
-          <div className="text-gray-600 text-xs mt-2">{teamA.map((p) => p.name).join(', ')}</div>
+          <div className="text-gray-500 text-xs mt-2">{teamA.map((p) => p.name).join(', ')}</div>
         </div>
         <div className={`transition-all ${winner === 'B' ? 'scale-110' : winner === 'A' ? 'opacity-50' : ''}`}>
-          <div className="text-team-b-glow font-display text-sm tracking-wider">Team B</div>
+          <div className="text-team-b-glow font-display text-sm tracking-wider">{teamBName}</div>
           <div className="font-display text-5xl text-white mt-1">{scores.B}</div>
-          <div className="text-gray-600 text-xs mt-2">{teamB.map((p) => p.name).join(', ')}</div>
+          <div className="text-gray-500 text-xs mt-2">{teamB.map((p) => p.name).join(', ')}</div>
         </div>
       </div>
 
@@ -109,19 +112,9 @@ export default function GameOverScreen() {
             Play Again
           </button>
         ) : (
-          <div className="text-center text-gray-600 text-xs py-2">Waiting for host...</div>
+          <div className="text-center text-gray-500 text-xs py-2">Waiting for host...</div>
         )}
-        <button
-          onClick={() => {
-            socket.emit('room:leave');
-            useGameStore.getState().reset();
-            localStorage.removeItem(SESSION_KEY);
-            window.history.replaceState(null, '', '/');
-          }}
-          className="w-full py-3 text-gray-500 hover:text-white transition-colors text-sm"
-        >
-          Leave Room
-        </button>
+        <LeaveRoomButton className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm" />
       </div>
     </div>
   );

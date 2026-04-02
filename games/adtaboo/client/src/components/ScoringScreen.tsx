@@ -1,4 +1,4 @@
-import { useGameStore, useIsHost, SESSION_KEY } from '../store';
+import { useGameStore, useIsHost, useTeamName, SESSION_KEY } from '../store';
 import { socket } from '../socket';
 
 export default function ScoringScreen() {
@@ -9,6 +9,8 @@ export default function ScoringScreen() {
   const host = useIsHost();
   const phase = useGameStore((s) => s.phase);
   const isGameOver = phase === 'GAME_OVER';
+  const teamAName = useTeamName('A');
+  const teamBName = useTeamName('B');
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
@@ -25,7 +27,7 @@ export default function ScoringScreen() {
       {/* Overall scores */}
       <div className="flex gap-10 text-center animate-score-pop">
         <div>
-          <div className="text-team-a-glow font-display text-sm tracking-wider">Team A</div>
+          <div className="text-team-a-glow font-display text-sm tracking-wider">{teamAName}</div>
           <div
             className="font-display text-4xl text-white mt-1"
             style={{ textShadow: '0 0 20px rgba(59, 130, 246, 0.3)' }}
@@ -33,9 +35,9 @@ export default function ScoringScreen() {
             {scores.A}
           </div>
         </div>
-        <div className="text-gray-700 font-display text-2xl self-end mb-1">vs</div>
+        <div className="text-gray-600 font-display text-2xl self-end mb-1">vs</div>
         <div>
-          <div className="text-team-b-glow font-display text-sm tracking-wider">Team B</div>
+          <div className="text-team-b-glow font-display text-sm tracking-wider">{teamBName}</div>
           <div
             className="font-display text-4xl text-white mt-1"
             style={{ textShadow: '0 0 20px rgba(239, 68, 68, 0.3)' }}
@@ -46,7 +48,7 @@ export default function ScoringScreen() {
       </div>
 
       {!isGameOver && (
-        <div className="text-gray-500 text-xs tracking-wider uppercase">
+        <div className="text-gray-400 text-xs tracking-wider uppercase">
           {round < settings.rounds ? `Round ${round + 1} next` : 'Final round'}
         </div>
       )}
@@ -60,7 +62,7 @@ export default function ScoringScreen() {
         </button>
       )}
       {!host && !isGameOver && (
-        <div className="text-gray-600 text-xs tracking-wider animate-pulse-slow">Waiting for host to continue...</div>
+        <div className="text-gray-500 text-xs tracking-wider animate-pulse-slow">Waiting for host to continue...</div>
       )}
 
       {isGameOver && (
@@ -78,7 +80,7 @@ export default function ScoringScreen() {
               localStorage.removeItem(SESSION_KEY);
               window.history.replaceState(null, '', '/');
             }}
-            className="w-full py-3 text-gray-500 hover:text-white transition-colors text-sm"
+            className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm"
           >
             Leave Room
           </button>
@@ -97,10 +99,11 @@ function TurnResult({
 }) {
   const color = team === 'A' ? 'border-team-a/20' : 'border-team-b/20';
   const textColor = team === 'A' ? 'text-team-a-glow' : 'text-team-b-glow';
+  const teamName = useTeamName(team);
 
   return (
     <div className={`flex-1 glass-card rounded-xl p-3 border ${color} animate-slide-up`}>
-      <div className={`font-display text-sm tracking-wider mb-2 ${textColor}`}>Team {team}</div>
+      <div className={`font-display text-sm tracking-wider mb-2 ${textColor}`}>{teamName}</div>
       {result ? (
         <div className="space-y-1 text-xs">
           <div className="flex justify-between">
@@ -122,7 +125,7 @@ function TurnResult({
           </div>
         </div>
       ) : (
-        <div className="text-gray-600 text-xs">—</div>
+        <div className="text-gray-500 text-xs">—</div>
       )}
     </div>
   );

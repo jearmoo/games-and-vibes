@@ -3,6 +3,7 @@ import { logger } from '@games/server-core';
 import type { TeamId } from '@games/adtaboo-shared';
 import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
+import { buildGameState } from '../buildGameState.js';
 import { emitSetupCards } from './setupHandlers.js';
 
 /** Taboo-specific lobby handlers (game:start, taboo-master:set, settings:update, team:join) */
@@ -21,6 +22,25 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     socket.join(`${room.code}:team${team}`);
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
     logger.info('room', 'Player joined team', { room: room.code, player: player.name, team });
+
+    // Mid-game joiner picked a team — send them full game state
+    if (room.isGameActive()) {
+      socket.emit('room:mid-game-ready', {
+        game: buildGameState(room),
+        room: room.toDTO(),
+      });
+    }
+  });
+
+  socket.on('team-names:update', ({ teamNames }: { teamNames: { A?: string; B?: string } }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room || room.hostId !== playerId || room.isGameActive()) return;
+    if (teamNames.A !== undefined) room.teamNames.A = teamNames.A.trim().slice(0, 20) || 'Team A';
+    if (teamNames.B !== undefined) room.teamNames.B = teamNames.B.trim().slice(0, 20) || 'Team B';
+    io.to(room.code).emit('team-names:updated', { teamNames: room.teamNames });
+    logger.debug('room', 'Team names updated', { room: room.code, teamNames: room.teamNames });
   });
 
   socket.on('taboo-master:set', ({ team, masterId }: { team: TeamId; masterId: string }) => {

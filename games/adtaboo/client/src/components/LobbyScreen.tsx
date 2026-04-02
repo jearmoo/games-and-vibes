@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useGameStore, useIsHost, useMyPlayer } from '../store';
+import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
+import type { TeamId } from '../store';
 import { socket } from '../socket';
+import LeaveRoomButton from './LeaveRoomButton';
 
 export default function LobbyScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
@@ -35,7 +37,7 @@ export default function LobbyScreen() {
     <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
       {/* Room code */}
       <div className="text-center py-2">
-        <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-medium">Room Code</div>
+        <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-medium">Room Code</div>
         <div
           className="font-display text-4xl tracking-[0.3em] text-white mt-1"
           style={{ textShadow: '0 0 30px rgba(99, 102, 241, 0.3)' }}
@@ -56,6 +58,7 @@ export default function LobbyScreen() {
           myId={me?.id ?? null}
           tabooMasterId={tabooMasters.A}
           hostId={hostId}
+          isHost={host}
           onJoin={() => socket.emit('team:join', { team: 'A' })}
           onSetMaster={(id) => socket.emit('taboo-master:set', { team: 'A', masterId: id })}
         />
@@ -66,6 +69,7 @@ export default function LobbyScreen() {
           myId={me?.id ?? null}
           tabooMasterId={tabooMasters.B}
           hostId={hostId}
+          isHost={host}
           onJoin={() => socket.emit('team:join', { team: 'B' })}
           onSetMaster={(id) => socket.emit('taboo-master:set', { team: 'B', masterId: id })}
         />
@@ -80,8 +84,8 @@ export default function LobbyScreen() {
       {/* Settings */}
       {host && (
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <label className="flex items-center justify-between text-gray-400">
-            <span className="text-gray-500">Rounds</span>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Rounds</span>
             <select
               value={settings.rounds}
               onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
@@ -94,8 +98,8 @@ export default function LobbyScreen() {
               ))}
             </select>
           </label>
-          <label className="flex items-center justify-between text-gray-400">
-            <span className="text-gray-500">Timer (s)</span>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Timer (s)</span>
             <input
               type="number"
               min={10}
@@ -115,8 +119,8 @@ export default function LobbyScreen() {
               className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm w-16 text-center"
             />
           </label>
-          <label className="flex items-center justify-between text-gray-400">
-            <span className="text-gray-500">Words</span>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Words</span>
             <select
               value={settings.wordsPerTurn}
               onChange={(e) => socket.emit('settings:update', { wordsPerTurn: parseInt(e.target.value) })}
@@ -129,8 +133,8 @@ export default function LobbyScreen() {
               ))}
             </select>
           </label>
-          <label className="flex items-center justify-between text-gray-400">
-            <span className="text-gray-500">Taboos</span>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Taboos</span>
             <select
               value={settings.maxTabooWords}
               onChange={(e) => socket.emit('settings:update', { maxTabooWords: parseInt(e.target.value) })}
@@ -148,7 +152,7 @@ export default function LobbyScreen() {
 
       {/* Avg time info */}
       {host && settings.wordsPerTurn > 0 && (
-        <div className="text-center text-[10px] text-gray-600">
+        <div className="text-center text-[10px] text-gray-500">
           {Math.round(settings.timerSeconds / settings.wordsPerTurn)}s avg per word
         </div>
       )}
@@ -163,7 +167,7 @@ export default function LobbyScreen() {
           }}
           disabled={!canStart || starting}
           className={`w-full py-4 rounded-2xl font-display text-lg tracking-wider transition-all active:scale-[0.97]
-            ${canStart && !starting ? 'btn-success text-white' : 'bg-surface-raised text-gray-600 border border-white/5'}`}
+            ${canStart && !starting ? 'btn-success text-white' : 'bg-surface-raised text-gray-500 border border-white/5'}`}
         >
           {!canStart
             ? !tabooMasters.A || !tabooMasters.B
@@ -175,10 +179,12 @@ export default function LobbyScreen() {
         </button>
       )}
       {!host && (
-        <div className="w-full py-3 text-center text-gray-600 text-xs tracking-wider">
+        <div className="w-full py-3 text-center text-gray-500 text-xs tracking-wider">
           Waiting for host to start the game...
         </div>
       )}
+
+      <LeaveRoomButton className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm" />
     </div>
   );
 }
@@ -190,33 +196,82 @@ function TeamColumn({
   myId,
   tabooMasterId,
   hostId,
+  isHost,
   onJoin,
   onSetMaster,
 }: {
-  team: string;
+  team: TeamId;
   variant: 'a' | 'b';
   players: Array<{ id: string; name: string; connected: boolean }>;
   myId: string | null;
   tabooMasterId: string | null;
   hostId: string | null;
+  isHost: boolean;
   onJoin: () => void;
   onSetMaster: (id: string) => void;
 }) {
   const isOnTeam = players.some((p) => p.id === myId);
+  const teamName = useTeamName(team);
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(teamName);
+
+  useEffect(() => {
+    setNameInput(teamName);
+  }, [teamName]);
+
   const colors =
     variant === 'a'
       ? { header: 'btn-team-a', badge: 'bg-team-a/20 text-team-a-glow', border: 'border-team-a/20' }
       : { header: 'btn-team-b', badge: 'bg-team-b/20 text-team-b-glow', border: 'border-team-b/20' };
 
+  const handleNameSubmit = () => {
+    setEditing(false);
+    const trimmed = nameInput.trim();
+    if (trimmed && trimmed !== teamName) {
+      socket.emit('team-names:update', { teamNames: { [team]: trimmed } });
+    } else {
+      setNameInput(teamName);
+    }
+  };
+
   return (
     <div className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border`}>
-      <div className={`${colors.header} text-center py-2.5 font-display text-sm tracking-wider`}>Team {team}</div>
+      <div className={`${colors.header} text-center py-2.5 font-display text-sm tracking-wider`}>
+        {editing ? (
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onBlur={handleNameSubmit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleNameSubmit();
+              if (e.key === 'Escape') {
+                setNameInput(teamName);
+                setEditing(false);
+              }
+            }}
+            maxLength={20}
+            autoFocus
+            className="bg-transparent text-center text-white font-display text-sm tracking-wider w-full outline-none border-b border-white/30"
+          />
+        ) : (
+          <span
+            onClick={() => {
+              if (isHost) setEditing(true);
+            }}
+            className={isHost ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}
+            title={isHost ? 'Click to rename' : undefined}
+          >
+            {teamName}
+          </span>
+        )}
+      </div>
       <div className="flex-1 p-2.5 space-y-1 overflow-auto">
         {players.map((p) => (
           <div
             key={p.id}
             className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm
-            ${p.id === myId ? `${colors.badge} font-semibold` : 'text-gray-300'}
+            ${p.id === myId ? `${colors.badge} font-semibold` : 'text-gray-200'}
             ${!p.connected ? 'opacity-30' : ''}`}
           >
             <span>
@@ -228,7 +283,7 @@ function TeamColumn({
             {isOnTeam && p.id !== tabooMasterId && (
               <button
                 onClick={() => onSetMaster(p.id)}
-                className="text-[10px] text-gray-500 hover:text-white transition-colors"
+                className="text-[10px] text-gray-400 hover:text-white transition-colors"
               >
                 Set TM
               </button>

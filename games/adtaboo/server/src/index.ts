@@ -3,6 +3,7 @@ import { AdtabooRoom } from './AdtabooRoom.js';
 import { registerSetupHandlers } from './handlers/setupHandlers.js';
 import { registerGameHandlers, handleTurnEnd } from './handlers/gameHandlers.js';
 import { registerAdtabooLobbyHandlers } from './handlers/lobbyHandlers.js';
+import { buildGameState } from './buildGameState.js';
 import { GamePhase } from '@games/adtaboo-shared';
 
 const ROOMS_PATH = process.env.ROOMS_PATH || '/data/rooms.json';
@@ -18,23 +19,6 @@ const rooms = new RoomManager<AdtabooRoom>({
   roomFactory: (code, hostId) => new AdtabooRoom(code, hostId),
   roomFromJSON: (data) => AdtabooRoom.fromJSON(data),
 });
-
-function buildGameState(room: AdtabooRoom) {
-  if (!room.game) return null;
-  return {
-    phase: room.game.phase,
-    round: room.game.round,
-    scores: room.game.scores,
-    challenges: {
-      A: { ...room.game.challenges.A },
-      B: { ...room.game.challenges.B },
-    },
-    timerEnd: room.game.timerEnd,
-    tabooMasters: room.game.tabooMasters,
-    turnResults: room.game.turnResults,
-    roundHistory: room.getRoundHistory(),
-  };
-}
 
 createGameServer<AdtabooRoom>({
   gameName: 'Adversarial Taboo',
@@ -52,6 +36,12 @@ createGameServer<AdtabooRoom>({
     onPlayerSocketJoin: (room, playerId, socket) => {
       const player = room.getPlayer(playerId);
       if (player?.team) socket.join(`${room.code}:team${player.team}`);
+    },
+    onMidGameJoin: (room, playerId) => {
+      logger.info('game', 'Mid-game player awaiting team selection', {
+        room: room.code,
+        player: room.getPlayer(playerId)?.name,
+      });
     },
   },
 
