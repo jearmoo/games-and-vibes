@@ -280,6 +280,7 @@ function UnassignedSection({
   return (
     <div
       ref={isHost ? setNodeRef : undefined}
+      data-testid="lobby-unassigned"
       className={`space-y-1.5 rounded-xl transition-colors ${
         isOver ? 'bg-white/5 ring-1 ring-white/20' : ''
       } ${isDragActive && isHost ? 'p-2 border border-dashed border-white/10' : ''}`}
@@ -328,6 +329,7 @@ function PlayerPill({
     <div
       ref={isDraggable ? setNodeRef : undefined}
       {...(isDraggable ? { ...attributes, ...listeners } : {})}
+      data-testid={`lobby-player-${player.name}`}
       className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all
         ${highlight ?? (player.id === myId ? 'text-white font-semibold' : 'text-gray-200')}
         ${!player.connected ? 'opacity-30' : ''}
