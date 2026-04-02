@@ -11,3 +11,14 @@ export { default as ConfirmModal } from './components/ConfirmModal.js';
 export type { ConfirmModalProps } from './components/ConfirmModal.js';
 export { leaveRoom } from './leaveRoom.js';
 export type { LeaveRoomOptions } from './leaveRoom.js';
+export { SwipeCard, SwipeHints, ActionButtonBar } from './swipe/index.js';
+export type {
+  SwipeZone,
+  SwipeDirection,
+  SwipeZoneMapping,
+  SwipeHint,
+  SwipeAction,
+  SwipeCardProps,
+  ActionButtonConfig,
+  ActionButtonBarProps,
+} from './swipe/index.js';

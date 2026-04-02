@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useCharadesStore } from '../store';
 
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Very Hard'];

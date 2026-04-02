@@ -1,11 +1,84 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
-import { motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
-import { animate } from 'framer-motion/dom';
-import { Timer } from '@games/client-core';
+import { useEffect, useCallback, useRef } from 'react';
+import { motion } from 'motion/react';
+import { Timer, SwipeCard, ActionButtonBar } from '@games/client-core';
+import type {
+  SwipeZoneMapping,
+  SwipeHint,
+  SwipeAction,
+  ActionButtonConfig,
+  SwipeZone,
+  SwipeDirection,
+} from '@games/client-core';
 import { useCharadesStore, calcRoundScore } from '../store';
 
-const SWIPE_THRESHOLD = 80;
-const COOLDOWN_MS = 200;
+const CHARADES_ZONES: SwipeZoneMapping[] = [
+  {
+    direction: 'right',
+    zone: {
+      id: 'correct',
+      label: 'CORRECT',
+      labelColor: 'text-green-400',
+      labelTextShadow: '0 0 30px rgba(16,185,129,0.6)',
+      bgTint: 'rgba(16,185,129,0.12)',
+      glowShadow: '0 0 60px rgba(16,185,129,0.4)',
+      borderColor: 'rgba(16,185,129,0.5)',
+    },
+    threshold: 80,
+  },
+  {
+    direction: 'left',
+    zone: {
+      id: 'pass',
+      label: 'PASS',
+      labelColor: 'text-red-400',
+      labelTextShadow: '0 0 30px rgba(239,68,68,0.6)',
+      bgTint: 'rgba(239,68,68,0.12)',
+      glowShadow: '0 0 60px rgba(239,68,68,0.4)',
+      borderColor: 'rgba(239,68,68,0.5)',
+    },
+    threshold: 80,
+  },
+];
+
+const CHARADES_HINTS: SwipeHint[] = [
+  { direction: 'left', label: 'Pass', color: 'text-red-400' },
+  { direction: 'right', label: 'Correct', color: 'text-green-400' },
+];
+
+const BUTTON_ROWS: ActionButtonConfig[][] = [
+  [
+    {
+      id: 'pass',
+      label: 'Pass',
+      className:
+        'flex-1 py-3 rounded-2xl text-white font-display text-base tracking-wider btn-pass transition-all active:scale-[0.97]',
+    },
+    {
+      id: 'correct',
+      label: 'Correct',
+      className:
+        'flex-1 py-3 rounded-2xl text-white font-display text-base tracking-wider btn-correct transition-all active:scale-[0.97]',
+    },
+  ],
+];
+
+function ZoneLabel({ zone, direction }: { zone: SwipeZone | null; direction: SwipeDirection | null }) {
+  if (!zone || !direction) return null;
+  return (
+    <motion.div
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="absolute inset-x-0 top-4 flex justify-center pointer-events-none z-20"
+    >
+      <div
+        className={`font-display text-lg tracking-wider ${zone.labelColor} drop-shadow-lg`}
+        style={{ textShadow: zone.labelTextShadow }}
+      >
+        {zone.label}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function CompPlayScreen() {
   const {
@@ -24,9 +97,6 @@ export default function CompPlayScreen() {
   } = useCharadesStore();
 
   const timerExpiredRef = useRef(false);
-  const isDraggingRef = useRef(false);
-  // locked = fly-out in progress or post-action cooldown; disables all interaction
-  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     if (swipeFeedback) {
@@ -48,63 +118,29 @@ export default function CompPlayScreen() {
     return () => clearInterval(interval);
   }, [timerEnd, endRound]);
 
-  const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-15, 15]);
-  const correctOpacity = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
-  const passOpacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
-
   const handleAction = useCallback(
-    (action: 'correct' | 'pass') => {
-      if (locked || timerExpiredRef.current) return;
-      setLocked(true);
-      const direction = action === 'correct' ? 1 : -1;
-      animate(x, direction * window.innerWidth, { duration: 0.25, ease: 'easeIn' }).then(async () => {
-        if (action === 'correct') {
-          await markCorrect();
-        } else {
-          await markPass();
-        }
-        // cooldown before unlocking
-        setTimeout(() => setLocked(false), COOLDOWN_MS);
-      });
+    async (id: string) => {
+      if (timerExpiredRef.current) return;
+      if (id === 'correct') {
+        await markCorrect();
+      } else {
+        await markPass();
+      }
     },
-    [locked, markCorrect, markPass, x],
+    [markCorrect, markPass],
   );
 
-  // Reset everything when new card mounts
-  useEffect(() => {
-    x.jump(0);
-    clearSwipeFeedback();
-    isDraggingRef.current = false;
-    setLocked(false);
-  }, [currentWord, x, clearSwipeFeedback]);
-
-  const handleDragEnd = useCallback(
-    (_: unknown, info: PanInfo) => {
-      if (info.offset.x > SWIPE_THRESHOLD) {
-        handleAction('correct');
-      } else if (info.offset.x < -SWIPE_THRESHOLD) {
-        handleAction('pass');
-      }
-      setTimeout(() => {
-        isDraggingRef.current = false;
-      }, 50);
+  const handleSwipe = useCallback(
+    (action: SwipeAction) => {
+      handleAction(action.zoneId);
     },
     [handleAction],
   );
 
-  const handleTapArea = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      if (isDraggingRef.current) return;
-      const target = e.currentTarget as HTMLElement;
-      const rect = target.getBoundingClientRect();
-      const clientX = 'touches' in e ? e.changedTouches[0].clientX : e.clientX;
-      const relativeX = clientX - rect.left;
-      if (relativeX > rect.width / 2) {
-        handleAction('correct');
-      } else {
-        handleAction('pass');
-      }
+  const handleTap = useCallback(
+    (side: 'left' | 'right') => {
+      if (timerExpiredRef.current) return;
+      handleAction(side === 'right' ? 'correct' : 'pass');
     },
     [handleAction],
   );
@@ -128,82 +164,63 @@ export default function CompPlayScreen() {
       {/* Timer */}
       <div className="px-6">{timerEnd && <Timer endTime={timerEnd} duration={timerDuration} />}</div>
 
-      {/* Card area - tappable */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 relative" onClick={handleTapArea}>
-        {/* Swipe hints above card */}
-        <div className="flex items-center justify-between w-full max-w-xs mb-3 pointer-events-none">
-          <span className="text-xs text-white/20">&larr; PASS</span>
-          <span className="text-xs text-white/20">CORRECT &rarr;</span>
-        </div>
-
-        {/* Word card */}
-        <motion.div
+      {/* Card area */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+        <SwipeCard
           key={currentWord}
-          drag={locked ? false : 'x'}
-          dragConstraints={{ left: 0, right: 0 }}
+          dragAxis="x"
           dragElastic={0.8}
-          onDragStart={() => {
-            isDraggingRef.current = true;
-          }}
-          onDragEnd={handleDragEnd}
-          style={{ x, rotate }}
-          className={`word-card rounded-3xl p-8 w-full max-w-xs aspect-[3/4] flex items-center justify-center animate-card-in relative ${locked ? 'pointer-events-none' : 'cursor-grab active:cursor-grabbing'}`}
-          onClick={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => {
-            if (isDraggingRef.current) {
-              e.stopPropagation();
-              return;
-            }
-            const rect = e.currentTarget.parentElement!.getBoundingClientRect();
-            const clientX = e.changedTouches[0].clientX;
-            const relativeX = clientX - rect.left;
-            if (relativeX > rect.width / 2) {
-              handleAction('correct');
-            } else {
-              handleAction('pass');
-            }
-          }}
+          zones={CHARADES_ZONES}
+          hints={CHARADES_HINTS}
+          onSwipe={handleSwipe}
+          onTap={handleTap}
+          exitStyle="flyout"
+          cooldownMs={200}
+          widthClass="w-full max-w-xs"
+          aspectRatio="3 / 4"
+          renderZoneLabel={(zone, dir) => <ZoneLabel zone={zone} direction={dir} />}
         >
-          {/* CORRECT / PASS labels — top of card */}
-          <motion.div
-            style={{ opacity: correctOpacity }}
-            className="absolute top-4 left-1/2 -translate-x-1/2 text-green-400 font-display text-lg tracking-wider pointer-events-none"
+          {/* Single-word card content */}
+          <div
+            className="h-full flex items-center justify-center p-8 relative"
+            style={{ background: 'linear-gradient(145deg, #1c2440 0%, #161c32 100%)' }}
           >
-            CORRECT
-          </motion.div>
-          <motion.div
-            style={{ opacity: passOpacity }}
-            className="absolute top-4 left-1/2 -translate-x-1/2 text-red-400 font-display text-lg tracking-wider pointer-events-none"
-          >
-            PASS
-          </motion.div>
-          {swipeFeedback === 'correct' && (
-            <motion.div
-              key="tap-correct"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              className="absolute top-4 left-1/2 -translate-x-1/2 text-green-400 font-display text-lg tracking-wider pointer-events-none"
+            <span
+              className="font-display text-white tracking-wider capitalize text-center break-words max-w-full overflow-hidden"
+              style={{ fontSize: currentWord && currentWord.length > 12 ? '1.25rem' : '1.875rem' }}
             >
-              CORRECT
-            </motion.div>
-          )}
-          {swipeFeedback === 'pass' && (
-            <motion.div
-              key="tap-pass"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              className="absolute top-4 left-1/2 -translate-x-1/2 text-red-400 font-display text-lg tracking-wider pointer-events-none"
-            >
-              PASS
-            </motion.div>
-          )}
+              {currentWord || '...'}
+            </span>
+            {/* Tap feedback */}
+            {swipeFeedback === 'correct' && (
+              <motion.div
+                key="tap-correct"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="absolute inset-x-0 top-4 flex justify-center text-green-400 font-display text-lg tracking-wider pointer-events-none"
+              >
+                CORRECT
+              </motion.div>
+            )}
+            {swipeFeedback === 'pass' && (
+              <motion.div
+                key="tap-pass"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="absolute inset-x-0 top-4 flex justify-center text-red-400 font-display text-lg tracking-wider pointer-events-none"
+              >
+                PASS
+              </motion.div>
+            )}
+          </div>
+        </SwipeCard>
+      </div>
 
-          <span className="font-display text-3xl text-white tracking-wider capitalize text-center">
-            {currentWord || '...'}
-          </span>
-        </motion.div>
+      {/* Action buttons */}
+      <div className="px-6 pb-4">
+        <ActionButtonBar rows={BUTTON_ROWS} onAction={handleAction} />
       </div>
     </div>
   );

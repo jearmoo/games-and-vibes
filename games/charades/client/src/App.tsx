@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 import { useCharadesStore } from './store';
 import ModeSelectScreen from './components/ModeSelectScreen';
 import CasualScreen from './components/CasualScreen';
