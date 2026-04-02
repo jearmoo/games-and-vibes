@@ -25,6 +25,7 @@ export interface GameStore {
   players: Player[];
   hostId: string | null;
   settings: { rounds: number; timerSeconds: number };
+  teamNames: { A: string; B: string };
 
   phase: GamePhase | null;
   round: number;
@@ -62,6 +63,7 @@ export const initialState = {
   players: [],
   hostId: null,
   settings: { rounds: 4, timerSeconds: 90 },
+  teamNames: { A: 'Team A', B: 'Team B' },
   phase: null,
   round: 1,
   scores: { A: 0, B: 0 },
@@ -105,6 +107,10 @@ export function useIsHost(): boolean {
 
 export function useTeamPlayers(team: TeamId): Player[] {
   return useGameStore((s) => s.players).filter((p) => p.team === team);
+}
+
+export function useTeamName(team: TeamId): string {
+  return useGameStore((s) => s.teamNames[team]);
 }
 
 export function getRoomCodeFromUrl(): string | null {

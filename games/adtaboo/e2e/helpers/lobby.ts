@@ -31,9 +31,73 @@ export async function joinRoom(page: Page, name: string, roomCode: string) {
   await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
 }
 
-/** Host assigns a player to a team */
+/** Player self-joins a team (works for both host and non-host) */
+export async function joinTeam(page: Page, team: 'A' | 'B') {
+  await page.getByTestId(`lobby-join-team-${team.toLowerCase()}`).click();
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Start a pointer drag from a source element. Returns the source center coords.
+ * dnd-kit uses PointerSensor (not HTML5 drag), so we dispatch real pointer events.
+ */
+async function startDrag(page: Page, source: ReturnType<Page['getByTestId']>) {
+  const srcBox = (await source.boundingBox())!;
+  const srcX = srcBox.x + srcBox.width / 2;
+  const srcY = srcBox.y + srcBox.height / 2;
+
+  await page.mouse.move(srcX, srcY);
+  await page.mouse.down();
+  // Move enough to exceed dnd-kit's 8px distance activation constraint
+  await page.mouse.move(srcX + 10, srcY + 10, { steps: 3 });
+  return { srcX, srcY };
+}
+
+/** Complete a drag by moving to the target center and releasing */
+async function finishDrag(page: Page, target: ReturnType<Page['getByTestId']>) {
+  const tgtBox = (await target.boundingBox())!;
+  const tgtX = tgtBox.x + tgtBox.width / 2;
+  const tgtY = tgtBox.y + tgtBox.height / 2;
+
+  await page.mouse.move(tgtX, tgtY, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+}
+
+/** Host drags a player pill to a team drop zone */
+export async function dragToTeam(hostPage: Page, playerName: string, team: 'A' | 'B') {
+  const pill = hostPage.getByTestId(`lobby-player-${playerName}`);
+  await startDrag(hostPage, pill);
+  const dropZone = hostPage.getByTestId(`lobby-team-${team.toLowerCase()}`);
+  await finishDrag(hostPage, dropZone);
+}
+
+/** Host drags a player pill to the unassigned drop zone.
+ *  The unassigned section only renders while a drag is active,
+ *  so we start the drag first, then locate the drop zone. */
+export async function dragToUnassigned(hostPage: Page, playerName: string) {
+  const pill = hostPage.getByTestId(`lobby-player-${playerName}`);
+  await startDrag(hostPage, pill);
+  // Unassigned zone appears once drag is active
+  const dropZone = hostPage.getByTestId('lobby-unassigned');
+  await expect(dropZone).toBeVisible({ timeout: 2_000 });
+  await finishDrag(hostPage, dropZone);
+}
+
+/** Host assigns a player to a team via socket (UI uses drag-and-drop) */
 export async function assignToTeam(hostPage: Page, playerName: string, team: 'A' | 'B') {
-  await hostPage.getByTestId(`lobby-assign-${playerName}-${team.toLowerCase()}`).click();
+  await hostPage.evaluate(
+    ({ team, playerName }) => {
+      const socket = (window as any).__socket;
+      if (!socket) throw new Error('Socket not found on window');
+      const store = (window as any).__store;
+      if (!store) throw new Error('Store not found on window');
+      const player = store.getState().players.find((p: any) => p.name === playerName);
+      if (!player) throw new Error(`Player "${playerName}" not found`);
+      socket.emit('team:assign', { team, targetPlayerId: player.id });
+    },
+    { team, playerName },
+  );
   await hostPage.waitForTimeout(300);
 }
 

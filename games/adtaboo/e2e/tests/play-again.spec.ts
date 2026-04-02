@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
+import { createRoom, joinRoom, assignToTeam, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
 import { beginCluing, endTurn, waitForGameOver, playAgain } from '../helpers/cluing';
 
@@ -14,7 +14,7 @@ test.describe('Play Again', () => {
     await joinRoom(carol.page, carol.name, roomCode);
     await joinRoom(dave.page, dave.name, roomCode);
 
-    await assignToTeam(alice.page, alice.name, 'A');
+    await joinTeam(alice.page, 'A');
     await assignToTeam(alice.page, bob.name, 'A');
     await assignToTeam(alice.page, carol.name, 'B');
     await assignToTeam(alice.page, dave.name, 'B');

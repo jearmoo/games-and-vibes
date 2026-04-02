@@ -6,29 +6,30 @@ import type { TeamId } from '@games/odes-for-cave-men-shared';
 export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
   const { io, socket, rooms } = ctx;
 
-  // Host joins a team themselves
+  // Any player joins/switches/leaves a team
   socket.on('team:join', ({ team }: { team: TeamId | null }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
-    if (!room || room.hostId !== playerId) return;
+    if (!room) return;
     if (room.isGameActive()) return;
 
     const player = room.getPlayer(playerId);
     if (!player) return;
 
     const oldTeam = player.team;
+    if (oldTeam === team) return;
     player.team = team;
     room.touch();
 
     if (oldTeam) socket.leave(`${room.code}:team${oldTeam}`);
     if (team) socket.join(`${room.code}:team${team}`);
 
-    logger.info('room', 'Host changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
+    logger.info('room', 'Player changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
   });
 
-  // Host assigns a player to a team
+  // Host assigns/unassigns a player to a team
   socket.on('team:assign', ({ team, targetPlayerId }: { team: TeamId | null; targetPlayerId: string }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
@@ -40,6 +41,7 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
     if (!target) return;
 
     const oldTeam = target.team;
+    if (oldTeam === team) return;
     target.team = team;
     room.touch();
 
@@ -51,6 +53,18 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
 
     logger.info('room', 'Host assigned player to team', { room: room.code, player: target.name, team });
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
+  });
+
+  // Host updates team names
+  socket.on('team-names:update', ({ teamNames }: { teamNames: { A?: string; B?: string } }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room || room.hostId !== playerId || room.isGameActive()) return;
+    if (teamNames.A !== undefined) room.teamNames.A = teamNames.A.trim().slice(0, 20) || 'Team A';
+    if (teamNames.B !== undefined) room.teamNames.B = teamNames.B.trim().slice(0, 20) || 'Team B';
+    io.to(room.code).emit('team-names:updated', { teamNames: room.teamNames });
+    logger.debug('room', 'Team names updated', { room: room.code, teamNames: room.teamNames });
   });
 
   // Settings update

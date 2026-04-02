@@ -33,7 +33,7 @@ export default function HomeScreen() {
       const saved = localStorage.getItem(SESSION_KEY);
       if (saved) {
         const session = JSON.parse(saved);
-        if (session.roomCode === code) sessionId = session.playerId;
+        if (session.roomCode === code && session.playerName === name.trim()) sessionId = session.playerId;
       }
     } catch {
       /* ignore parse errors */
