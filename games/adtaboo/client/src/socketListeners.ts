@@ -1,4 +1,4 @@
-import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
+import { socket, autoReconnecting, reconnectExpired, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
 import { clientLogger } from '@games/client-core';
 
@@ -10,23 +10,18 @@ function saveSession() {
 }
 
 // Connection
-let disconnectedAt: number | null = null;
-const RECONNECT_TIMEOUT_MS = 130_000; // slightly longer than server's 120s grace period
-
 socket.on('connect', () => {
   useGameStore.setState({ connected: true });
-  if (disconnectedAt && Date.now() - disconnectedAt > RECONNECT_TIMEOUT_MS) {
-    localStorage.removeItem(SESSION_KEY);
+  if (reconnectExpired.current) {
+    reconnectExpired.current = false;
     useGameStore.getState().reset();
     useGameStore.setState({ connected: true });
     useGameStore.getState().setError('You were disconnected too long. Please rejoin.');
     window.history.replaceState(null, '', '/');
   }
-  disconnectedAt = null;
 });
 socket.on('disconnect', () => {
   useGameStore.setState({ connected: false });
-  if (!disconnectedAt) disconnectedAt = Date.now();
 });
 
 // Session takeover — another connection took over this session

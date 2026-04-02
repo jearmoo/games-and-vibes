@@ -1,11 +1,14 @@
 import { io, Socket } from 'socket.io-client';
-import { loadSession } from './sessionStore.js';
+import { clearSession, loadSession } from './sessionStore.js';
 
 export interface SocketOptions {
   /** localStorage key for session persistence */
   sessionKey: string;
   /** Server URL override (defaults to window.location.origin in prod, localhost:4040 in dev) */
   url?: string;
+  /** Max time (ms) a disconnect can last before session is cleared instead of auto-rejoining.
+   *  Should be slightly longer than server's grace period. Default: no limit. */
+  reconnectTimeoutMs?: number;
 }
 
 /**
@@ -15,6 +18,8 @@ export interface SocketOptions {
 export function createSocket(opts: SocketOptions): {
   socket: Socket;
   autoReconnecting: { current: boolean };
+  /** Set to true when a reconnect was suppressed because the disconnect lasted longer than reconnectTimeoutMs. */
+  reconnectExpired: { current: boolean };
 } {
   const isProd = typeof window !== 'undefined' && window.location.protocol === 'https:';
   const url = opts.url ?? (isProd ? window.location.origin : 'http://localhost:4040');
@@ -25,8 +30,20 @@ export function createSocket(opts: SocketOptions): {
   });
 
   const autoReconnecting = { current: false };
+  const reconnectExpired = { current: false };
+  let disconnectedAt: number | null = null;
 
   socket.on('connect', () => {
+    // Check reconnect timeout before attempting auto-rejoin
+    if (opts.reconnectTimeoutMs && disconnectedAt && Date.now() - disconnectedAt > opts.reconnectTimeoutMs) {
+      clearSession(opts.sessionKey);
+      reconnectExpired.current = true;
+      disconnectedAt = null;
+      return;
+    }
+    reconnectExpired.current = false;
+    disconnectedAt = null;
+
     const session = loadSession(opts.sessionKey);
     if (!session) return;
 
@@ -44,5 +61,9 @@ export function createSocket(opts: SocketOptions): {
     });
   });
 
-  return { socket, autoReconnecting };
+  socket.on('disconnect', () => {
+    if (!disconnectedAt) disconnectedAt = Date.now();
+  });
+
+  return { socket, autoReconnecting, reconnectExpired };
 }
