@@ -84,6 +84,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 ## Skills
 
 - `/game-dev` — Creating new games or developing existing ones. Covers architecture patterns, new game checklist, and deployment. Start here for any game development work.
+- `/game-test` — Writing and running tests. Covers unit tests (vitest, test-utils), e2e tests (Playwright), testing patterns, and new-game testing checklist.
 - `/deploy-new-game` — Deploy a game that's already built but not yet in production. Creates Dockerfile, docker-compose entry, CI step, cloudflared config, and updates all docs.
 
 ## Known TODOs
