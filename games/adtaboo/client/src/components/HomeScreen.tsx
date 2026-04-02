@@ -4,7 +4,8 @@ import { useGameStore, getRoomCodeFromUrl, SESSION_KEY } from '../store';
 
 export default function HomeScreen() {
   const urlCode = getRoomCodeFromUrl();
-  const [name, setName] = useState('');
+  const storedName = useGameStore((s) => s.playerName);
+  const [name, setName] = useState(storedName || '');
   const [joinCode, setJoinCode] = useState(urlCode || '');
   const [mode, setMode] = useState<'menu' | 'join'>(urlCode ? 'join' : 'menu');
   const [loading, setLoading] = useState(false);

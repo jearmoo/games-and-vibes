@@ -33,7 +33,8 @@ export function createSocket(opts: SocketOptions): {
     // If URL has a room code, only auto-reconnect if it matches the saved session
     const urlPath = window.location.pathname.replace(/^\//, '');
     const urlRoomCode = /^[A-Za-z0-9]{4}$/.test(urlPath) ? urlPath.toUpperCase() : null;
-    if (urlRoomCode && urlRoomCode !== session.roomCode) return;
+    if (!urlRoomCode) return;
+    if (urlRoomCode !== session.roomCode) return;
 
     autoReconnecting.current = true;
     socket.emit('room:join', {
