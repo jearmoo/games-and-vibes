@@ -129,9 +129,7 @@ export default function ReviewScreen() {
           );
         })}
 
-        {reviewCards.length === 0 && (
-          <div className="text-center text-gray-600 py-8">No cards were played</div>
-        )}
+        {reviewCards.length === 0 && <div className="text-center text-gray-600 py-8">No cards were played</div>}
       </div>
 
       {/* Lock in button */}

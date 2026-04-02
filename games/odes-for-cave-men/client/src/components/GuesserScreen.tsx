@@ -14,9 +14,7 @@ export default function GuesserScreen() {
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
       {/* Timer */}
-      <div className="w-full max-w-xs">
-        {timerEnd && <Timer endTime={timerEnd} duration={settings.timerSeconds} />}
-      </div>
+      <div className="w-full max-w-xs">{timerEnd && <Timer endTime={timerEnd} duration={settings.timerSeconds} />}</div>
 
       {/* Main prompt */}
       <div className="glass-card rounded-2xl p-8 border border-white/5 w-full max-w-xs text-center">

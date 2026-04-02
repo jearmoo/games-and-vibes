@@ -24,7 +24,11 @@ export function handleTurnEnd(room: CaveRoom, io: Server, _metrics: MetricsColle
 
   room.endTurn();
   const resolvedCards = room.getResolvedCards();
-  logger.info('game', 'Turn ended, entering review', { room: room.code, team: room.game.playingTeam, cards: resolvedCards.length });
+  logger.info('game', 'Turn ended, entering review', {
+    room: room.code,
+    team: room.game.playingTeam,
+    cards: resolvedCards.length,
+  });
 
   io.to(room.code).emit('turn:review', {
     phase: GamePhase.REVIEW,

@@ -30,9 +30,7 @@ export default function ScoreBoard() {
           <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(217,119,6,0.5)]" />
           <span className="text-amber-400 font-display text-sm tracking-wider">A: {scores.A}</span>
         </div>
-        <div className="text-gray-600 text-[10px] tracking-[0.2em] uppercase font-medium">
-          {centerText}
-        </div>
+        <div className="text-gray-600 text-[10px] tracking-[0.2em] uppercase font-medium">{centerText}</div>
         <div className="flex items-center gap-2">
           <span className="text-emerald-400 font-display text-sm tracking-wider">B: {scores.B}</span>
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(5,150,105,0.5)]" />

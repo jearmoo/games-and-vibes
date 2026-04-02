@@ -148,7 +148,8 @@ export default function SwipeCard({ word1, word3, onSwipe }: SwipeCardProps) {
             style={{ borderColor: cfg.border }}
           >
             {/* Top: 1pt word (dark surface) */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 relative"
+            <div
+              className="flex-1 flex flex-col items-center justify-center p-4 relative"
               style={{ background: 'linear-gradient(to bottom, #161c32, #0f1424)' }}
             >
               <div className="absolute top-2.5 left-3">
@@ -170,7 +171,8 @@ export default function SwipeCard({ word1, word3, onSwipe }: SwipeCardProps) {
             </div>
 
             {/* Bottom: 3pt phrase (slightly warmer dark) */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 relative"
+            <div
+              className="flex-1 flex flex-col items-center justify-center p-4 relative"
               style={{ background: 'linear-gradient(to bottom, #1a1525, #120e1e)' }}
             >
               <div className="absolute top-2.5 left-3">

@@ -214,7 +214,13 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     return this.game.words[this.game.currentWordIndex];
   }
 
-  resolveCurrentWord({ result, points }: { result: 'correct' | 'skipped' | 'bonked'; points: number }): WordCard | null {
+  resolveCurrentWord({
+    result,
+    points,
+  }: {
+    result: 'correct' | 'skipped' | 'bonked';
+    points: number;
+  }): WordCard | null {
     if (!this.game) return null;
     const card = this.getCurrentWord();
     if (!card) return null;

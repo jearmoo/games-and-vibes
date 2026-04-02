@@ -38,16 +38,23 @@ export default function OpponentScreen() {
         </div>
 
         {currentWord && !wordsHidden ? (
-          <div className="w-52 rounded-2xl overflow-hidden border-2 border-white/[0.08]" style={{ aspectRatio: '2.5 / 4' }}>
+          <div
+            className="w-52 rounded-2xl overflow-hidden border-2 border-white/[0.08]"
+            style={{ aspectRatio: '2.5 / 4' }}
+          >
             <div className="h-full flex flex-col">
               {/* Top: 1pt word */}
-              <div className="flex-1 flex flex-col items-center justify-center p-4 relative"
+              <div
+                className="flex-1 flex flex-col items-center justify-center p-4 relative"
                 style={{ background: 'linear-gradient(to bottom, #161c32, #0f1424)' }}
               >
                 <div className="absolute top-2.5 left-3">
-                  <span className="font-display text-[10px] tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400/70">1 pt</span>
+                  <span className="font-display text-[10px] tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400/70">
+                    1 pt
+                  </span>
                 </div>
-                <div className="font-display text-2xl text-white tracking-wider text-center leading-tight"
+                <div
+                  className="font-display text-2xl text-white tracking-wider text-center leading-tight"
                   style={{ textShadow: '0 0 20px rgba(251,191,36,0.15)' }}
                 >
                   {currentWord.word1}
@@ -57,13 +64,17 @@ export default function OpponentScreen() {
                 <div className="absolute inset-x-0 -top-px h-[2px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
               </div>
               {/* Bottom: 3pt phrase */}
-              <div className="flex-1 flex flex-col items-center justify-center p-4 relative"
+              <div
+                className="flex-1 flex flex-col items-center justify-center p-4 relative"
                 style={{ background: 'linear-gradient(to bottom, #1a1525, #120e1e)' }}
               >
                 <div className="absolute top-2.5 left-3">
-                  <span className="font-display text-[10px] tracking-wider px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400/70">3 pts</span>
+                  <span className="font-display text-[10px] tracking-wider px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400/70">
+                    3 pts
+                  </span>
                 </div>
-                <div className="font-display text-xl text-white tracking-wider text-center leading-tight"
+                <div
+                  className="font-display text-xl text-white tracking-wider text-center leading-tight"
                   style={{ textShadow: '0 0 20px rgba(251,191,36,0.15)' }}
                 >
                   {currentWord.word3}
@@ -72,7 +83,8 @@ export default function OpponentScreen() {
             </div>
           </div>
         ) : (
-          <div className="w-52 rounded-2xl overflow-hidden border-2 border-white/[0.08]"
+          <div
+            className="w-52 rounded-2xl overflow-hidden border-2 border-white/[0.08]"
             style={{ aspectRatio: '2.5 / 4', background: 'linear-gradient(to bottom, #161c32, #0f1424)' }}
           >
             <div className="h-full flex items-center justify-center">
