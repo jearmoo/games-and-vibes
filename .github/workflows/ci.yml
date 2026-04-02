@@ -76,6 +76,9 @@ jobs:
       - name: Build adtaboo image
         run: docker build -f games/adtaboo/Dockerfile -t adtaboo .
 
+      - name: Build charades image
+        run: docker build -f games/charades/Dockerfile -t charades .
+
       - name: Build landing image
         run: docker build -f apps/landing/Dockerfile -t landing .
 
