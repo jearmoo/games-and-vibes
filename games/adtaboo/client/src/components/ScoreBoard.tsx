@@ -38,9 +38,7 @@ export default function ScoreBoard() {
       <div className="relative flex items-center justify-center gap-2 px-12 py-2 text-sm border-b border-white/[0.03]">
         {/* Left button group */}
         <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-          <LeaveRoomButton
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-team-b-glow hover:bg-white/5 transition-colors"
-          >
+          <LeaveRoomButton className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-team-b-glow hover:bg-white/5 transition-colors">
             <svg
               width="18"
               height="18"
