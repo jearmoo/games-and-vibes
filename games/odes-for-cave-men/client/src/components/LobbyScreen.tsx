@@ -230,14 +230,7 @@ function UnassignedSection({
         {players.length > 0 ? 'Unassigned' : 'Drop here to unassign'}
       </div>
       {players.map((p) => (
-        <PlayerPill
-          key={p.id}
-          player={p}
-          myId={myId}
-          hostId={hostId}
-          isHost={isHost}
-          hostBadgeColor="text-amber-400"
-        />
+        <PlayerPill key={p.id} player={p} myId={myId} hostId={hostId} isHost={isHost} hostBadgeColor="text-amber-400" />
       ))}
     </div>
   );
