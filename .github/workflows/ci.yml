@@ -81,7 +81,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, docker]
+    needs: [check, docker, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Trigger deploy webhook

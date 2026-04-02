@@ -4,7 +4,7 @@ import { clearSession, loadSession } from './sessionStore.js';
 export interface SocketOptions {
   /** localStorage key for session persistence */
   sessionKey: string;
-  /** Server URL override (defaults to window.location.origin in prod, localhost:4040 in dev) */
+  /** Server URL override (defaults to window.location.origin, which lets the Vite proxy handle /socket.io in dev) */
   url?: string;
   /** Max time (ms) a disconnect can last before session is cleared instead of auto-rejoining.
    *  Should be slightly longer than server's grace period. Default: no limit. */
@@ -21,10 +21,7 @@ export function createSocket(opts: SocketOptions): {
   /** Set to true when a reconnect was suppressed because the disconnect lasted longer than reconnectTimeoutMs. */
   reconnectExpired: { current: boolean };
 } {
-  const isProd = typeof window !== 'undefined' && window.location.protocol === 'https:';
-  const url = opts.url ?? (isProd ? window.location.origin : 'http://localhost:4040');
-
-  const socket: Socket = io(url, {
+  const socket: Socket = io(opts.url ?? window.location.origin, {
     transports: ['websocket', 'polling'],
     autoConnect: true,
   });

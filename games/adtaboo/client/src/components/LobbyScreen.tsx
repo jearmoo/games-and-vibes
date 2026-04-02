@@ -240,7 +240,10 @@ function TeamColumn({
   };
 
   return (
-    <div data-testid={`lobby-team-${team.toLowerCase()}`} className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border`}>
+    <div
+      data-testid={`lobby-team-${team.toLowerCase()}`}
+      className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border`}
+    >
       <div className={`${colors.header} text-center py-2.5 font-display text-sm tracking-wider`}>
         {editing ? (
           <input

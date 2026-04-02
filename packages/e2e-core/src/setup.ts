@@ -60,11 +60,16 @@ export function createGameSetup(opts: GameSetupOptions) {
       env: {
         ...process.env,
         [portEnvVar]: String(serverPort),
+        VITE_GA_ID: '',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    viteProc.stderr?.on('data', (d: Buffer) => process.stderr.write(`[vite] ${d}`));
+    viteProc.stderr?.on('data', (d: Buffer) => {
+      const msg = d.toString();
+      // Suppress expected proxy errors from intentional socket disconnects in tests
+      if (!msg.includes('ECONNRESET')) process.stderr.write(`[vite] ${msg}`);
+    });
 
     // Wait for both to be ready
     await Promise.all([waitForPort(serverPort), waitForPort(vitePort)]);
