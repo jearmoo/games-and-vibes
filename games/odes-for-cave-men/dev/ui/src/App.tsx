@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 type GeneratedCard = { word1: string; word3: string; duplicate?: boolean };
 type KeptCard = { '1': string; '3': string };
+type AllCard = { word1: string; word3: string; source: string };
 
 export default function App() {
   const [cards, setCards] = useState<GeneratedCard[]>([]);
@@ -12,6 +13,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'gray' | 'red'>('gray');
+  const [temperature, setTemperature] = useState(1.2);
+  const [allCards, setAllCards] = useState<AllCard[]>([]);
+  const [search, setSearch] = useState('');
 
   const fetchKeptCards = useCallback(async () => {
     try {
@@ -24,9 +28,29 @@ export default function App() {
     }
   }, []);
 
+  const fetchAllCards = useCallback(async () => {
+    try {
+      const res = await fetch('/api/all-cards');
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      const data = await res.json();
+      setAllCards(data.cards ?? []);
+    } catch (e) {
+      console.error('Failed to fetch all cards:', e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchKeptCards();
-  }, [fetchKeptCards]);
+    fetchAllCards();
+  }, [fetchKeptCards, fetchAllCards]);
+
+  const searchResults = useMemo(() => {
+    if (search.length < 2) return [];
+    const q = search.toLowerCase();
+    return allCards.filter(
+      (c) => c.word1.toLowerCase().includes(q) || c.word3.toLowerCase().includes(q),
+    );
+  }, [search, allCards]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -35,7 +59,7 @@ export default function App() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count, difficulty }),
+        body: JSON.stringify({ count, difficulty, temperature }),
       });
       if (!res.ok) throw new Error(`Generate failed: ${res.status}`);
       const data = await res.json();
@@ -150,6 +174,19 @@ export default function App() {
           </select>
         </label>
 
+        <label className="flex items-center gap-2">
+          <span className="text-stone-400 text-sm">Temp</span>
+          <input
+            type="number"
+            min={0}
+            max={2}
+            step={0.1}
+            value={temperature}
+            onChange={(e) => setTemperature(Math.max(0, Math.min(2, Number(e.target.value))))}
+            className="w-20 bg-stone-700 text-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </label>
+
         <button
           onClick={handleGenerate}
           disabled={loading}
@@ -239,6 +276,50 @@ export default function App() {
           </div>
         </section>
       )}
+
+      {/* Search Existing Cards */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold text-stone-300 mb-4">
+          Search All Cards <span className="text-stone-500 text-base">({allCards.length} total)</span>
+        </h2>
+        <input
+          type="text"
+          placeholder="Search word1 or word3 (min 2 chars)..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-stone-800 text-stone-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-stone-500 mb-4"
+        />
+        {search.length >= 2 && (
+          <div className="bg-stone-800 rounded-xl p-4">
+            {searchResults.length === 0 ? (
+              <p className="text-stone-500 text-center text-sm">No matches found</p>
+            ) : (
+              <>
+                <p className="text-stone-500 text-xs mb-3">{searchResults.length} matches</p>
+                <div className="flex flex-wrap gap-2">
+                  {searchResults.map((card, i) => (
+                    <span
+                      key={i}
+                      className={`text-sm px-3 py-1 rounded-lg ${
+                        card.source === 'Rejected'
+                          ? 'bg-red-900/30 text-red-300'
+                          : card.source === 'Generated'
+                            ? 'bg-amber-900/30 text-amber-300'
+                            : 'bg-stone-700 text-stone-300'
+                      }`}
+                    >
+                      <span className="font-bold">{card.word1}</span>
+                      <span className="text-stone-500 mx-1">&rarr;</span>
+                      <span>{card.word3}</span>
+                      <span className="text-stone-500 ml-2 text-xs">({card.source})</span>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Kept Cards Library */}
       <section>
