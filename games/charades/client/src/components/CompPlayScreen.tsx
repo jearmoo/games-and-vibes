@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion';
 import { animate } from 'framer-motion/dom';
 import { Timer } from '@games/client-core';
@@ -23,12 +23,11 @@ export default function CompPlayScreen() {
     clearSwipeFeedback,
   } = useCharadesStore();
 
-  const actingRef = useRef(false);
   const timerExpiredRef = useRef(false);
   const isDraggingRef = useRef(false);
-  const cooldownRef = useRef(false);
+  // locked = fly-out in progress or post-action cooldown; disables all interaction
+  const [locked, setLocked] = useState(false);
 
-  // Clear swipe feedback after animation
   useEffect(() => {
     if (swipeFeedback) {
       const timeout = setTimeout(clearSwipeFeedback, 400);
@@ -36,7 +35,6 @@ export default function CompPlayScreen() {
     }
   }, [swipeFeedback, clearSwipeFeedback]);
 
-  // Timer expiry check
   useEffect(() => {
     if (!timerEnd) return;
     timerExpiredRef.current = false;
@@ -57,9 +55,8 @@ export default function CompPlayScreen() {
 
   const handleAction = useCallback(
     (action: 'correct' | 'pass') => {
-      if (actingRef.current || timerExpiredRef.current || cooldownRef.current) return;
-      actingRef.current = true;
-      cooldownRef.current = true;
+      if (locked || timerExpiredRef.current) return;
+      setLocked(true);
       const direction = action === 'correct' ? 1 : -1;
       animate(x, direction * window.innerWidth, { duration: 0.25, ease: 'easeIn' }).then(async () => {
         if (action === 'correct') {
@@ -67,19 +64,19 @@ export default function CompPlayScreen() {
         } else {
           await markPass();
         }
-        actingRef.current = false;
-        setTimeout(() => {
-          cooldownRef.current = false;
-        }, COOLDOWN_MS);
+        // cooldown before unlocking
+        setTimeout(() => setLocked(false), COOLDOWN_MS);
       });
     },
-    [markCorrect, markPass, x],
+    [locked, markCorrect, markPass, x],
   );
 
-  // Reset x and clear stale feedback when new card mounts
+  // Reset everything when new card mounts
   useEffect(() => {
     x.jump(0);
     clearSwipeFeedback();
+    isDraggingRef.current = false;
+    setLocked(false);
   }, [currentWord, x, clearSwipeFeedback]);
 
   const handleDragEnd = useCallback(
@@ -89,7 +86,6 @@ export default function CompPlayScreen() {
       } else if (info.offset.x < -SWIPE_THRESHOLD) {
         handleAction('pass');
       }
-      // Small drag: card springs back via dragConstraints
       setTimeout(() => {
         isDraggingRef.current = false;
       }, 50);
@@ -143,7 +139,7 @@ export default function CompPlayScreen() {
         {/* Word card */}
         <motion.div
           key={currentWord}
-          drag="x"
+          drag={locked ? false : 'x'}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.8}
           onDragStart={() => {
@@ -151,7 +147,7 @@ export default function CompPlayScreen() {
           }}
           onDragEnd={handleDragEnd}
           style={{ x, rotate }}
-          className="word-card rounded-3xl p-8 w-full max-w-xs aspect-[3/4] flex items-center justify-center cursor-grab active:cursor-grabbing animate-card-in relative"
+          className={`word-card rounded-3xl p-8 w-full max-w-xs aspect-[3/4] flex items-center justify-center animate-card-in relative ${locked ? 'pointer-events-none' : 'cursor-grab active:cursor-grabbing'}`}
           onClick={(e) => e.stopPropagation()}
           onTouchEnd={(e) => {
             if (isDraggingRef.current) {
@@ -181,7 +177,6 @@ export default function CompPlayScreen() {
           >
             PASS
           </motion.div>
-          {/* Tap-triggered label flash */}
           {swipeFeedback === 'correct' && (
             <motion.div
               key="tap-correct"
