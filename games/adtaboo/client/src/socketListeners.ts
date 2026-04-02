@@ -167,10 +167,14 @@ socket.on('room:player-disconnected', ({ playerId: pid }) => {
     players: s.players.map((p) => (p.id === pid ? { ...p, connected: false } : p)),
   }));
 });
-socket.on('room:player-reconnected', ({ playerId: pid }) => {
-  useGameStore.setState((s) => ({
-    players: s.players.map((p) => (p.id === pid ? { ...p, connected: true } : p)),
-  }));
+socket.on('room:player-reconnected', ({ playerId: pid, players: updatedPlayers }) => {
+  if (updatedPlayers) {
+    useGameStore.setState({ players: updatedPlayers });
+  } else {
+    useGameStore.setState((s) => ({
+      players: s.players.map((p) => (p.id === pid ? { ...p, connected: true } : p)),
+    }));
+  }
 });
 socket.on('room:host-updated', ({ hostId }) => {
   useGameStore.setState({ hostId });
