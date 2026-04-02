@@ -87,6 +87,290 @@
     {
       "1": "Case",
       "3": "Staircase"
+    },
+    {
+      "1": "Tombstone",
+      "3": "Tombstone Pizza"
+    },
+    {
+      "1": "Pretzel",
+      "3": "Pretzel Logic"
+    },
+    {
+      "1": "Yo-yo",
+      "3": "Yo-yo Dieting"
+    },
+    {
+      "1": "Pretzel",
+      "3": "Pretzel Logic"
+    },
+    {
+      "1": "Moustache",
+      "3": "Moustache Wax"
+    },
+    {
+      "1": "Sphinx",
+      "3": "Sphinx Moth"
+    },
+    {
+      "1": "Cinder",
+      "3": "Cinderella"
+    },
+    {
+      "1": "Gopher",
+      "3": "Gopher Hole"
+    },
+    {
+      "1": "Chameleon",
+      "3": "Chameleon Paint"
+    },
+    {
+      "1": "Spaceship",
+      "3": "Spaceship Cockpit"
+    },
+    {
+      "1": "Volcano",
+      "3": "Volcano Eruption"
+    },
+    {
+      "1": "Volcano",
+      "3": "Volcano Eruption"
+    },
+    {
+      "1": "Vulture",
+      "3": "Vulture Fund"
+    },
+    {
+      "1": "Igloo",
+      "3": "Igloo Cooler"
+    },
+    {
+      "1": "Muzzle",
+      "3": "Muzzle Flash"
+    },
+    {
+      "1": "Valve",
+      "3": "Heart Valve"
+    },
+    {
+      "1": "Thaw",
+      "3": "Everthaw"
+    },
+    {
+      "1": "Sling",
+      "3": "Mudslinging"
+    },
+    {
+      "1": "Frail",
+      "3": "Frailties"
+    },
+    {
+      "1": "Shroud",
+      "3": "Turin Shroud"
+    },
+    {
+      "1": "Loom",
+      "3": "Heirloom"
+    },
+    {
+      "1": "Clinch",
+      "3": "Clinch Knot"
+    },
+    {
+      "1": "Wart",
+      "3": "Hogwarts"
+    },
+    {
+      "1": "Rack",
+      "3": "Racket"
+    },
+    {
+      "1": "Keel",
+      "3": "Even Keel"
+    },
+    {
+      "1": "Curfew",
+      "3": "Curfew Bell"
+    },
+    {
+      "1": "Wick",
+      "3": "Candlestick"
+    },
+    {
+      "1": "Sway",
+      "3": "Swayback"
+    },
+    {
+      "1": "Mime",
+      "3": "Mimeograph"
+    },
+    {
+      "1": "Thum",
+      "3": "Thumbnail"
+    },
+    {
+      "1": "Honeymoon",
+      "3": "Honeymooners"
+    },
+    {
+      "1": "Jackpot",
+      "3": "Jackpot Hitting"
+    },
+    {
+      "1": "Lock",
+      "3": "Loch Ness Monster"
+    },
+    {
+      "1": "Thread",
+      "3": "Threadbare"
+    },
+    {
+      "1": "Vault",
+      "3": "Pole Vaulting"
+    },
+    {
+      "1": "Litter",
+      "3": "Litterbug"
+    },
+    {
+      "1": "Kindle",
+      "3": "Kindling"
+    },
+    {
+      "1": "Whet",
+      "3": "Whetstone"
+    },
+    {
+      "1": "Grudge",
+      "3": "Holding a Grudge"
+    },
+    {
+      "1": "Spade",
+      "3": "Call a Spade a Spade"
+    },
+    {
+      "1": "Glint",
+      "3": "Glint in the Eye"
+    },
+    {
+      "1": "Stem",
+      "3": "Stem Cell Research"
+    },
+    {
+      "1": "Shrink",
+      "3": "Headshrinker"
+    },
+    {
+      "1": "Vapor",
+      "3": "Vaporizer"
+    },
+    {
+      "1": "Archive",
+      "3": "Archive Room"
+    },
+    {
+      "1": "Yeast",
+      "3": "Yeast Infection"
+    },
+    {
+      "1": "Gully",
+      "3": "Gullywasher"
+    },
+    {
+      "1": "Orbit",
+      "3": "Orbital Socket"
+    },
+    {
+      "1": "Trial",
+      "3": "Trial and Error"
+    },
+    {
+      "1": "Closer",
+      "3": "Closer Look"
+    },
+    {
+      "1": "Quake",
+      "3": "Afterquake"
+    },
+    {
+      "1": "Doom",
+      "3": "Doomsday Clock"
+    },
+    {
+      "1": "Ember",
+      "3": "September"
+    },
+    {
+      "1": "Beast",
+      "3": "Beast of Burden"
+    },
+    {
+      "1": "Frost",
+      "3": "Frostbite"
+    },
+    {
+      "1": "Hitch",
+      "3": "Hitchhiker"
+    },
+    {
+      "1": "Spore",
+      "3": "Transpore"
+    },
+    {
+      "1": "Quartz",
+      "3": "Quartz Clock"
+    },
+    {
+      "1": "Marrow",
+      "3": "Bone Marrow"
+    },
+    {
+      "1": "Relic",
+      "3": "Religious Relic"
+    },
+    {
+      "1": "Pulse",
+      "3": "Impulse Buy"
+    },
+    {
+      "1": "Lark",
+      "3": "Meadowlark"
+    },
+    {
+      "1": "Grub",
+      "3": "Moneygrubber"
+    },
+    {
+      "1": "Hoof",
+      "3": "Cloven Hoof"
+    },
+    {
+      "1": "Crest",
+      "3": "Family Crest"
+    },
+    {
+      "1": "Harp",
+      "3": "Harpoon"
+    },
+    {
+      "1": "Stern",
+      "3": "Sternum"
+    },
+    {
+      "1": "Bloom",
+      "3": "Wallflower"
+    },
+    {
+      "1": "Lush",
+      "3": "Slush Fund"
+    },
+    {
+      "1": "Spoke",
+      "3": "Bicycle Spoke"
+    },
+    {
+      "1": "Saddle",
+      "3": "Saddlebags"
     }
   ]
 }

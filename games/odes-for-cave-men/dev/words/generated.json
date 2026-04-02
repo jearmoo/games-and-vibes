@@ -159,10 +159,6 @@
       "3": "Lump Sum"
     },
     {
-      "1": "Draft",
-      "3": "Draft Dodger"
-    },
-    {
       "1": "Cuff",
       "3": "Handcuffs"
     },
@@ -245,6 +241,322 @@
     {
       "1": "Master",
       "3": "Puppetmaster"
+    },
+    {
+      "1": "Vampire",
+      "3": "Vampire Bat"
+    },
+    {
+      "1": "Gnome",
+      "3": "Garden Gnome"
+    },
+    {
+      "1": "Hula",
+      "3": "Hula Hoop"
+    },
+    {
+      "1": "Meteor",
+      "3": "Meteor Shower"
+    },
+    {
+      "1": "Noodle",
+      "3": "Pool Noodle"
+    },
+    {
+      "1": "Accordion",
+      "3": "Accordion Folder"
+    },
+    {
+      "1": "Telescope",
+      "3": "Telescope Lens"
+    },
+    {
+      "1": "Velvet",
+      "3": "Red Velvet Cake"
+    },
+    {
+      "1": "Mummy",
+      "3": "Mummy Wrap"
+    },
+    {
+      "1": "Jellyfish",
+      "3": "Jellyfish Sting"
+    },
+    {
+      "1": "Mustard",
+      "3": "Mustard Gas"
+    },
+    {
+      "1": "Pigeon",
+      "3": "Pigeon Hole"
+    },
+    {
+      "1": "Pinball",
+      "3": "Pinball Machine"
+    },
+    {
+      "1": "Zodiac",
+      "3": "Zodiac Sign"
+    },
+    {
+      "1": "Gumball",
+      "3": "Gumball Machine"
+    },
+    {
+      "1": "Unicorn",
+      "3": "Unicorn Horn"
+    },
+    {
+      "1": "Propeller",
+      "3": "Propeller Hat"
+    },
+    {
+      "1": "Glacier",
+      "3": "Glacier Water"
+    },
+    {
+      "1": "Bonsai",
+      "3": "Bonsai Tree"
+    },
+    {
+      "1": "Blind",
+      "3": "Blindsided"
+    },
+    {
+      "1": "Gutter",
+      "3": "Gutterball"
+    },
+    {
+      "1": "Shack",
+      "3": "RadioShack"
+    },
+    {
+      "1": "Lapse",
+      "3": "Time-lapse"
+    },
+    {
+      "1": "Shutter",
+      "3": "Shutterbug"
+    },
+    {
+      "1": "Drip",
+      "3": "Drip Coffee"
+    },
+    {
+      "1": "Tread",
+      "3": "Treadmill"
+    },
+    {
+      "1": "Vane",
+      "3": "Weather Vane"
+    },
+    {
+      "1": "Graft",
+      "3": "Skin Graft"
+    },
+    {
+      "1": "Flint",
+      "3": "Flintlock"
+    },
+    {
+      "1": "Grid",
+      "3": "Gridlock"
+    },
+    {
+      "1": "Yard",
+      "3": "Yardstick"
+    },
+    {
+      "1": "Tack",
+      "3": "Thumbtack"
+    },
+    {
+      "1": "Rake",
+      "3": "Muckraker"
+    },
+    {
+      "1": "Plug",
+      "3": "Spark Plug"
+    },
+    {
+      "1": "Stow",
+      "3": "Stowaway"
+    },
+    {
+      "1": "Hedge",
+      "3": "Hedge Fund"
+    },
+    {
+      "1": "Mast",
+      "3": "Mainmast"
+    },
+    {
+      "1": "Jack",
+      "3": "Jackpot"
+    },
+    {
+      "1": "Shuttle",
+      "3": "Space Shuttle"
+    },
+    {
+      "1": "Fools",
+      "3": "Fools Gold"
+    },
+    {
+      "1": "Frost",
+      "3": "Frostbite"
+    },
+    {
+      "1": "Hatch",
+      "3": "Hatchback"
+    },
+    {
+      "1": "Wing",
+      "3": "Wingman"
+    },
+    {
+      "1": "Free",
+      "3": "Freeloader"
+    },
+    {
+      "1": "Tale",
+      "3": "Telltale"
+    },
+    {
+      "1": "Scrap",
+      "3": "Scrapbook"
+    },
+    {
+      "1": "Silk",
+      "3": "Silkworm"
+    },
+    {
+      "1": "Knight",
+      "3": "Knighthood"
+    },
+    {
+      "1": "Throne",
+      "3": "Game of Thrones"
+    },
+    {
+      "1": "String",
+      "3": "String Quartet"
+    },
+    {
+      "1": "Copper",
+      "3": "Copperhead"
+    },
+    {
+      "1": "Knuckle",
+      "3": "Brass Knuckles"
+    },
+    {
+      "1": "Tether",
+      "3": "Tetherball"
+    },
+    {
+      "1": "Crutch",
+      "3": "Emotional Crutch"
+    },
+    {
+      "1": "Wedge",
+      "3": "Potato Wedge"
+    },
+    {
+      "1": "Flare",
+      "3": "Solar Flare"
+    },
+    {
+      "1": "Throne",
+      "3": "Game of Thrones"
+    },
+    {
+      "1": "Draft",
+      "3": "Rough Draft"
+    },
+    {
+      "1": "Plague",
+      "3": "Bubonic Plague"
+    },
+    {
+      "1": "Ransom",
+      "3": "Ransomware"
+    },
+    {
+      "1": "Lava",
+      "3": "Lava Lamp"
+    },
+    {
+      "1": "Jest",
+      "3": "Court Jester"
+    },
+    {
+      "1": "Omen",
+      "3": "Bad Omen"
+    },
+    {
+      "1": "Stall",
+      "3": "Bathroom Stall"
+    },
+    {
+      "1": "Vane",
+      "3": "Weather Vane"
+    },
+    {
+      "1": "Urge",
+      "3": "Urgent Care"
+    },
+    {
+      "1": "Whip",
+      "3": "Whiplash"
+    },
+    {
+      "1": "Vibe",
+      "3": "Good Vibes"
+    },
+    {
+      "1": "Fame",
+      "3": "Hall of Fame"
+    },
+    {
+      "1": "Mane",
+      "3": "Lion's Mane"
+    },
+    {
+      "1": "Hood",
+      "3": "Neighborhood"
+    },
+    {
+      "1": "Flock",
+      "3": "Flock of Sheep"
+    },
+    {
+      "1": "Stand",
+      "3": "Nightstand"
+    },
+    {
+      "1": "Mock",
+      "3": "Mockingbird"
+    },
+    {
+      "1": "Crawl",
+      "3": "Pub Crawl"
+    },
+    {
+      "1": "Shed",
+      "3": "Watershed"
+    },
+    {
+      "1": "Spur",
+      "3": "Spur of the Moment"
+    },
+    {
+      "1": "Stump",
+      "3": "Stump Speech"
+    },
+    {
+      "1": "Flake",
+      "3": "Corn Flakes"
     }
   ]
 }

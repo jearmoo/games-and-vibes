@@ -148,9 +148,10 @@ export function loadExistingWords(): Set<string> {
   for (const filePath of wordFiles) {
     try {
       const raw = readFileSync(filePath, 'utf-8');
-      const data = JSON.parse(raw) as { game_data: Array<{ '1': string; '3': string }> };
+      const data = JSON.parse(raw.replace(/,(\s*[}\]])/g, '$1')) as { game_data: Array<{ '1': string; '3': string }> };
       for (const entry of data.game_data) {
         words.add(entry['1'].toLowerCase());
+        words.add(entry['3'].toLowerCase());
       }
     } catch {
       // File may not exist yet, skip
