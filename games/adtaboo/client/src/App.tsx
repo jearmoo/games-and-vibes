@@ -19,6 +19,7 @@ export default function App() {
   const connected = useGameStore((s) => s.connected);
   const error = useGameStore((s) => s.error);
   const roomCode = useGameStore((s) => s.roomCode);
+  const dismissError = useCallback(() => useGameStore.setState({ error: null }), []);
 
   if (!connected && !roomCode) {
     return (
@@ -27,8 +28,6 @@ export default function App() {
       </div>
     );
   }
-
-  const dismissError = useCallback(() => useGameStore.setState({ error: null }), []);
 
   if (!phase)
     return (
