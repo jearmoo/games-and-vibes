@@ -1,4 +1,4 @@
-import { WordProvider } from './WordProvider.js';
+import { WordProvider } from './types.js';
 
 const WORD_API = 'http://random-word-api.herokuapp.com/word';
 

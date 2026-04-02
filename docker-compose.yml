@@ -25,6 +25,25 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  charades:
+    build:
+      context: .
+      dockerfile: games/charades/Dockerfile
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    container_name: charades
+    restart: unless-stopped
+    ports:
+      - "4050:4050"
+    environment:
+      - NODE_ENV=production
+      - PORT=4050
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
   landing:
     build:
       context: .

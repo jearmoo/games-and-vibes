@@ -1,6 +1,4 @@
-export type WordProvider = (count: number, difficulty: number) => Promise<string[]>;
-
-const FALLBACK_WORDS = [
+export const FALLBACK_WORDS = [
   // Animals
   'elephant',
   'penguin',
@@ -255,15 +253,3 @@ const FALLBACK_WORDS = [
   'tightrope',
   'mirage',
 ];
-
-export function createWordFetcher(provider: WordProvider, difficulty: number): (count: number) => Promise<string[]> {
-  return async (count: number): Promise<string[]> => {
-    try {
-      const words = await provider(count, difficulty);
-      return words.map((w) => w.toLowerCase());
-    } catch {
-      const shuffled = [...FALLBACK_WORDS].sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, count);
-    }
-  };
-}
