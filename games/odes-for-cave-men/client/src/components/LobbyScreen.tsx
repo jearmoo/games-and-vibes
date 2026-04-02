@@ -26,7 +26,7 @@ export default function LobbyScreen() {
   const teamA = players.filter((p) => p.team === 'A');
   const teamB = players.filter((p) => p.team === 'B');
   const unassigned = players.filter((p) => !p.team);
-  const canStart = teamA.length >= 2 && teamB.length >= 2;
+  const canStart = teamA.length >= 1 && teamB.length >= 1;
   const [starting, setStarting] = useState(false);
 
   const [timerInput, setTimerInput] = useState(String(settings.timerSeconds));
@@ -175,7 +175,7 @@ export default function LobbyScreen() {
           className={`w-full py-4 rounded-2xl font-display text-lg tracking-wider transition-all active:scale-[0.97]
             ${canStart && !starting ? 'btn-success text-white' : 'bg-surface-raised text-gray-600 border border-white/5'}`}
         >
-          {!canStart ? 'Need 2+ per team' : starting ? 'Starting...' : 'Start Game'}
+          {!canStart ? 'Need 1+ per team' : starting ? 'Starting...' : 'Start Game'}
         </button>
       )}
       {!host && (

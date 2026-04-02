@@ -136,8 +136,8 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
   canStart(): { ok: boolean; reason?: string } {
     const teamA = this.getTeamPlayers('A');
     const teamB = this.getTeamPlayers('B');
-    if (teamA.length < 2) return { ok: false, reason: 'Team A needs at least 2 players' };
-    if (teamB.length < 2) return { ok: false, reason: 'Team B needs at least 2 players' };
+    if (teamA.length < 1) return { ok: false, reason: 'Team A needs at least 1 player' };
+    if (teamB.length < 1) return { ok: false, reason: 'Team B needs at least 1 player' };
     return { ok: true };
   }
 
