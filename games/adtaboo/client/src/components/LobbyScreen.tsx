@@ -3,6 +3,18 @@ import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '../store';
 import { socket } from '../socket';
 import LeaveRoomButton from './LeaveRoomButton';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  useDraggable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 
 export default function LobbyScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
@@ -33,7 +45,29 @@ export default function LobbyScreen() {
     });
   }, [shareUrl]);
 
-  return (
+  // Drag-and-drop (host only)
+  const [activePlayer, setActivePlayer] = useState<{ id: string; name: string } | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const player = players.find((p) => p.id === event.active.id);
+    if (player) setActivePlayer({ id: player.id, name: player.name });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActivePlayer(null);
+    if (!event.over) return;
+    const targetTeam = event.over.id === 'drop-unassigned' ? null : (event.over.id as TeamId);
+    const playerId = event.active.id as string;
+    const player = players.find((p) => p.id === playerId);
+    if (!player || player.team === targetTeam) return;
+    socket.emit('team:assign', { team: targetTeam, targetPlayerId: playerId });
+  };
+
+  const content = (
     <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
       {/* Room code */}
       <div className="text-center py-2">
@@ -64,60 +98,35 @@ export default function LobbyScreen() {
           variant="a"
           players={teamA}
           myId={me?.id ?? null}
+          myTeam={me?.team ?? null}
           tabooMasterId={tabooMasters.A}
           hostId={hostId}
           isHost={host}
           onSetMaster={(id) => socket.emit('taboo-master:set', { team: 'A', masterId: id })}
+          isDragActive={!!activePlayer}
         />
         <TeamColumn
           team="B"
           variant="b"
           players={teamB}
           myId={me?.id ?? null}
+          myTeam={me?.team ?? null}
           tabooMasterId={tabooMasters.B}
           hostId={hostId}
           isHost={host}
           onSetMaster={(id) => socket.emit('taboo-master:set', { team: 'B', masterId: id })}
+          isDragActive={!!activePlayer}
         />
       </div>
 
-      {unassigned.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="text-center text-amber-400/80 text-xs font-medium">Unassigned</div>
-          {unassigned.map((p) => (
-            <div
-              key={p.id}
-              className={`flex items-center justify-between px-3 py-2 glass-card rounded-xl text-sm ${
-                p.id === me?.id ? 'text-white font-semibold' : 'text-gray-300'
-              }`}
-            >
-              <span>
-                {p.name}
-                {p.id === me?.id && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
-                {p.id === hostId && <span className="text-indigo-400 text-[10px] ml-1 font-medium">HOST</span>}
-              </span>
-              {host && (
-                <div className="flex gap-2">
-                  <button
-                    data-testid={`lobby-assign-${p.name}-a`}
-                    onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
-                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
-                  >
-                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
-                  </button>
-                  <button
-                    data-testid={`lobby-assign-${p.name}-b`}
-                    onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
-                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
-                  >
-                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Unassigned */}
+      <UnassignedSection
+        players={unassigned}
+        myId={me?.id ?? null}
+        hostId={hostId}
+        isHost={host}
+        isDragActive={!!activePlayer}
+      />
 
       {/* Settings */}
       {host && (
@@ -226,12 +235,150 @@ export default function LobbyScreen() {
         </button>
       )}
       {!host && (
-        <div className="w-full py-3 text-center text-gray-500 text-xs tracking-wider">
-          Waiting for host to set up the game...
-        </div>
+        <div className="w-full py-3 text-center text-gray-500 text-xs tracking-wider">Join a team to get started</div>
       )}
 
       <LeaveRoomButton className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm" />
+    </div>
+  );
+
+  if (!host) return content;
+
+  return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      {content}
+      <DragOverlay>
+        {activePlayer && (
+          <div className="px-3 py-2 glass-card rounded-xl text-sm text-white font-semibold shadow-lg shadow-black/40 border border-white/10">
+            {activePlayer.name}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+function UnassignedSection({
+  players,
+  myId,
+  hostId,
+  isHost,
+  isDragActive,
+}: {
+  players: Array<{ id: string; name: string; connected: boolean }>;
+  myId: string | null;
+  hostId: string | null;
+  isHost: boolean;
+  isDragActive: boolean;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: 'drop-unassigned' });
+
+  if (players.length === 0 && !isDragActive) return null;
+
+  return (
+    <div
+      ref={isHost ? setNodeRef : undefined}
+      className={`space-y-1.5 rounded-xl transition-colors ${
+        isOver ? 'bg-white/5 ring-1 ring-white/20' : ''
+      } ${isDragActive && isHost ? 'p-2 border border-dashed border-white/10' : ''}`}
+    >
+      <div className="text-center text-amber-400/80 text-xs font-medium">
+        {players.length > 0 ? 'Unassigned' : 'Drop here to unassign'}
+      </div>
+      {players.map((p) => (
+        <PlayerPill
+          key={p.id}
+          player={p}
+          myId={myId}
+          hostId={hostId}
+          isHost={isHost}
+          hostBadgeColor="text-indigo-400"
+          actions={
+            <div className="flex gap-2">
+              {p.id === myId && (
+                <>
+                  <button
+                    data-testid="lobby-join-team-a"
+                    onClick={() => socket.emit('team:join', { team: 'A' })}
+                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
+                  >
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
+                  </button>
+                  <button
+                    data-testid="lobby-join-team-b"
+                    onClick={() => socket.emit('team:join', { team: 'B' })}
+                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
+                  >
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
+                  </button>
+                </>
+              )}
+              {isHost && p.id !== myId && (
+                <>
+                  <button
+                    data-testid={`lobby-assign-${p.name}-a`}
+                    onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
+                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
+                  >
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
+                  </button>
+                  <button
+                    data-testid={`lobby-assign-${p.name}-b`}
+                    onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
+                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
+                  >
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
+                  </button>
+                </>
+              )}
+            </div>
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+function PlayerPill({
+  player,
+  myId,
+  hostId,
+  isHost,
+  hostBadgeColor,
+  highlight,
+  actions,
+}: {
+  player: { id: string; name: string; connected: boolean };
+  myId: string | null;
+  hostId: string | null;
+  isHost: boolean;
+  hostBadgeColor: string;
+  highlight?: string;
+  actions?: React.ReactNode;
+}) {
+  const isDraggable = isHost && player.id !== myId;
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: player.id,
+    disabled: !isDraggable,
+  });
+
+  return (
+    <div
+      ref={isDraggable ? setNodeRef : undefined}
+      {...(isDraggable ? { ...attributes, ...listeners } : {})}
+      className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all
+        ${highlight ?? (player.id === myId ? 'text-white font-semibold' : 'text-gray-200')}
+        ${!player.connected ? 'opacity-30' : ''}
+        ${isDragging ? 'opacity-30' : ''}
+        ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
+    >
+      <span className="truncate">
+        {player.name}
+        {player.id === myId && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
+        {player.id === hostId && <span className={`${hostBadgeColor} text-[10px] ml-1 font-medium`}>HOST</span>}
+        {!player.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
+      </span>
+      {actions}
     </div>
   );
 }
@@ -241,23 +388,28 @@ function TeamColumn({
   variant,
   players,
   myId,
+  myTeam,
   tabooMasterId,
   hostId,
   isHost,
   onSetMaster,
+  isDragActive,
 }: {
   team: TeamId;
   variant: 'a' | 'b';
   players: Array<{ id: string; name: string; connected: boolean }>;
   myId: string | null;
+  myTeam: TeamId | null;
   tabooMasterId: string | null;
   hostId: string | null;
   isHost: boolean;
   onSetMaster: (id: string) => void;
+  isDragActive: boolean;
 }) {
   const teamName = useTeamName(team);
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(teamName);
+  const { isOver, setNodeRef } = useDroppable({ id: team });
 
   useEffect(() => {
     setNameInput(teamName);
@@ -265,8 +417,8 @@ function TeamColumn({
 
   const colors =
     variant === 'a'
-      ? { header: 'btn-team-a', badge: 'bg-team-a/20 text-team-a-glow', border: 'border-team-a/20' }
-      : { header: 'btn-team-b', badge: 'bg-team-b/20 text-team-b-glow', border: 'border-team-b/20' };
+      ? { header: 'btn-team-a', badge: 'bg-team-a/20 text-team-a-glow', border: 'border-team-a/20', dot: 'bg-team-a' }
+      : { header: 'btn-team-b', badge: 'bg-team-b/20 text-team-b-glow', border: 'border-team-b/20', dot: 'bg-team-b' };
 
   const handleNameSubmit = () => {
     setEditing(false);
@@ -278,14 +430,24 @@ function TeamColumn({
     }
   };
 
+  const canJoin = myId && myTeam !== team;
+  const handleJoinTeam = () => {
+    if (canJoin && !editing) socket.emit('team:join', { team });
+  };
+
   return (
     <div
+      ref={isHost ? setNodeRef : undefined}
       data-testid={`lobby-team-${team.toLowerCase()}`}
-      className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border`}
+      className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border transition-all
+        ${isOver ? 'ring-2 ring-white/30 scale-[1.02]' : ''}
+        ${isDragActive && isHost ? 'ring-1 ring-white/10' : ''}`}
     >
-      <div className={`${colors.header} text-center py-2.5 font-display text-sm tracking-wider`}>
+      {/* Header: team name + join affordance */}
+      <div className={`${colors.header} text-center py-2.5 relative`}>
         {editing ? (
           <input
+            data-testid={`lobby-team-name-input-${team.toLowerCase()}`}
             type="text"
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
@@ -299,46 +461,83 @@ function TeamColumn({
             }}
             maxLength={20}
             autoFocus
-            className="bg-transparent text-center text-white font-display text-sm tracking-wider w-full outline-none border-b border-white/30"
+            className="bg-transparent text-center text-white font-display text-sm tracking-wider w-full outline-none px-2"
+            style={{ height: '1.5em', lineHeight: '1.5em' }}
           />
         ) : (
-          <span
-            onClick={() => {
-              if (isHost) setEditing(true);
-            }}
-            className={isHost ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}
-            title={isHost ? 'Click to rename' : undefined}
-          >
-            {teamName}
-          </span>
-        )}
-      </div>
-      <div className="flex-1 p-2.5 space-y-1 overflow-auto">
-        {players.map((p) => (
-          <div
-            key={p.id}
-            className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm
-            ${p.id === myId ? `${colors.badge} font-semibold` : 'text-gray-200'}
-            ${!p.connected ? 'opacity-30' : ''}`}
-          >
-            <span>
-              {p.name}
-              {p.id === myId && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
-              {p.id === hostId && <span className="text-indigo-400 text-[10px] ml-1 font-medium">HOST</span>}
-              {p.id === tabooMasterId && <span className="text-accent text-[10px] ml-1 font-medium">TM</span>}
-              {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
+          <div className="flex items-center justify-center gap-1.5">
+            <span
+              onClick={() => {
+                if (isHost) setEditing(true);
+                else handleJoinTeam();
+              }}
+              className={`font-display text-sm tracking-wider ${isHost ? 'cursor-text hover:opacity-80' : canJoin ? 'cursor-pointer hover:opacity-80' : ''} transition-opacity`}
+              title={isHost ? 'Click to rename' : canJoin ? `Join ${teamName}` : undefined}
+              style={{ height: '1.5em', lineHeight: '1.5em' }}
+            >
+              {teamName}
             </span>
-            {isHost && p.id !== tabooMasterId && (
-              <button
-                data-testid={`lobby-set-tm-${p.name}`}
-                onClick={() => onSetMaster(p.id)}
-                className="text-[10px] text-gray-400 hover:text-white transition-colors"
-              >
-                Set TM
-              </button>
+            {isHost && (
+              <svg className="w-2.5 h-2.5 opacity-40" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10z" />
+              </svg>
             )}
           </div>
+        )}
+        {/* Join button for non-host players not on this team */}
+        {!isHost && canJoin && (
+          <button
+            data-testid={`lobby-join-team-${team.toLowerCase()}`}
+            onClick={handleJoinTeam}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/70 hover:text-white transition-colors font-medium"
+          >
+            Join
+          </button>
+        )}
+      </div>
+
+      {/* Player list */}
+      <div className="flex-1 p-2.5 space-y-1 overflow-auto">
+        {players.map((p) => (
+          <PlayerPill
+            key={p.id}
+            player={p}
+            myId={myId}
+            hostId={hostId}
+            isHost={isHost}
+            hostBadgeColor="text-indigo-400"
+            highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
+            actions={
+              <span className="flex items-center gap-1.5 shrink-0">
+                {p.id === tabooMasterId && <span className="text-accent text-[10px] font-medium">TM</span>}
+                {isHost && p.id !== tabooMasterId && (
+                  <button
+                    data-testid={`lobby-set-tm-${p.name}`}
+                    onClick={() => onSetMaster(p.id)}
+                    className="text-[10px] text-gray-400 hover:text-white transition-colors"
+                  >
+                    Set TM
+                  </button>
+                )}
+                {p.id === myId && (
+                  <button
+                    data-testid="lobby-leave-team"
+                    onClick={() => socket.emit('team:join', { team: null })}
+                    className="text-[10px] text-gray-400 hover:text-white transition-colors ml-1"
+                    title="Leave team"
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            }
+          />
         ))}
+        {players.length === 0 && (
+          <div className="text-center text-gray-500 text-[11px] py-4">
+            {isDragActive && isHost ? 'Drop here' : 'No players yet'}
+          </div>
+        )}
       </div>
     </div>
   );

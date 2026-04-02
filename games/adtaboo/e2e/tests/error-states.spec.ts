@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, assignToTeam, setTabooMaster, goHome } from '../helpers/lobby';
+import { createRoom, joinRoom, assignToTeam, joinTeam, setTabooMaster, goHome } from '../helpers/lobby';
 
 test.describe('Error States', () => {
   test.use({ playerCount: 3 });
@@ -11,7 +11,7 @@ test.describe('Error States', () => {
     await joinRoom(bob.page, bob.name, roomCode);
     await joinRoom(carol.page, carol.name, roomCode);
 
-    await assignToTeam(alice.page, alice.name, 'A');
+    await joinTeam(alice.page, 'A');
     await assignToTeam(alice.page, bob.name, 'A');
     await assignToTeam(alice.page, carol.name, 'B');
 

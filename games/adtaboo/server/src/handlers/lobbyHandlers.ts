@@ -10,22 +10,26 @@ import { emitSetupCards } from './setupHandlers.js';
 export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
   const { io, socket, rooms, metrics } = ctx;
 
-  // Host joins a team themselves
-  socket.on('team:join', ({ team }: { team: TeamId }) => {
+  // Any player joins/switches/leaves a team
+  socket.on('team:join', ({ team }: { team: TeamId | null }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
-    if (!room || room.hostId !== playerId) return;
+    if (!room) return;
     const player = room.getPlayer(playerId);
     if (!player) return;
-    if (player.team) socket.leave(`${room.code}:team${player.team}`);
+
+    const oldTeam = player.team;
+    if (oldTeam === team) return;
+    if (oldTeam) socket.leave(`${room.code}:team${oldTeam}`);
     player.team = team;
-    socket.join(`${room.code}:team${team}`);
+    room.touch();
+    if (team) socket.join(`${room.code}:team${team}`);
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
-    logger.info('room', 'Host joined team', { room: room.code, player: player.name, team });
+    logger.info('room', 'Player changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
 
     // Mid-game joiner picked a team — send them full game state
-    if (room.isGameActive()) {
+    if (room.isGameActive() && team) {
       socket.emit('room:mid-game-ready', {
         game: buildGameState(room, playerId),
         room: room.toDTO(),
@@ -33,8 +37,8 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     }
   });
 
-  // Host assigns a player to a team
-  socket.on('team:assign', ({ team, targetPlayerId }: { team: TeamId; targetPlayerId: string }) => {
+  // Host assigns/unassigns a player to a team
+  socket.on('team:assign', ({ team, targetPlayerId }: { team: TeamId | null; targetPlayerId: string }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
@@ -44,6 +48,7 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     if (!target) return;
 
     const oldTeam = target.team;
+    if (oldTeam === team) return;
     target.team = team;
     room.touch();
 
@@ -51,14 +56,14 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     const targetSocket = io.sockets.sockets.get(target.socketId);
     if (targetSocket) {
       if (oldTeam) targetSocket.leave(`${room.code}:team${oldTeam}`);
-      targetSocket.join(`${room.code}:team${team}`);
+      if (team) targetSocket.join(`${room.code}:team${team}`);
     }
 
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
     logger.info('room', 'Host assigned player to team', { room: room.code, player: target.name, team });
 
     // Mid-game joiner picked a team — send them full game state
-    if (room.isGameActive()) {
+    if (room.isGameActive() && team) {
       targetSocket?.emit('room:mid-game-ready', {
         game: buildGameState(room, targetPlayerId),
         room: room.toDTO(),

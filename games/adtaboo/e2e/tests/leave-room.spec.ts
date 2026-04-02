@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, assignToTeam } from '../helpers/lobby';
+import { createRoom, joinRoom, assignToTeam, joinTeam } from '../helpers/lobby';
 
 test.describe('Leave Room', () => {
   test.use({ playerCount: 2 });
@@ -9,7 +9,7 @@ test.describe('Leave Room', () => {
 
     const roomCode = await createRoom(alice.page, alice.name);
     await joinRoom(bob.page, bob.name, roomCode);
-    await assignToTeam(alice.page, alice.name, 'A');
+    await joinTeam(alice.page, 'A');
     await assignToTeam(alice.page, bob.name, 'B');
 
     // Bob clicks "Leave Room"

@@ -14,6 +14,7 @@ import { getRandomWords, TOTAL_WORD_COUNT } from './words/index.js';
 export class CaveRoom extends BaseRoom<CavePlayer> {
   declare settings: CaveSettings;
   game: GameState | null = null;
+  teamNames: { A: string; B: string } = { A: 'Team A', B: 'Team B' };
   /** Indices of words already used in this room (persists across games) */
   usedWordIndices: Set<number> = new Set();
 
@@ -52,6 +53,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
       hostId: this.hostId,
       lastActivity: this.lastActivity,
       settings: this.settings,
+      teamNames: this.teamNames,
       players: Array.from(this.players.values()).map((p) => ({
         id: p.id,
         name: p.name,
@@ -123,6 +125,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
       hostId: this.hostId,
       players: this.playerDTOs(),
       settings: { ...this.settings },
+      teamNames: { ...this.teamNames },
       phase: this.game?.phase ?? null,
       scores: this.game?.scores ?? { A: 0, B: 0 },
     };
@@ -331,6 +334,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     const room = new CaveRoom(data.code, data.hostId);
     room.lastActivity = data.lastActivity ?? Date.now();
     room.settings = { ...room.settings, ...data.settings };
+    room.teamNames = data.teamNames ?? { A: 'Team A', B: 'Team B' };
     room.game = data.game ?? null;
     room.usedWordIndices = new Set(data.usedWordIndices ?? []);
     room.restorePlayers(data);

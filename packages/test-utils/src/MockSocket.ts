@@ -64,6 +64,7 @@ export class MockSocketClient extends EventEmitter {
 export class MockIO {
   broadcasts: Map<string, EmittedEvent[]> = new Map();
   engine = { clientsCount: 0 };
+  sockets = { sockets: new Map<string, MockSocketClient>() };
 
   to(room: string): { emit: (event: string, ...args: unknown[]) => void } {
     return {

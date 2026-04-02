@@ -31,6 +31,7 @@ socket.on('room:created', ({ roomCode, playerId, room }) => {
     hostId: room.hostId,
     players: room.players,
     settings: room.settings,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: 'LOBBY',
   });
   saveSession();
@@ -44,6 +45,7 @@ socket.on('room:joined', ({ roomCode, playerId, room }) => {
     hostId: room.hostId,
     players: room.players,
     settings: room.settings,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: room.phase || 'LOBBY',
   });
   saveSession();
@@ -58,6 +60,7 @@ socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
     hostId: room.hostId,
     players: room.players,
     settings: room.settings,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: room.phase || 'LOBBY',
   };
   if (game) {
@@ -127,6 +130,9 @@ socket.on('room:host-updated', ({ hostId }) => {
 // Lobby
 socket.on('team:updated', ({ players }) => {
   useGameStore.setState({ players });
+});
+socket.on('team-names:updated', ({ teamNames }) => {
+  useGameStore.setState({ teamNames });
 });
 socket.on('settings:updated', ({ settings }) => {
   useGameStore.setState({ settings });
@@ -250,6 +256,7 @@ socket.on('game:reset', ({ room }) => {
     hostId: room.hostId,
     players: room.players,
     settings: room.settings,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: 'LOBBY',
   });
 });

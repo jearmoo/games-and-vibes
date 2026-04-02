@@ -53,6 +53,7 @@ export interface CaveRoomDTO {
   hostId: string;
   players: CavePlayerDTO[];
   settings: CaveSettings;
+  teamNames: { A: string; B: string };
   phase: GamePhase | null;
   scores: { A: number; B: number };
 }
