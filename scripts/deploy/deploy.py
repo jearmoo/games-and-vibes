@@ -158,7 +158,7 @@ def run_deploy(target_sha: str) -> tuple[int, str]:
     log_and_collect(f'Rebuilding for commit {target_sha}...')
     env = {**os.environ, 'GIT_COMMIT': target_sha}
     result = run_cmd(
-        ['docker', 'compose', 'up', '--build', '-d'],
+        ['docker', 'compose', 'up', '--build', '--force-recreate', '-d'],
         env=env,
         timeout=DEPLOY_TIMEOUT,
     )
