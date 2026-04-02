@@ -90,12 +90,21 @@ export const initialState = {
   kickReason: null,
 };
 
+let errorTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useGameStore = create<GameStore>((set) => ({
   ...initialState,
   setPlayerName: (name) => set({ playerName: name }),
   setError: (msg) => {
+    if (errorTimer) clearTimeout(errorTimer);
+    errorTimer = null;
     set({ error: msg });
-    if (msg) setTimeout(() => set({ error: null }), 4000);
+    if (msg) {
+      errorTimer = setTimeout(() => {
+        errorTimer = null;
+        set({ error: null });
+      }, 4000);
+    }
   },
   reset: () => set(initialState),
 }));
