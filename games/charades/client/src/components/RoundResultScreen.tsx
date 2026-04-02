@@ -25,7 +25,11 @@ export default function RoundResultScreen() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full word-card rounded-2xl p-5"
         >
-          <div className="font-display text-xl text-charades tracking-wider mb-3">{lastRound.teamName}</div>
+          <div
+            className={`font-display text-xl tracking-wider mb-3 ${lastRound.teamName === teams[0].name ? 'text-team1' : 'text-team2'}`}
+          >
+            {lastRound.teamName}
+          </div>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-display text-green-400">{lastRound.correct}</div>
@@ -52,7 +56,9 @@ export default function RoundResultScreen() {
         <div className="flex justify-around">
           {teams.map((team, i) => (
             <div key={i} className="text-center">
-              <div className="font-display text-3xl text-white animate-score-pop">{team.score}</div>
+              <div className={`font-display text-3xl animate-score-pop ${i === 0 ? 'text-team1' : 'text-team2'}`}>
+                {team.score}
+              </div>
               <div className="text-sm text-gray-400">{team.name}</div>
             </div>
           ))}
@@ -90,7 +96,7 @@ export default function RoundResultScreen() {
               whileTap={{ scale: 0.95 }}
               onClick={() => handleStartRound(i)}
               disabled={starting}
-              className="w-full py-4 rounded-2xl btn-charades text-white font-display text-lg tracking-wider disabled:opacity-50"
+              className={`w-full py-4 rounded-2xl ${i === 0 ? 'btn-team1' : 'btn-team2'} text-white font-display text-lg tracking-wider disabled:opacity-50`}
             >
               {team.name}
             </motion.button>

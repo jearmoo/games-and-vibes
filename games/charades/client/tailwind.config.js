@@ -20,12 +20,18 @@ export default {
           glow: '#34d399',
           dark: '#059669',
         },
+        team1: {
+          DEFAULT: '#06b6d4',
+          dark: '#0891b2',
+        },
+        team2: {
+          DEFAULT: '#f59e0b',
+          dark: '#d97706',
+        },
       },
       animation: {
         'glow-green': 'glow-green 2s ease-in-out infinite alternate',
         'card-in': 'card-in 0.3s ease-out',
-        'flash-correct': 'flash-correct 0.4s ease-out',
-        'flash-pass': 'flash-pass 0.4s ease-out',
       },
       keyframes: {
         'glow-green': {
@@ -35,14 +41,6 @@ export default {
         'card-in': {
           '0%': { opacity: '0', transform: 'scale(0.8) translateY(20px)' },
           '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
-        },
-        'flash-correct': {
-          '0%': { backgroundColor: 'rgba(16, 185, 129, 0.4)' },
-          '100%': { backgroundColor: 'transparent' },
-        },
-        'flash-pass': {
-          '0%': { backgroundColor: 'rgba(239, 68, 68, 0.4)' },
-          '100%': { backgroundColor: 'transparent' },
         },
       },
     },
