@@ -184,18 +184,18 @@ export default function LobbyScreen() {
     </div>
   );
 
-  if (!host) return content;
-
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={host ? sensors : undefined} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       {content}
-      <DragOverlay>
-        {activePlayer && (
-          <div className="px-3 py-2 glass-card rounded-xl text-sm text-white font-semibold shadow-lg shadow-black/40 border border-white/10">
-            {activePlayer.name}
-          </div>
-        )}
-      </DragOverlay>
+      {host && (
+        <DragOverlay>
+          {activePlayer && (
+            <div className="px-3 py-2 glass-card rounded-xl text-sm text-white font-semibold shadow-lg shadow-black/40 border border-white/10">
+              {activePlayer.name}
+            </div>
+          )}
+        </DragOverlay>
+      )}
     </DndContext>
   );
 }
@@ -240,14 +240,14 @@ function UnassignedSection({
               {p.id === myId && (
                 <>
                   <button
-                    data-testid="lobby-join-team-a"
+                    data-testid="lobby-self-join-a"
                     onClick={() => socket.emit('team:join', { team: 'A' })}
                     className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
                   >
                     → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
                   </button>
                   <button
-                    data-testid="lobby-join-team-b"
+                    data-testid="lobby-self-join-b"
                     onClick={() => socket.emit('team:join', { team: 'B' })}
                     className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
                   >
@@ -355,8 +355,8 @@ function TeamColumn({
 
   const colors =
     variant === 'a'
-      ? { header: 'btn-team-a', badge: 'bg-team-a/20 text-team-a-glow', border: 'border-team-a/20', dot: 'bg-team-a' }
-      : { header: 'btn-team-b', badge: 'bg-team-b/20 text-team-b-glow', border: 'border-team-b/20', dot: 'bg-team-b' };
+      ? { header: 'btn-team-a', badge: 'bg-team-a/20 text-team-a-glow', border: 'border-team-a/20' }
+      : { header: 'btn-team-b', badge: 'bg-team-b/20 text-team-b-glow', border: 'border-team-b/20' };
 
   const handleNameSubmit = () => {
     setEditing(false);

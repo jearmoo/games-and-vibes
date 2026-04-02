@@ -12,6 +12,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 # Copy all package.jsons for workspace resolution
 COPY packages/server-core/package.json packages/server-core/
 COPY packages/client-core/package.json packages/client-core/
+COPY packages/test-utils/package.json packages/test-utils/
 COPY games/odes-for-cave-men/shared/package.json games/odes-for-cave-men/shared/
 COPY games/odes-for-cave-men/server/package.json games/odes-for-cave-men/server/
 COPY games/odes-for-cave-men/client/package.json games/odes-for-cave-men/client/

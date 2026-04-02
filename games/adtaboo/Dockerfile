@@ -13,6 +13,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/server-core/package.json packages/server-core/
 COPY packages/client-core/package.json packages/client-core/
 COPY packages/word-providers/package.json packages/word-providers/
+COPY packages/test-utils/package.json packages/test-utils/
 COPY games/adtaboo/shared/package.json games/adtaboo/shared/
 COPY games/adtaboo/server/package.json games/adtaboo/server/
 COPY games/adtaboo/client/package.json games/adtaboo/client/

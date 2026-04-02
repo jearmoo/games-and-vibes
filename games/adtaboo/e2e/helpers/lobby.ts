@@ -31,9 +31,16 @@ export async function joinRoom(page: Page, name: string, roomCode: string) {
   await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
 }
 
-/** Player self-joins a team */
+/** Player self-joins a team (works for both host and non-host) */
 export async function joinTeam(page: Page, team: 'A' | 'B') {
-  await page.getByTestId(`lobby-join-team-${team.toLowerCase()}`).click();
+  const t = team.toLowerCase();
+  const headerBtn = page.getByTestId(`lobby-join-team-${t}`);
+  const selfBtn = page.getByTestId(`lobby-self-join-${t}`);
+  if (await selfBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await selfBtn.click();
+  } else {
+    await headerBtn.click();
+  }
   await page.waitForTimeout(300);
 }
 

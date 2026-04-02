@@ -21,6 +21,10 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
 
     const oldTeam = player.team;
     if (oldTeam === team) return;
+
+    // During active games, only allow unassigned mid-game joiners to pick a team
+    if (room.isGameActive() && oldTeam) return;
+
     if (oldTeam) socket.leave(`${room.code}:team${oldTeam}`);
     player.team = team;
     room.touch();
