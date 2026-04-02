@@ -62,12 +62,18 @@ describe('CaveRoom', () => {
 
     it('fails with < 2 on team A', () => {
       room.getPlayer('p2')!.connected = false;
-      expect(room.canStart().ok).toBe(false);
+      expect(room.getTeamPlayers('A')).toHaveLength(1);
+      const result = room.canStart();
+      expect(result.ok).toBe(false);
+      expect(result.reason).toContain('Team A');
     });
 
     it('fails with < 2 on team B', () => {
       room.getPlayer('p4')!.connected = false;
-      expect(room.canStart().ok).toBe(false);
+      expect(room.getTeamPlayers('B')).toHaveLength(1);
+      const result = room.canStart();
+      expect(result.ok).toBe(false);
+      expect(result.reason).toContain('Team B');
     });
   });
 
