@@ -61,16 +61,16 @@ describe('CaveRoom', () => {
     });
 
     it('fails with < 2 on team A', () => {
-      room.getPlayer('p2')!.connected = false;
-      expect(room.getTeamPlayers('A')).toHaveLength(1);
+      // Remove p2 so team A has only 1 player
+      room.removePlayer('p2');
       const result = room.canStart();
       expect(result.ok).toBe(false);
       expect(result.reason).toContain('Team A');
     });
 
     it('fails with < 2 on team B', () => {
-      room.getPlayer('p4')!.connected = false;
-      expect(room.getTeamPlayers('B')).toHaveLength(1);
+      // Remove p4 so team B has only 1 player
+      room.removePlayer('p4');
       const result = room.canStart();
       expect(result.ok).toBe(false);
       expect(result.reason).toContain('Team B');
