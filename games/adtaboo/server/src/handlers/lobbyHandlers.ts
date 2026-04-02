@@ -26,7 +26,7 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     // Mid-game joiner picked a team — send them full game state
     if (room.isGameActive()) {
       socket.emit('room:mid-game-ready', {
-        game: buildGameState(room),
+        game: buildGameState(room, playerId),
         room: room.toDTO(),
       });
     }
@@ -48,6 +48,7 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
+    if (room.game?.phase === GamePhase.CLUING_A || room.game?.phase === GamePhase.CLUING_B) return;
     if (room.setTabooMaster(team, masterId)) {
       io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
       const masterName = room.getPlayer(masterId)?.name;

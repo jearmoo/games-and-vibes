@@ -395,11 +395,11 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     return current + 1;
   }
 
-  undoBuzzTabooWord(word: string): number {
+  undoBuzzTabooWord(word: string): number | null {
     const challenge = this.getActiveChallenge();
-    if (!challenge || !this.game) return 0;
+    if (!challenge || !this.game) return null;
     const current = challenge.tabooBuzzes[word] || 0;
-    if (current <= 0) return 0;
+    if (current <= 0) return null;
     challenge.tabooBuzzes[word] = current - 1;
     const team = this.getCluingTeam()!;
     this.game.scores[team] += 1;

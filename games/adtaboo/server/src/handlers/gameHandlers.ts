@@ -136,6 +136,7 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
     if (playerId !== room.tabooMasters[opposingTeam]) return;
 
     const count = room.undoBuzzTabooWord(tabooWord);
+    if (count === null) return;
     logger.info('game', 'Taboo undo-buzz', { room: room.code, tabooWord, count });
     io.to(room.code).emit('taboo:unbuzzed', {
       tabooWord,
