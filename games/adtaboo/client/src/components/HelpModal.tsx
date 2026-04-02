@@ -9,7 +9,7 @@ export function HelpButton({ className }: { className?: string }) {
         onClick={() => setOpen(true)}
         className={
           className ??
-          'w-5 h-5 flex items-center justify-center rounded text-[10px] text-gray-500 hover:text-accent hover:bg-white/5 transition-colors font-semibold'
+          'w-5 h-5 flex items-center justify-center rounded text-[10px] text-gray-400 hover:text-accent hover:bg-white/5 transition-colors font-semibold'
         }
         title="How to Play"
         aria-label="How to Play"
@@ -38,7 +38,7 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
         <button
           onClick={onClose}
           aria-label="Close help"
-          className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-base"
+          className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-base"
         >
           &times;
         </button>
@@ -53,7 +53,7 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-4 text-sm leading-relaxed">
           <div>
             <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-1">The Game</div>
-            <p className="text-gray-400">
+            <p className="text-gray-300">
               Two teams compete in rounds. Each round, both Taboo Masters simultaneously set up challenges for the
               opposing team — choosing taboo words and picking a clue-giver. Then teams take turns cluing.
             </p>
@@ -61,7 +61,7 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
 
           <div>
             <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-1">Roles</div>
-            <div className="space-y-2 text-gray-400">
+            <div className="space-y-2 text-gray-300">
               <p>
                 <span className="text-white font-medium">Taboo Master</span> — Picks forbidden words for the other team
                 and buzzes when they slip up during cluing.
@@ -81,7 +81,7 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
 
           <div>
             <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-1">Scoring</div>
-            <p className="text-gray-400">
+            <p className="text-gray-300">
               <span className="text-emerald-400 font-medium">+3</span> per correct word &nbsp;
               <span className="text-team-b-glow font-medium">-1</span> per taboo buzz
             </p>
@@ -89,19 +89,19 @@ export default function HelpModal({ onClose }: { onClose: () => void }) {
 
           <div>
             <div className="text-accent font-semibold text-xs uppercase tracking-wider mb-1">Flow</div>
-            <p className="text-gray-400 text-xs mb-2">
+            <p className="text-gray-300 text-xs mb-2">
               Each round repeats this cycle. The game lasts multiple rounds (set by host).
             </p>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
-              <span className="px-2 py-0.5 rounded bg-white/5 text-gray-400">Setup</span>
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 flex-wrap">
+              <span className="px-2 py-0.5 rounded bg-white/5 text-gray-300">Setup</span>
               <span>&#8594;</span>
               <span className="px-2 py-0.5 rounded bg-team-a/10 text-team-a-glow">Team A Clues</span>
               <span>&#8594;</span>
               <span className="px-2 py-0.5 rounded bg-team-b/10 text-team-b-glow">Team B Clues</span>
               <span>&#8594;</span>
-              <span className="px-2 py-0.5 rounded bg-white/5 text-gray-400">Results</span>
+              <span className="px-2 py-0.5 rounded bg-white/5 text-gray-300">Results</span>
               <span>&#8594;</span>
-              <span className="px-2 py-0.5 rounded bg-white/5 text-gray-500 italic">next round...</span>
+              <span className="px-2 py-0.5 rounded bg-white/5 text-gray-400 italic">next round...</span>
             </div>
           </div>
         </div>

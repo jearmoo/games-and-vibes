@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { socket } from '../socket';
-import { useGameStore, getRoomCodeFromUrl } from '../store';
+import { useGameStore, getRoomCodeFromUrl, SESSION_KEY } from '../store';
 
 export default function HomeScreen() {
   const urlCode = getRoomCodeFromUrl();
@@ -21,7 +21,18 @@ export default function HomeScreen() {
     if (!name.trim() || !joinCode.trim() || loading) return;
     setLoading(true);
     useGameStore.getState().setPlayerName(name.trim());
-    socket.emit('room:join', { roomCode: joinCode.trim().toUpperCase(), playerName: name.trim() });
+    const code = joinCode.trim().toUpperCase();
+    let sessionId: string | undefined;
+    try {
+      const saved = localStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session.roomCode === code) sessionId = session.playerId;
+      }
+    } catch {
+      /* ignore parse errors */
+    }
+    socket.emit('room:join', { roomCode: code, playerName: name.trim(), sessionId });
     setTimeout(() => setLoading(false), 5000);
   };
 
@@ -38,7 +49,7 @@ export default function HomeScreen() {
         >
           AD TABOO
         </h1>
-        <p className="text-gray-500 text-sm tracking-widest uppercase">Adversarial Taboo</p>
+        <p className="text-gray-400 text-sm tracking-widest uppercase">Adversarial Taboo</p>
       </div>
 
       <div className="w-full max-w-xs space-y-4 relative z-10">
@@ -54,7 +65,7 @@ export default function HomeScreen() {
             }
           }}
           maxLength={20}
-          className="game-input w-full px-5 py-4 rounded-2xl text-white text-center text-lg placeholder-gray-600 font-medium"
+          className="game-input w-full px-5 py-4 rounded-2xl text-white text-center text-lg placeholder-gray-500 font-medium"
         />
 
         {mode === 'menu' ? (
@@ -83,7 +94,7 @@ export default function HomeScreen() {
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               maxLength={4}
               autoFocus={!urlCode}
-              className="game-input w-full px-5 py-4 rounded-2xl text-white text-center text-3xl tracking-[0.4em] font-display placeholder-gray-600 uppercase"
+              className="game-input w-full px-5 py-4 rounded-2xl text-white text-center text-3xl tracking-[0.4em] font-display placeholder-gray-500 uppercase"
             />
             <button
               onClick={handleJoin}
@@ -98,7 +109,7 @@ export default function HomeScreen() {
                   setMode('menu');
                   setJoinCode('');
                 }}
-                className="w-full py-3 text-gray-500 hover:text-white transition-colors text-sm"
+                className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm"
               >
                 Back
               </button>

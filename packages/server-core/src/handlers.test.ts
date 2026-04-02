@@ -71,6 +71,93 @@ describe('lobbyHandlers', () => {
     expect(errorEmit).toBeDefined();
     expect((errorEmit![0] as any).message).toBe('Room not found');
   });
+
+  it('room:join reconnects by name when player is already in room', () => {
+    socket.trigger('room:create', { playerName: 'Alice' });
+    const { roomCode } = socket.getLastEmitted('room:created')![0] as any;
+
+    // Re-join with same name (e.g. re-attached)
+    socket.trigger('room:join', { roomCode, playerName: 'Alice' });
+    const rejoinEmit = socket.getLastEmitted('room:rejoined');
+    expect(rejoinEmit).toBeDefined();
+  });
+
+  it('room:join reconnects disconnected player by name', () => {
+    socket.trigger('room:create', { playerName: 'Alice' });
+    const { roomCode, playerId } = socket.getLastEmitted('room:created')![0] as any;
+
+    // Disconnect Alice
+    const room = rooms.getRoom(roomCode)!;
+    const player = room.getPlayer(playerId)!;
+    player.connected = false;
+
+    // Rejoin with same name, no sessionId
+    socket.trigger('room:join', { roomCode, playerName: 'Alice' });
+    const rejoinEmit = socket.getLastEmitted('room:rejoined');
+    expect(rejoinEmit).toBeDefined();
+    expect(player.connected).toBe(true);
+  });
+
+  it('room:join allows reconnection via sessionId', () => {
+    socket.trigger('room:create', { playerName: 'Alice' });
+    const { roomCode, playerId } = socket.getLastEmitted('room:created')![0] as any;
+
+    // Disconnect Alice
+    const room = rooms.getRoom(roomCode)!;
+    const player = room.getPlayer(playerId)!;
+    player.connected = false;
+
+    // Reconnect with sessionId
+    socket.trigger('room:join', { roomCode, playerName: 'Alice', sessionId: playerId });
+    const rejoinEmit = socket.getLastEmitted('room:rejoined');
+    expect(rejoinEmit).toBeDefined();
+    expect(player.connected).toBe(true);
+  });
+
+  it('room:join rejects new player when game active and no onMidGameJoin', () => {
+    socket.trigger('room:create', { playerName: 'Alice' });
+    const { roomCode } = socket.getLastEmitted('room:created')![0] as any;
+
+    const room = rooms.getRoom(roomCode)!;
+    room.gameActive = true;
+
+    socket.trigger('room:join', { roomCode, playerName: 'NewPlayer' });
+    const errorEmit = socket.getLastEmitted('room:error');
+    expect(errorEmit).toBeDefined();
+    expect((errorEmit![0] as any).message).toContain('Game in progress');
+  });
+
+  it('room:join allows mid-game join when onMidGameJoin callback provided', () => {
+    const mock = createMockSocketContext<TestRoom>(socketOpts);
+    let midGameJoinCalled = false;
+    registerLobbyHandlers(mock.ctx, {
+      buildGameState: () => ({ phase: 'PLAYING' }),
+      onMidGameJoin: () => {
+        midGameJoinCalled = true;
+      },
+    });
+
+    mock.socket.trigger('room:create', { playerName: 'Host' });
+    const { roomCode } = mock.socket.getLastEmitted('room:created')![0] as any;
+
+    const room = mock.rooms.getRoom(roomCode)!;
+    room.gameActive = true;
+
+    mock.socket.trigger('room:join', { roomCode, playerName: 'Latecomer' });
+    const midGameEmit = mock.socket.getLastEmitted('room:mid-game-joined');
+    expect(midGameEmit).toBeDefined();
+    expect(midGameJoinCalled).toBe(true);
+    mock.rooms.destroy();
+  });
+
+  it('room:join allows different names in the same room', () => {
+    socket.trigger('room:create', { playerName: 'Alice' });
+    const { roomCode } = socket.getLastEmitted('room:created')![0] as any;
+
+    socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+    const joinedEmit = socket.getLastEmitted('room:joined');
+    expect(joinedEmit).toBeDefined();
+  });
 });
 
 describe('connectionHandlers', () => {

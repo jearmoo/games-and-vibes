@@ -29,6 +29,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
   declare settings: AdtabooSettings;
   game: GameState | null = null;
   tabooMasters: { A: string | null; B: string | null } = { A: null, B: null };
+  teamNames: { A: string; B: string } = { A: 'Team A', B: 'Team B' };
   roundHistory: RoundArchiveEntry[] = [];
 
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -79,6 +80,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
       })),
+      teamNames: this.teamNames,
       ...this.serializeGameState(),
     };
   }
@@ -150,6 +152,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       settings: { ...this.settings },
       phase: this.game?.phase ?? null,
       tabooMasters: { ...this.tabooMasters },
+      teamNames: { ...this.teamNames },
     };
   }
 
@@ -233,7 +236,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     const normalized = word.trim().toLowerCase();
     if (!normalized || normalized.length > 50 || challenge.tabooSuggestions.includes(normalized))
       return challenge.tabooSuggestions;
-    if (challenge.tabooSuggestions.length >= this.settings.maxTabooWords) return challenge.tabooSuggestions;
+    // No cap — let everyone suggest freely, TM curates down to maxTabooWords before locking in
     challenge.tabooSuggestions.push(normalized);
     this.touch();
     return challenge.tabooSuggestions;
@@ -269,7 +272,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
   confirmChallenge(forTeam: TeamId): boolean {
     if (!this.game || this.game.phase !== GamePhase.PARALLEL_SETUP) return false;
     const challenge = this.game.challenges[forTeam];
-    if (challenge.tabooSuggestions.length < 1) return false;
+    if (challenge.tabooSuggestions.length !== this.settings.maxTabooWords) return false;
     challenge.tabooWords = [...challenge.tabooSuggestions];
     challenge.ready = true;
     this.touch();
@@ -478,6 +481,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     room.lastActivity = data.lastActivity ?? Date.now();
     room.settings = { ...room.settings, ...data.settings };
     room.tabooMasters = data.tabooMasters ?? { A: null, B: null };
+    room.teamNames = data.teamNames ?? { A: 'Team A', B: 'Team B' };
     room.roundHistory = data.roundHistory ?? [];
     room.game = data.game ?? null;
     room.restorePlayers(data);
