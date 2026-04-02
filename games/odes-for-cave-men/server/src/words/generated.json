@@ -1,0 +1,64 @@
+{
+  "game_data": [
+    {
+      "1": "Post",
+      "3": "Postcard",
+      "difficulty": 2
+    },
+    {
+      "1": "Door",
+      "3": "Doorknob",
+      "difficulty": 3
+    },
+    {
+      "1": "Mail",
+      "3": "Mailman",
+      "difficulty": 3
+    },
+    {
+      "1": "Host",
+      "3": "Hostage",
+      "difficulty": 4
+    },
+    {
+      "1": "Spout",
+      "3": "Waterspout",
+      "difficulty": 3
+    },
+    {
+      "1": "Port",
+      "3": "Passport",
+      "difficulty": 2
+    },
+    {
+      "1": "Vent",
+      "3": "Ventilator",
+      "difficulty": 4
+    },
+    {
+      "1": "Ladle",
+      "3": "Soup Ladle",
+      "difficulty": 3
+    },
+    {
+      "1": "Riddle",
+      "3": "Riddled with holes",
+      "difficulty": 5
+    },
+    {
+      "1": "Ash",
+      "3": "Ashtray",
+      "difficulty": 2
+    },
+    {
+      "1": "Plump",
+      "3": "Plumped up",
+      "difficulty": 4
+    },
+    {
+      "1": "Picket",
+      "3": "Picket Fence",
+      "difficulty": 4
+    }
+  ]
+}
