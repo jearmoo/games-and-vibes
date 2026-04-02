@@ -253,7 +253,7 @@ function PlayerPill({
   highlight?: string;
   actions?: React.ReactNode;
 }) {
-  const isDraggable = isHost && player.id !== myId;
+  const isDraggable = isHost;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: player.id,
     disabled: !isDraggable,

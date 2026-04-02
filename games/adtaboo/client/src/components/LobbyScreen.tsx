@@ -226,9 +226,9 @@ export default function LobbyScreen() {
             ${canStart && !starting ? 'btn-success text-white' : 'bg-surface-raised text-gray-500 border border-white/5'}`}
         >
           {!canStart
-            ? !tabooMasters.A || !tabooMasters.B
-              ? 'Each team needs a taboo master'
-              : 'Need 2+ per team'
+            ? teamA.length < 2 || teamB.length < 2
+              ? 'Need 2+ per team'
+              : 'Each team needs a taboo master'
             : starting
               ? 'Starting...'
               : 'Start Game'}
@@ -318,7 +318,7 @@ function PlayerPill({
   highlight?: string;
   actions?: React.ReactNode;
 }) {
-  const isDraggable = isHost && player.id !== myId;
+  const isDraggable = isHost;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: player.id,
     disabled: !isDraggable,
