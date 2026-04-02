@@ -56,24 +56,8 @@ export default function LobbyScreen() {
 
       {/* Teams */}
       <div className="flex gap-3 flex-1 min-h-0">
-        <TeamColumn
-          team="A"
-          variant="a"
-          players={teamA}
-          myId={me?.id ?? null}
-          hostId={hostId}
-          isHost={host}
-          onJoin={() => socket.emit('team:join', { team: 'A' })}
-        />
-        <TeamColumn
-          team="B"
-          variant="b"
-          players={teamB}
-          myId={me?.id ?? null}
-          hostId={hostId}
-          isHost={host}
-          onJoin={() => socket.emit('team:join', { team: 'B' })}
-        />
+        <TeamColumn team="A" variant="a" players={teamA} myId={me?.id ?? null} hostId={hostId} isHost={host} />
+        <TeamColumn team="B" variant="b" players={teamB} myId={me?.id ?? null} hostId={hostId} isHost={host} />
       </div>
 
       {unassigned.length > 0 && (
@@ -95,15 +79,15 @@ export default function LobbyScreen() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
-                    className="text-[10px] text-team-a-glow hover:text-white transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
                   >
-                    → A
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
                   </button>
                   <button
                     onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
-                    className="text-[10px] text-team-b-glow hover:text-white transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
                   >
-                    → B
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
                   </button>
                 </div>
               )}
@@ -186,7 +170,6 @@ function TeamColumn({
   myId,
   hostId,
   isHost,
-  onJoin,
 }: {
   team: string;
   variant: 'a' | 'b';
@@ -194,9 +177,7 @@ function TeamColumn({
   myId: string | null;
   hostId: string | null;
   isHost: boolean;
-  onJoin: () => void;
 }) {
-  const isOnTeam = players.some((p) => p.id === myId);
   const colors =
     variant === 'a'
       ? { header: 'btn-team-a', badge: 'bg-team-a/20 text-team-a-glow', border: 'border-team-a/20' }
@@ -221,16 +202,6 @@ function TeamColumn({
           </div>
         ))}
       </div>
-      {isHost && !isOnTeam && (
-        <div className="p-2.5 pt-0">
-          <button
-            onClick={onJoin}
-            className={`w-full py-2.5 rounded-xl text-white text-sm font-display tracking-wider transition-all active:scale-[0.97] ${colors.header}`}
-          >
-            Join
-          </button>
-        </div>
-      )}
     </div>
   );
 }

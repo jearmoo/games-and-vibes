@@ -31,12 +31,6 @@ export async function joinRoom(page: Page, name: string, roomCode: string) {
   await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
 }
 
-/** Join a team from the lobby */
-export async function joinTeam(page: Page, team: 'A' | 'B') {
-  await page.getByTestId(`lobby-join-team-${team.toLowerCase()}`).click();
-  await page.waitForTimeout(300);
-}
-
 /** Host assigns a player to a team */
 export async function assignToTeam(hostPage: Page, playerName: string, team: 'A' | 'B') {
   await hostPage.getByTestId(`lobby-assign-${playerName}-${team.toLowerCase()}`).click();
