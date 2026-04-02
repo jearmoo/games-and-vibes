@@ -206,15 +206,13 @@ These rules prevent the bugs and inconsistencies that break multiplayer games:
 
 ## Testing
 
-Use `@games/test-utils` for all game tests:
-- `TestRoom` — Concrete BaseRoom for testing base class behavior
-- `MockStore` — In-memory RoomStore/MetricsStore
-- `MockSocketClient` / `MockIO` / `createMockSocketContext()` — Socket.IO mocks
+Use `/game-test` for comprehensive guidance on writing and running tests. It covers unit tests (room class, handlers, persistence, client utils), e2e tests (Playwright), the full `@games/test-utils` API, and a new-game testing checklist.
 
-What to test:
-- Room class: state transitions, edge cases (player disconnect during each phase), serialization round-trip
-- Handlers: use `createMockSocketContext()` to simulate socket events and verify emissions
-- Run `pnpm -r test` before committing
+Quick commands:
+```bash
+pnpm -r --filter='!*-e2e' test   # All unit tests
+pnpm run typecheck                # Cross-package type errors
+```
 
 ## Validation Checklist
 
