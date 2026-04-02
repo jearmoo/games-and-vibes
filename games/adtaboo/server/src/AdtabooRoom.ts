@@ -438,7 +438,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       return { nextPhase: GamePhase.CLUING_B, turnScore: score };
     } else {
       this.archiveCurrentRound();
-      if (this.game.round >= this.settings.rounds) {
+      if (this.settings.rounds !== null && this.game.round >= this.settings.rounds) {
         this.game.phase = GamePhase.GAME_OVER;
         return { nextPhase: GamePhase.GAME_OVER, turnScore: score };
       }

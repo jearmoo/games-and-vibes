@@ -1,5 +1,5 @@
 import { test, expect, type Player } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
+import { createRoom, joinRoom, joinTeam, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
 import { beginCluing, markCorrect, endTurn, waitForGameOver, nextRound, buzzTaboo } from '../helpers/cluing';
 
@@ -35,16 +35,16 @@ test.describe('Happy Path - Full Game', () => {
 
     // --- 1.4 Assign teams ---
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
-    await joinTeam(dave.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
+    await assignToTeam(alice.page, dave.name, 'B');
 
     // --- 1.5 Set taboo masters ---
     await setTabooMaster(alice.page, alice.name);
-    await setTabooMaster(carol.page, carol.name);
+    await setTabooMaster(alice.page, carol.name);
 
     // --- 1.6 Verify non-host view ---
-    await expect(bob.page.getByText('Waiting for host to start the game...')).toBeVisible();
+    await expect(bob.page.getByText('Waiting for host to set up the game...')).toBeVisible();
     await expect(bob.page.getByTestId('lobby-settings')).not.toBeVisible();
 
     // --- 1.7 Start game ---
@@ -68,7 +68,7 @@ test.describe('Happy Path - Full Game', () => {
     await expect(bob.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
 
     // Alice (guesser) should see waiting text
-    await expect(alice.page.getByText(/Waiting for clue-giver|Listen and guess/)).toBeVisible({ timeout: 10_000 });
+    await expect(alice.page.getByText(/Waiting for .+ to begin|Listen and guess/)).toBeVisible({ timeout: 10_000 });
 
     await beginCluing(bob.page);
 

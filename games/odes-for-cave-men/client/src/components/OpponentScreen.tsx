@@ -9,6 +9,10 @@ export default function OpponentScreen() {
   const settings = useGameStore((s) => s.settings);
   const wordsResolved = useGameStore((s) => s.wordsResolved);
   const scores = useGameStore((s) => s.scores);
+  const players = useGameStore((s) => s.players);
+  const cluerId = useGameStore((s) => s.cluerId);
+  const cluer = players.find((p) => p.id === cluerId);
+  const cluerDisconnected = cluer ? !cluer.connected : false;
 
   const [wordsHidden, setWordsHidden] = useState(false);
 
@@ -24,6 +28,12 @@ export default function OpponentScreen() {
           </div>
         </div>
       </div>
+
+      {cluerDisconnected && (
+        <div className="text-center px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          Cluer disconnected — waiting for reconnect...
+        </div>
+      )}
 
       {/* Current word card in portrait style */}
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center">

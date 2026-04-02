@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
+import { createRoom, joinRoom, joinTeam, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn, unlock } from '../helpers/setup';
 
 test.describe('Setup Phase - Unlock and Word Refresh', () => {
@@ -14,12 +14,12 @@ test.describe('Setup Phase - Unlock and Word Refresh', () => {
     await joinRoom(dave.page, dave.name, roomCode);
 
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
-    await joinTeam(dave.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
+    await assignToTeam(alice.page, dave.name, 'B');
 
     await setTabooMaster(alice.page, alice.name);
-    await setTabooMaster(carol.page, carol.name);
+    await setTabooMaster(alice.page, carol.name);
     await startGame(alice.page);
 
     // Alice locks in
@@ -52,12 +52,12 @@ test.describe('Setup Phase - Unlock and Word Refresh', () => {
     await joinRoom(dave.page, dave.name, roomCode);
 
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
-    await joinTeam(dave.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
+    await assignToTeam(alice.page, dave.name, 'B');
 
     await setTabooMaster(alice.page, alice.name);
-    await setTabooMaster(carol.page, carol.name);
+    await setTabooMaster(alice.page, carol.name);
     await startGame(alice.page);
 
     // Wait for words to load (refresh button appears)

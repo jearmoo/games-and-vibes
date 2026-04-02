@@ -32,12 +32,12 @@ During an active game, `removePlayer()` sets `connected=false, removed=true` but
 | Phase | Clue-giver disconnects | Taboo master disconnects | Other player disconnects |
 |---|---|---|---|
 | PARALLEL_SETUP | Clue-giver slot cleared, team must pick a new one | TM reassigned | No game effect |
-| CLUING_A/B | Turn auto-ends via `handleTurnEnd()` | TM reassigned, new TM can buzz | No game effect |
+| CLUING_A/B | Timer continues, clue-giver can rejoin and resume | TM reassigned, new TM can buzz | No game effect |
 | ROUND_RESULT | No effect | No effect | No effect |
 | GAME_OVER | No effect | No effect | No effect |
 
 ### Phase Guard on `endCluing()`
-`endCluing()` returns `null` if the phase is not `CLUING_A` or `CLUING_B`. This guards against double-call from concurrent sources (timer expiry, `clue:end-turn` event, clue-giver disconnect). Callers (`handleTurnEnd`) check for `null` and bail.
+`endCluing()` returns `null` if the phase is not `CLUING_A` or `CLUING_B`. This guards against double-call from concurrent sources (timer expiry, `clue:end-turn` event). Callers (`handleTurnEnd`) check for `null` and bail.
 
 ## Commands
 

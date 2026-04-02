@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam } from '../helpers/lobby';
+import { createRoom, joinRoom, joinTeam, assignToTeam } from '../helpers/lobby';
 
 test.describe('Host Disconnect', () => {
   test.use({ playerCount: 3 });
@@ -12,8 +12,8 @@ test.describe('Host Disconnect', () => {
     await joinRoom(carol.page, carol.name, roomCode);
 
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
 
     // Verify Alice has HOST badge
     await expect(alice.page.getByText('HOST')).toBeVisible();

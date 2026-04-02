@@ -27,7 +27,7 @@ export interface GameStore {
   roomCode: string | null;
   players: Player[];
   hostId: string | null;
-  settings: { rounds: number; timerSeconds: number; wordsPerTurn: number; maxTabooWords: number };
+  settings: { rounds: number | null; timerSeconds: number; wordsPerTurn: number; maxTabooWords: number };
   tabooMasters: { A: string | null; B: string | null };
   teamNames: { A: string; B: string };
 
@@ -150,6 +150,13 @@ export function useLiveScore() {
   const liveScore = correctCount * 3 - totalBuzzes;
 
   return { correctCount, totalBuzzes, buzzedWords, liveScore, remaining };
+}
+
+export function useClueGiverInfo(): { disconnected: boolean; name: string | undefined } {
+  const cgId = useGameStore((s) => s.activeCluingClueGiverId);
+  const players = useGameStore((s) => s.players);
+  const cg = players.find((p) => p.id === cgId);
+  return { disconnected: cg ? !cg.connected : false, name: cg?.name };
 }
 
 export function useIsHost(): boolean {

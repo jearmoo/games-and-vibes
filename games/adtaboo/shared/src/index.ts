@@ -47,7 +47,7 @@ export interface TurnScoreData {
 }
 
 export interface AdtabooSettings extends RoomSettings {
-  rounds: number;
+  rounds: number | null; // null = unlimited rounds
   timerSeconds: number;
   wordsPerTurn: number;
   maxTabooWords: number;

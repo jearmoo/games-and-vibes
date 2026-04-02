@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
+import { createRoom, joinRoom, joinTeam, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 
 test.describe('Reconnection', () => {
   test('player reconnects within grace period and sees game state', async ({ players }) => {
@@ -13,12 +13,12 @@ test.describe('Reconnection', () => {
     await joinRoom(dave.page, dave.name, roomCode);
 
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
-    await joinTeam(dave.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
+    await assignToTeam(alice.page, dave.name, 'B');
 
     await setTabooMaster(alice.page, alice.name);
-    await setTabooMaster(carol.page, carol.name);
+    await setTabooMaster(alice.page, carol.name);
     await startGame(alice.page);
 
     // Carol starts setup but then disconnects

@@ -1,4 +1,4 @@
-import { useGameStore, useLiveScore, useTeamName } from '../store';
+import { useGameStore, useLiveScore, useTeamName, useClueGiverInfo } from '../store';
 import Timer from './Timer';
 
 export default function GuesserScreen() {
@@ -7,6 +7,7 @@ export default function GuesserScreen() {
   const cluingTeam = useGameStore((s) => s.cluingTeam);
   const cluingTeamName = useTeamName(cluingTeam ?? 'A');
   const settings = useGameStore((s) => s.settings);
+  const { disconnected: cgDisconnected, name: cgName } = useClueGiverInfo();
 
   const { totalBuzzes, buzzedWords, liveScore, remaining } = useLiveScore();
   const correctCards = cards.filter((c) => c.result === 'correct');
@@ -16,7 +17,7 @@ export default function GuesserScreen() {
       <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
         <div className="glass-card rounded-2xl p-6 border border-white/5 max-w-xs text-center">
           <div className="font-display text-xl text-white tracking-wider mb-2">{cluingTeamName}'s Turn</div>
-          <div className="text-gray-400 text-sm">Waiting for clue-giver to begin...</div>
+          <div className="text-gray-400 text-sm">Waiting for {cgName ?? 'clue-giver'} to begin...</div>
         </div>
       </div>
     );
@@ -34,6 +35,12 @@ export default function GuesserScreen() {
           </div>
         </div>
       </div>
+
+      {cgDisconnected && (
+        <div className="w-full max-w-xs text-center px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          Clue-giver disconnected — waiting for reconnect...
+        </div>
+      )}
 
       <div className="glass-card rounded-2xl p-6 border border-white/5 w-full max-w-xs text-center">
         <div className="font-display text-xl text-white tracking-wider mb-4">Listen and guess!</div>

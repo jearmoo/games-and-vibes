@@ -25,8 +25,9 @@ export function buildGameState(room: AdtabooRoom, playerId: string) {
     let shouldRedact = false;
 
     if (phase === GamePhase.PARALLEL_SETUP) {
-      // Each team only sees their own setup data
-      shouldRedact = playerTeam !== team;
+      // Each team sees the opposing team's challenge (they're setting up taboo words for it)
+      // but not their own (they'll clue those words later)
+      shouldRedact = playerTeam === team;
     } else if (phase === GamePhase.CLUING_A || phase === GamePhase.CLUING_B) {
       const cluingTeam = phase === GamePhase.CLUING_A ? 'A' : 'B';
       if (team === cluingTeam) {

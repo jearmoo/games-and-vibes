@@ -49,18 +49,33 @@ export default function ScoringScreen() {
 
       {!isGameOver && (
         <div className="text-gray-400 text-xs tracking-wider uppercase">
-          {round < settings.rounds ? `Round ${round + 1} next` : 'Final round'}
+          {settings.rounds === null
+            ? `Round ${round} complete`
+            : round < settings.rounds
+              ? `Round ${round + 1} next`
+              : 'Final round'}
         </div>
       )}
 
       {host && !isGameOver && (
-        <button
-          data-testid="scoring-next-round-button"
-          onClick={() => socket.emit('round:next')}
-          className="btn-primary w-full max-w-xs py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
-        >
-          {round < settings.rounds ? 'Next Round' : 'See Final Results'}
-        </button>
+        <div className="w-full max-w-xs space-y-3">
+          <button
+            data-testid="scoring-next-round-button"
+            onClick={() => socket.emit('round:next')}
+            className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
+          >
+            {settings.rounds !== null && round >= settings.rounds ? 'See Final Results' : 'Next Round'}
+          </button>
+          {settings.rounds === null && (
+            <button
+              data-testid="scoring-end-game-button"
+              onClick={() => socket.emit('game:end')}
+              className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              End Game
+            </button>
+          )}
+        </div>
       )}
       {!host && !isGameOver && (
         <div className="text-gray-500 text-xs tracking-wider animate-pulse-slow">Waiting for host to continue...</div>

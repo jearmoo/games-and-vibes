@@ -103,7 +103,9 @@ export default function ScoreBoard() {
               ? teamAName
               : phase === 'CLUING_B'
                 ? teamBName
-                : `R${round}/${settings.rounds}`}
+                : settings.rounds === null
+                  ? `R${round}`
+                  : `R${round}/${settings.rounds}`}
           <span className="ml-1.5 text-gray-600">{expanded ? '\u25B2' : '\u25BC'}</span>
         </div>
         <div className={`text-right ${cluingTeam && cluingTeam !== 'B' ? 'opacity-50' : ''}`}>
@@ -179,17 +181,20 @@ function RosterColumn({
               {isHost && <span className="text-indigo-400 text-[9px] ml-1">H</span>}
               {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
-            {isOnTeam && !isTM && p.connected && (!phase || phase === 'LOBBY' || phase === 'ROUND_RESULT') && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  socket.emit('taboo-master:set', { team, masterId: p.id });
-                }}
-                className="text-[9px] text-gray-500 hover:text-accent transition-colors"
-              >
-                Set TM
-              </button>
-            )}
+            {myId === hostId &&
+              !isTM &&
+              p.connected &&
+              (!phase || phase === 'LOBBY' || phase === 'PARALLEL_SETUP' || phase === 'ROUND_RESULT') && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    socket.emit('taboo-master:set', { team, masterId: p.id });
+                  }}
+                  className="text-[9px] text-gray-500 hover:text-accent transition-colors"
+                >
+                  Set TM
+                </button>
+              )}
           </div>
         );
       })}
