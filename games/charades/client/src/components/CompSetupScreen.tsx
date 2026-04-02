@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useCharadesStore } from '../store';
 
 const TIMER_OPTIONS = [30, 45, 60, 90, 120];
