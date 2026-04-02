@@ -3,13 +3,7 @@ import { ConfirmModal, leaveRoom } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, SESSION_KEY } from '../store';
 
-export default function LeaveRoomButton({
-  className,
-  children,
-}: {
-  className?: string;
-  children?: React.ReactNode;
-}) {
+export default function LeaveRoomButton({ className, children }: { className?: string; children?: React.ReactNode }) {
   const [confirming, setConfirming] = useState(false);
 
   const handleConfirm = () => {
