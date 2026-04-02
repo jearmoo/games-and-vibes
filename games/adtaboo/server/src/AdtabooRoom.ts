@@ -222,8 +222,8 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       fetchWords(this.settings.wordsPerTurn),
     ]);
     if (!this.game) return;
-    this.game.challenges.A.cards = wordsForA.map((w) => ({ word: w, result: null }));
-    this.game.challenges.B.cards = wordsForB.map((w) => ({ word: w, result: null }));
+    this.game.challenges.A.cards = wordsForA.map((w: string) => ({ word: w, result: null }));
+    this.game.challenges.B.cards = wordsForB.map((w: string) => ({ word: w, result: null }));
     this.touch();
   }
 
