@@ -27,6 +27,7 @@ REPO_DIR = SCRIPT_DIR.parent.parent
 LOG_FILE = SCRIPT_DIR / 'deploy.log'
 PORT = 9877
 IMAGES = ['games-adtaboo', 'games-landing']
+CONTAINER_NAMES = ['adversarial-taboo', 'games-landing']  # must match container_name in docker-compose.yml
 DEPLOY_TIMEOUT = 280  # seconds (buffer under CI's 300s timeout)
 MAX_DEPLOY_CYCLES = 5  # safety valve for the deploy loop
 
@@ -153,6 +154,13 @@ def run_deploy(target_sha: str) -> tuple[int, str]:
     if result.returncode != 0:
         log_and_collect(f'git checkout failed (exit {result.returncode})')
         return result.returncode, '\n'.join(output_lines)
+
+    # Remove stale containers that may conflict with docker compose
+    # (--force-recreate only handles containers owned by the current project)
+    log_and_collect('Removing stale containers...')
+    run_cmd(['docker', 'compose', 'down', '--remove-orphans'], timeout=30)
+    for name in CONTAINER_NAMES:
+        run_cmd(['docker', 'rm', '-f', name])
 
     # Rebuild
     log_and_collect(f'Rebuilding for commit {target_sha}...')
