@@ -67,7 +67,6 @@ export default function LobbyScreen() {
           tabooMasterId={tabooMasters.A}
           hostId={hostId}
           isHost={host}
-          onJoin={() => socket.emit('team:join', { team: 'A' })}
           onSetMaster={(id) => socket.emit('taboo-master:set', { team: 'A', masterId: id })}
         />
         <TeamColumn
@@ -78,7 +77,6 @@ export default function LobbyScreen() {
           tabooMasterId={tabooMasters.B}
           hostId={hostId}
           isHost={host}
-          onJoin={() => socket.emit('team:join', { team: 'B' })}
           onSetMaster={(id) => socket.emit('taboo-master:set', { team: 'B', masterId: id })}
         />
       </div>
@@ -103,16 +101,16 @@ export default function LobbyScreen() {
                   <button
                     data-testid={`lobby-assign-${p.name}-a`}
                     onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
-                    className="text-[10px] text-team-a-glow hover:text-white transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
                   >
-                    → A
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
                   </button>
                   <button
                     data-testid={`lobby-assign-${p.name}-b`}
                     onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
-                    className="text-[10px] text-team-b-glow hover:text-white transition-colors"
+                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
                   >
-                    → B
+                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
                   </button>
                 </div>
               )}
@@ -246,7 +244,6 @@ function TeamColumn({
   tabooMasterId,
   hostId,
   isHost,
-  onJoin,
   onSetMaster,
 }: {
   team: TeamId;
@@ -256,10 +253,8 @@ function TeamColumn({
   tabooMasterId: string | null;
   hostId: string | null;
   isHost: boolean;
-  onJoin: () => void;
   onSetMaster: (id: string) => void;
 }) {
-  const isOnTeam = players.some((p) => p.id === myId);
   const teamName = useTeamName(team);
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(teamName);
@@ -345,17 +340,6 @@ function TeamColumn({
           </div>
         ))}
       </div>
-      {isHost && !isOnTeam && (
-        <div className="p-2.5 pt-0">
-          <button
-            data-testid={`lobby-join-team-${team.toLowerCase()}`}
-            onClick={onJoin}
-            className={`w-full py-2.5 rounded-xl text-white text-sm font-display tracking-wider transition-all active:scale-[0.97] ${colors.header}`}
-          >
-            Join
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
+import { createRoom, joinRoom, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn, unlock } from '../helpers/setup';
 
 test.describe('Setup Phase - Unlock and Word Refresh', () => {
@@ -13,7 +13,7 @@ test.describe('Setup Phase - Unlock and Word Refresh', () => {
     await joinRoom(carol.page, carol.name, roomCode);
     await joinRoom(dave.page, dave.name, roomCode);
 
-    await joinTeam(alice.page, 'A');
+    await assignToTeam(alice.page, alice.name, 'A');
     await assignToTeam(alice.page, bob.name, 'A');
     await assignToTeam(alice.page, carol.name, 'B');
     await assignToTeam(alice.page, dave.name, 'B');
@@ -51,7 +51,7 @@ test.describe('Setup Phase - Unlock and Word Refresh', () => {
     await joinRoom(carol.page, carol.name, roomCode);
     await joinRoom(dave.page, dave.name, roomCode);
 
-    await joinTeam(alice.page, 'A');
+    await assignToTeam(alice.page, alice.name, 'A');
     await assignToTeam(alice.page, bob.name, 'A');
     await assignToTeam(alice.page, carol.name, 'B');
     await assignToTeam(alice.page, dave.name, 'B');
