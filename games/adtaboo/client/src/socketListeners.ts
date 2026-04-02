@@ -1,6 +1,6 @@
 import { socket, autoReconnecting, reconnectExpired, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
-import { clientLogger } from '@games/client-core';
+import { clientLogger, clearSession } from '@games/client-core';
 
 function saveSession() {
   const { roomCode, playerId, playerName } = useGameStore.getState();
@@ -26,10 +26,12 @@ socket.on('disconnect', () => {
 
 // Session takeover — another connection took over this session
 socket.on('session:taken-over', () => {
-  localStorage.removeItem(SESSION_KEY);
-  useGameStore.getState().reset();
-  useGameStore.setState({ connected: true, error: 'Your session was taken over from another device.' });
   socket.disconnect();
+  clearSession(SESSION_KEY);
+  useGameStore.setState({
+    ...initialState,
+    kickReason: "Someone else joined with your name. You've been disconnected from the room.",
+  });
   window.history.replaceState(null, '', '/');
 });
 

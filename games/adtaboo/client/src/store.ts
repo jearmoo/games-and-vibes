@@ -51,6 +51,7 @@ export interface GameStore {
   roundHistory: RoundArchiveEntry[];
 
   error: string | null;
+  kickReason: string | null;
 
   setPlayerName: (name: string) => void;
   setError: (msg: string | null) => void;
@@ -86,6 +87,7 @@ export const initialState = {
   turnResults: { A: null, B: null },
   roundHistory: [],
   error: null,
+  kickReason: null,
 };
 
 export const useGameStore = create<GameStore>((set) => ({

@@ -1,6 +1,6 @@
 import { Component, type ReactNode, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ReconnectBanner, ErrorToast } from '@games/client-core';
+import { ReconnectBanner, ErrorToast, KickedScreen } from '@games/client-core';
 import { useGameStore, useMyRole } from './store';
 import HomeScreen from './components/HomeScreen';
 import LobbyScreen from './components/LobbyScreen';
@@ -19,7 +19,12 @@ export default function App() {
   const connected = useGameStore((s) => s.connected);
   const error = useGameStore((s) => s.error);
   const roomCode = useGameStore((s) => s.roomCode);
+  const kickReason = useGameStore((s) => s.kickReason);
   const dismissError = useCallback(() => useGameStore.setState({ error: null }), []);
+
+  if (kickReason) {
+    return <KickedScreen reason={kickReason} onReturn={() => useGameStore.setState({ kickReason: null })} />;
+  }
 
   if (!connected && !roomCode) {
     return (

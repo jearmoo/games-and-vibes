@@ -5,6 +5,7 @@ export type { SessionData } from './sessionStore.js';
 export { default as Timer } from './components/Timer.js';
 export { default as ReconnectBanner } from './components/ReconnectBanner.js';
 export { default as ErrorToast } from './components/ErrorToast.js';
+export { default as KickedScreen } from './components/KickedScreen.js';
 export { clientLogger } from './clientLogger.js';
 export { default as ConfirmModal } from './components/ConfirmModal.js';
 export type { ConfirmModalProps } from './components/ConfirmModal.js';
