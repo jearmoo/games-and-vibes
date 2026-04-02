@@ -119,8 +119,13 @@ describe('AdtabooRoom', () => {
       expect(room.game?.challenges.A.tabooSuggestions).toHaveLength(1);
     });
 
-    it('confirms and unconfirms challenges', () => {
-      room.suggestTabooWord('A', 'forbidden');
+    it('confirms only when exactly maxTabooWords suggestions', () => {
+      room.settings.maxTabooWords = 3;
+      room.suggestTabooWord('A', 'word1');
+      expect(room.confirmChallenge('A')).toBe(false); // only 1 of 3
+
+      room.suggestTabooWord('A', 'word2');
+      room.suggestTabooWord('A', 'word3');
       expect(room.confirmChallenge('A')).toBe(true);
       expect(room.game?.challenges.A.ready).toBe(true);
 
@@ -128,7 +133,16 @@ describe('AdtabooRoom', () => {
       expect(room.game?.challenges.A.ready).toBe(false);
     });
 
+    it('allows more suggestions than maxTabooWords', () => {
+      room.settings.maxTabooWords = 2;
+      room.suggestTabooWord('A', 'w1');
+      room.suggestTabooWord('A', 'w2');
+      room.suggestTabooWord('A', 'w3');
+      expect(room.game?.challenges.A.tabooSuggestions).toHaveLength(3);
+    });
+
     it('cannot unconfirm when both ready', () => {
+      room.settings.maxTabooWords = 1;
       room.suggestTabooWord('A', 'word1');
       room.suggestTabooWord('B', 'word2');
       room.confirmChallenge('A');

@@ -27,19 +27,20 @@ export function createSocket(opts: SocketOptions): {
   const autoReconnecting = { current: false };
 
   socket.on('connect', () => {
-    // Skip auto-reconnect if URL has a room code
-    const urlPath = window.location.pathname.replace(/^\//, '');
-    if (/^[A-Za-z0-9]{4}$/.test(urlPath)) return;
-
     const session = loadSession(opts.sessionKey);
-    if (session) {
-      autoReconnecting.current = true;
-      socket.emit('room:join', {
-        roomCode: session.roomCode,
-        playerName: session.playerName,
-        sessionId: session.playerId,
-      });
-    }
+    if (!session) return;
+
+    // If URL has a room code, only auto-reconnect if it matches the saved session
+    const urlPath = window.location.pathname.replace(/^\//, '');
+    const urlRoomCode = /^[A-Za-z0-9]{4}$/.test(urlPath) ? urlPath.toUpperCase() : null;
+    if (urlRoomCode && urlRoomCode !== session.roomCode) return;
+
+    autoReconnecting.current = true;
+    socket.emit('room:join', {
+      roomCode: session.roomCode,
+      playerName: session.playerName,
+      sessionId: session.playerId,
+    });
   });
 
   return { socket, autoReconnecting };

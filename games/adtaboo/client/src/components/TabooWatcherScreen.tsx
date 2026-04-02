@@ -1,4 +1,4 @@
-import { useGameStore, useLiveScore } from '../store';
+import { useGameStore, useLiveScore, useTeamName } from '../store';
 import { socket } from '../socket';
 import Timer from './Timer';
 
@@ -8,6 +8,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
   const tabooBuzzes = useGameStore((s) => s.tabooBuzzes);
   const timerEnd = useGameStore((s) => s.timerEnd);
   const cluingTeam = useGameStore((s) => s.cluingTeam);
+  const cluingTeamName = useTeamName(cluingTeam ?? 'A');
   const settings = useGameStore((s) => s.settings);
 
   const { totalBuzzes, liveScore } = useLiveScore();
@@ -16,8 +17,8 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
         <div className="glass-card rounded-2xl p-6 border border-white/5 max-w-xs text-center">
-          <div className="font-display text-xl text-white tracking-wider mb-2">Team {cluingTeam}'s Turn</div>
-          <div className="text-gray-500 text-sm">Waiting for clue-giver to begin...</div>
+          <div className="font-display text-xl text-white tracking-wider mb-2">{cluingTeamName}'s Turn</div>
+          <div className="text-gray-400 text-sm">Waiting for clue-giver to begin...</div>
         </div>
       </div>
     );
@@ -29,7 +30,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
       <div className="flex items-start justify-between">
         <div className="flex-1">{timerEnd && <Timer endTime={timerEnd} duration={settings.timerSeconds} />}</div>
         <div className="text-right ml-4">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Their Score</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Their Score</div>
           <div className={`font-display text-2xl ${liveScore >= 0 ? 'text-emerald-400' : 'text-team-b-glow'}`}>
             {liveScore >= 0 ? '+' : ''}
             {liveScore}
@@ -42,13 +43,13 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
         {isMaster ? (
           <span className="text-accent font-semibold">You are the Taboo Master — tap words they say</span>
         ) : (
-          <span className="text-gray-500">Watching for taboo violations</span>
+          <span className="text-gray-400">Watching for taboo violations</span>
         )}
       </div>
 
       {/* 5 clue words */}
       <div className="glass-card rounded-xl p-3 border border-white/5">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Clue Words</div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Clue Words</div>
         <div className="flex flex-wrap gap-2">
           {cards.map((card, i) => (
             <span
@@ -93,7 +94,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
                   {isBuzzed && (
                     <button
                       onClick={() => socket.emit('taboo:undo-buzz', { tabooWord: word })}
-                      className="px-2 py-2 min-h-[44px] rounded-r-xl bg-surface-raised text-gray-500 hover:text-white text-xs border border-white/10 transition-colors"
+                      className="px-2 py-2 min-h-[44px] rounded-r-xl bg-surface-raised text-gray-400 hover:text-white text-xs border border-white/10 transition-colors"
                     >
                       −
                     </button>

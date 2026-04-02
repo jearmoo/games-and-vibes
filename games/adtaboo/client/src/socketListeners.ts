@@ -26,6 +26,7 @@ socket.on('room:created', ({ roomCode, playerId, room }) => {
     players: room.players,
     settings: room.settings,
     tabooMasters: room.tabooMasters,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: 'LOBBY',
   });
   saveSession();
@@ -40,21 +41,21 @@ socket.on('room:joined', ({ roomCode, playerId, room }) => {
     players: room.players,
     settings: room.settings,
     tabooMasters: room.tabooMasters,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: room.phase || 'LOBBY',
   });
   saveSession();
   window.history.replaceState(null, '', `/${roomCode}`);
 });
 
-socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
-  clearAutoReconnecting();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hydrateGameState(room: any, game: any, playerId: string): Record<string, unknown> {
   const update: Record<string, unknown> = {
-    roomCode,
-    playerId,
     hostId: room.hostId,
     players: room.players,
     settings: room.settings,
     tabooMasters: room.tabooMasters,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: room.phase || 'LOBBY',
   };
   if (game) {
@@ -116,9 +117,42 @@ socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
       }
     }
   }
+  return update;
+}
+
+socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
+  clearAutoReconnecting();
+  const update = hydrateGameState(room, game, playerId);
+  update.roomCode = roomCode;
+  update.playerId = playerId;
+  // Restore playerName from server data (store resets on page refresh)
+  const me = room.players.find((p: { id: string }) => p.id === playerId);
+  if (me) update.playerName = me.name;
   useGameStore.setState(update);
   saveSession();
   window.history.replaceState(null, '', `/${roomCode}`);
+});
+
+socket.on('room:mid-game-joined', ({ roomCode, playerId, room }) => {
+  useGameStore.setState({
+    roomCode,
+    playerId,
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    tabooMasters: room.tabooMasters,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
+    phase: 'TEAM_SELECT',
+  });
+  saveSession();
+  window.history.replaceState(null, '', `/${roomCode}`);
+});
+
+socket.on('room:mid-game-ready', ({ game, room }) => {
+  const { playerId } = useGameStore.getState();
+  if (!playerId) return;
+  const update = hydrateGameState(room, game, playerId);
+  useGameStore.setState(update);
 });
 
 // Player updates
@@ -148,6 +182,9 @@ socket.on('team:updated', ({ players }) => {
 });
 socket.on('settings:updated', ({ settings }) => {
   useGameStore.setState({ settings });
+});
+socket.on('team-names:updated', ({ teamNames }) => {
+  useGameStore.setState({ teamNames });
 });
 socket.on('taboo-master:updated', ({ tabooMasters }) => {
   useGameStore.setState({ tabooMasters });
@@ -285,6 +322,7 @@ socket.on('game:reset', ({ room }) => {
     players: room.players,
     settings: room.settings,
     tabooMasters: room.tabooMasters,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
     phase: 'LOBBY',
     roundHistory: [],
   });

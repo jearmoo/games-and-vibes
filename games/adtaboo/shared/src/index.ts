@@ -84,4 +84,5 @@ export interface AdtabooRoomDTO {
   settings: AdtabooSettings;
   phase: GamePhase | null;
   tabooMasters: { A: string | null; B: string | null };
+  teamNames: { A: string; B: string };
 }

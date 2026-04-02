@@ -29,8 +29,9 @@ export interface GameStore {
   hostId: string | null;
   settings: { rounds: number; timerSeconds: number; wordsPerTurn: number; maxTabooWords: number };
   tabooMasters: { A: string | null; B: string | null };
+  teamNames: { A: string; B: string };
 
-  phase: GamePhase | null;
+  phase: GamePhase | 'TEAM_SELECT' | null;
   round: number;
   scores: { A: number; B: number };
 
@@ -65,6 +66,7 @@ export const initialState = {
   hostId: null,
   settings: { rounds: 3, timerSeconds: 60, wordsPerTurn: 5, maxTabooWords: 20 },
   tabooMasters: { A: null, B: null },
+  teamNames: { A: 'Team A', B: 'Team B' },
   phase: null,
   round: 1,
   scores: { A: 0, B: 0 },
@@ -145,6 +147,10 @@ export function useIsHost(): boolean {
 
 export function useTeamPlayers(team: TeamId): Player[] {
   return useGameStore((s) => s.players).filter((p) => p.team === team);
+}
+
+export function useTeamName(team: TeamId): string {
+  return useGameStore((s) => s.teamNames[team]);
 }
 
 export function getRoomCodeFromUrl(): string | null {

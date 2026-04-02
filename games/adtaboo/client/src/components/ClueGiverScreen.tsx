@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGameStore, useLiveScore } from '../store';
+import { useGameStore, useLiveScore, useTeamName } from '../store';
 import { socket } from '../socket';
 import Timer from './Timer';
 
@@ -7,6 +7,7 @@ export default function ClueGiverScreen() {
   const cards = useGameStore((s) => s.cards);
   const timerEnd = useGameStore((s) => s.timerEnd);
   const cluingTeam = useGameStore((s) => s.cluingTeam);
+  const cluingTeamName = useTeamName(cluingTeam ?? 'A');
   const settings = useGameStore((s) => s.settings);
 
   const { buzzedWords, totalBuzzes, liveScore } = useLiveScore();
@@ -18,13 +19,13 @@ export default function ClueGiverScreen() {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 gap-8 animate-fade-in">
         <div className="text-center">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500 mb-2">Team {cluingTeam}'s turn</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 mb-2">{cluingTeamName}'s turn</div>
           <div className="font-display text-2xl text-white tracking-wider">You're the Clue-Giver</div>
         </div>
 
         <div className="glass-card rounded-2xl p-6 max-w-xs border border-white/5 text-center">
-          <p className="text-gray-400 text-sm leading-relaxed">You have {cards.length} words to describe.</p>
-          <p className="text-gray-500 text-xs mt-3">
+          <p className="text-gray-300 text-sm leading-relaxed">You have {cards.length} words to describe.</p>
+          <p className="text-gray-400 text-xs mt-3">
             Words and the {settings.timerSeconds}s timer will appear when you press begin.
           </p>
         </div>
@@ -50,7 +51,7 @@ export default function ClueGiverScreen() {
       <div className="flex items-start justify-between">
         <div className="flex-1">{timerEnd && <Timer endTime={timerEnd} duration={settings.timerSeconds} />}</div>
         <div className="text-right ml-4">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Score</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Score</div>
           <div className={`font-display text-2xl ${liveScore >= 0 ? 'text-emerald-400' : 'text-team-b-glow'}`}>
             {liveScore >= 0 ? '+' : ''}
             {liveScore}
@@ -58,7 +59,7 @@ export default function ClueGiverScreen() {
         </div>
       </div>
 
-      <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500 text-center">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 text-center">
         Describe these words — any order
       </div>
 
@@ -92,7 +93,7 @@ export default function ClueGiverScreen() {
               {card.result === 'correct' ? (
                 <button
                   onClick={() => socket.emit('clue:undo', { cardIndex: i })}
-                  className="text-xs text-gray-500 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-surface-raised"
+                  className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-surface-raised"
                 >
                   Undo
                 </button>
@@ -132,8 +133,8 @@ export default function ClueGiverScreen() {
       {/* End Turn Early */}
       <button
         onClick={() => socket.emit('clue:end-turn')}
-        className="w-full py-2.5 rounded-xl border border-gray-700 text-gray-500 font-display text-xs
-                   tracking-wider hover:border-gray-500 hover:text-gray-300 hover:bg-white/[0.03]
+        className="w-full py-2.5 rounded-xl border border-gray-600 text-gray-400 font-display text-xs
+                   tracking-wider hover:border-gray-400 hover:text-gray-200 hover:bg-white/[0.03]
                    transition-all active:scale-[0.97]"
       >
         End Turn
