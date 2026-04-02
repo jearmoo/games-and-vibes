@@ -177,6 +177,7 @@ function RosterColumn({
               {p.name}
               {isTM && <span className="text-accent text-[9px] ml-1">TM</span>}
               {isHost && <span className="text-indigo-400 text-[9px] ml-1">H</span>}
+              {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
             {isOnTeam && !isTM && p.connected && (!phase || phase === 'LOBBY' || phase === 'ROUND_RESULT') && (
               <button

@@ -37,6 +37,14 @@ createGameServer<AdtabooRoom>({
       const player = room.getPlayer(playerId);
       if (player?.team) socket.join(`${room.code}:team${player.team}`);
     },
+    onPlayerReconnect: (room, playerId, io) => {
+      const player = room.getPlayer(playerId);
+      if (!player?.team || !room.game) return;
+      const newTM = room.ensureTabooMaster(player.team);
+      if (newTM) {
+        io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
+      }
+    },
     onMidGameJoin: (room, playerId) => {
       logger.info('game', 'Mid-game player awaiting team selection', {
         room: room.code,

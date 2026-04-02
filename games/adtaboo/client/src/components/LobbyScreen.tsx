@@ -279,6 +279,7 @@ function TeamColumn({
               {p.id === myId && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
               {p.id === hostId && <span className="text-indigo-400 text-[10px] ml-1 font-medium">HOST</span>}
               {p.id === tabooMasterId && <span className="text-accent text-[10px] ml-1 font-medium">TM</span>}
+              {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
             {isOnTeam && p.id !== tabooMasterId && (
               <button

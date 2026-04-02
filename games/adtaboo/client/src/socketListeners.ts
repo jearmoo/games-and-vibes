@@ -10,11 +10,32 @@ function saveSession() {
 }
 
 // Connection
+let disconnectedAt: number | null = null;
+const RECONNECT_TIMEOUT_MS = 130_000; // slightly longer than server's 120s grace period
+
 socket.on('connect', () => {
   useGameStore.setState({ connected: true });
+  if (disconnectedAt && Date.now() - disconnectedAt > RECONNECT_TIMEOUT_MS) {
+    localStorage.removeItem(SESSION_KEY);
+    useGameStore.getState().reset();
+    useGameStore.setState({ connected: true });
+    useGameStore.getState().setError('You were disconnected too long. Please rejoin.');
+    window.history.replaceState(null, '', '/');
+  }
+  disconnectedAt = null;
 });
 socket.on('disconnect', () => {
   useGameStore.setState({ connected: false });
+  if (!disconnectedAt) disconnectedAt = Date.now();
+});
+
+// Session takeover — another connection took over this session
+socket.on('session:taken-over', () => {
+  localStorage.removeItem(SESSION_KEY);
+  useGameStore.getState().reset();
+  useGameStore.setState({ connected: true, error: 'Your session was taken over from another device.' });
+  socket.disconnect();
+  window.history.replaceState(null, '', '/');
 });
 
 // Room lifecycle
@@ -198,6 +219,10 @@ socket.on('room:error', ({ message }) => {
     clearAutoReconnecting();
     if (message === 'Room not found') {
       localStorage.removeItem(SESSION_KEY);
+      useGameStore.getState().reset();
+      useGameStore.setState({ connected: true });
+      useGameStore.getState().setError('Your game room has expired.');
+      window.history.replaceState(null, '', '/');
       return;
     }
   }

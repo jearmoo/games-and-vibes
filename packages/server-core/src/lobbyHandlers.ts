@@ -63,6 +63,16 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
       const existing = existingBySession || existingByName;
 
       if (existing) {
+        // Force-disconnect old socket to prevent stale actions
+        const oldSocketId = existing.socketId;
+        if (oldSocketId && oldSocketId !== socket.id) {
+          const oldSocket = io.sockets.sockets.get(oldSocketId);
+          if (oldSocket) {
+            oldSocket.emit('session:taken-over');
+            oldSocket.disconnect(true);
+          }
+        }
+
         const wasDisconnected = !existing.connected;
         existing.connected = true;
         existing.socketId = socket.id;

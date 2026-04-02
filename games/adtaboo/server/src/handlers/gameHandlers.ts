@@ -8,7 +8,7 @@ import { prepareCluingPhase, emitSetupCards } from './setupHandlers.js';
 
 export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, metrics: MetricsCollector) {
   const result = room.endCluing();
-  if (!room.game) return;
+  if (!result || !room.game) return;
   logger.info('game', 'Cluing ended', { room: room.code, team, turnScore: result.turnScore });
 
   if (result.nextPhase === GamePhase.CLUING_B) {

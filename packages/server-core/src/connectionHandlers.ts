@@ -31,7 +31,10 @@ export function registerConnectionHandlers<T extends BaseRoom>(
     if (!player) return;
 
     // Player already reconnected with a different socket — ignore this stale disconnect
-    if (player.socketId !== socket.id) return;
+    if (player.socketId !== socket.id) {
+      socket.leave(room.code);
+      return;
+    }
 
     player.connected = false;
     player.disconnectedAt = Date.now();
