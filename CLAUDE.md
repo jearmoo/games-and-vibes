@@ -15,6 +15,8 @@ pnpm run format:check     # Check formatting
 
 # Game-specific
 pnpm run dev:adtaboo      # Run adtaboo server (4040) + client (5173) concurrently
+pnpm run dev:charades     # Run charades server (4050) + client (5173) concurrently
+pnpm run dev:cave         # Run Odes for Cave Men server (4060) + client (5173) concurrently
 pnpm run dev:landing      # Run landing page (3000)
 
 # Single test file
@@ -48,9 +50,9 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 
 ### Games (`games/`)
 
-- **`adtaboo/shared/`** — Game-specific types: `AdtabooPlayer` (extends BasePlayer with team), `TeamId`, `GamePhase`, settings, DTOs
-- **`adtaboo/server/`** — `AdtabooRoom extends BaseRoom<AdtabooPlayer>`, game handlers, word providers
-- **`adtaboo/client/`** — React SPA with Zustand store, phase-based routing, Tailwind theming
+- **`adtaboo/`** — Adversarial Taboo: teams give clues while opponents set traps. `AdtabooRoom extends BaseRoom<AdtabooPlayer>`, word providers, phase-based client.
+- **`charades/`** — Charades: act it out without words. Stateless word server, team-based play.
+- **`odes-for-cave-men/`** — Odes for Cave Men: explain big ideas with only small words. `CaveRoom extends BaseRoom<CavePlayer>`, word JSON files, timed turns.
 
 ### Apps (`apps/`)
 
@@ -68,6 +70,8 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 - Docker Compose at repo root with per-game containers
 - Cloudflared tunnel routes subdomains to localhost ports
 - Adtaboo: port 4040, adtaboo.jerpi.org
+- Charades: port 4050, charades.jerpi.org
+- Odes for Cave Men: port 4060, odes.jerpi.org
 - Landing: port 3000, games.jerpi.org
 
 ## Code Style
@@ -80,6 +84,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 ## Skills
 
 - `/game-dev` — Creating new games or developing existing ones. Covers architecture patterns, new game checklist, and deployment. Start here for any game development work.
+- `/deploy-new-game` — Deploy a game that's already built but not yet in production. Creates Dockerfile, docker-compose entry, CI step, cloudflared config, and updates all docs.
 
 ## Known TODOs
 

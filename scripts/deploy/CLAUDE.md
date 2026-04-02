@@ -7,7 +7,7 @@ Webhook-triggered deploy system for the games monorepo. Runs as `games-deploy` s
 - **Python stdlib only** — no pip packages, runs on bare system Python 3.13+
 - **Single file** — `deploy.py` is both the HTTP listener (port 9877) and the deploy executor
 - **No auth needed** — n8n webhook workflow handles authentication upstream
-- **IMAGES list** — `["games-adtaboo", "games-landing"]` must match container names in `docker-compose.yml`
+- **IMAGES list** — `["adversarial-taboo", "charades", "odes-for-cave-men", "games-landing"]` must match `container_name` values in `docker-compose.yml`
 - **Commit-targeted deploys** — every request must include `?ref=<sha>`. The script deploys exactly that commit (via `git checkout`), not HEAD.
 
 ## Deploy Ordering

@@ -176,3 +176,4 @@ Keep this updated as games are added:
 | 3000 | landing | games.jerpi.org |
 | 4040 | adtaboo | adtaboo.jerpi.org |
 | 4050 | charades | charades.jerpi.org |
+| 4060 | odes-for-cave-men | odes.jerpi.org |

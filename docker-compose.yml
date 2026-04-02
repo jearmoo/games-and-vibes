@@ -30,7 +30,9 @@ services:
       context: .
       dockerfile: games/charades/Dockerfile
       args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    env_file: .env
     container_name: charades
     restart: unless-stopped
     ports:
@@ -44,11 +46,37 @@ services:
         max-size: "5m"
         max-file: "3"
 
+  odes-for-cave-men:
+    build:
+      context: .
+      dockerfile: games/odes-for-cave-men/Dockerfile
+      args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    env_file: .env
+    container_name: odes-for-cave-men
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "4060:4060"
+    volumes:
+      - ./games/odes-for-cave-men/data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=4060
+      - LOG_LEVEL=info
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   landing:
     build:
       context: .
       dockerfile: apps/landing/Dockerfile
       args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
     container_name: games-landing
     restart: unless-stopped

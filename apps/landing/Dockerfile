@@ -15,6 +15,8 @@ RUN pnpm install --frozen-lockfile
 COPY packages/client-core/ packages/client-core/
 COPY apps/landing/ apps/landing/
 
+ARG GA_MEASUREMENT_ID
+ENV VITE_GA_ID=$GA_MEASUREMENT_ID
 RUN pnpm --filter @games/landing build
 
 # Stage 2: Serve with lightweight static server

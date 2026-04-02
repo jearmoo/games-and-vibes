@@ -24,6 +24,8 @@ COPY games/charades/ games/charades/
 # Build in dependency order
 RUN pnpm --filter @games/word-providers build
 RUN pnpm --filter @games/charades-server build
+ARG GA_MEASUREMENT_ID
+ENV VITE_GA_ID=$GA_MEASUREMENT_ID
 RUN pnpm --filter @games/charades-client build
 
 # Stage 2: Production
