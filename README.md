@@ -5,6 +5,8 @@ A multiplayer party game platform — real-time browser games you play with frie
 ## Games
 
 - **[Adversarial Taboo](games/adtaboo/)** — Teams give clues while the opposing team chooses the forbidden words. Live at [adtaboo.jerpi.org](https://adtaboo.jerpi.org).
+- **[Charades](games/charades/)** — Act it out without saying a word. Live at [charades.jerpi.org](https://charades.jerpi.org).
+- **[Odes for Cave Men](games/odes-for-cave-men/)** — Explain big ideas with only small words. Live at [odes.jerpi.org](https://odes.jerpi.org).
 
 ## Tech Stack
 
@@ -23,7 +25,9 @@ packages/
   test-utils/      # TestRoom, MockStore, MockSocket for unit tests
 
 games/
-  adtaboo/         # Adversarial Taboo (server + client)
+  adtaboo/              # Adversarial Taboo (server + client + shared)
+  charades/             # Charades (server + client)
+  odes-for-cave-men/    # Odes for Cave Men (server + client + shared)
 
 apps/
   landing/         # games.jerpi.org hub page
@@ -36,6 +40,8 @@ apps/
 ```bash
 pnpm install          # Install all workspace dependencies
 pnpm run dev:adtaboo  # Run Adtaboo server (4040) + client (5173)
+pnpm run dev:charades # Run Charades server (4050) + client (5173)
+pnpm run dev:cave     # Run Odes for Cave Men server (4060) + client (5173)
 pnpm run dev:landing  # Run landing page (3000)
 ```
 
@@ -62,6 +68,8 @@ docker compose up -d --build
 | Service | Port | URL |
 |---------|------|-----|
 | Adtaboo | 4040 | adtaboo.jerpi.org |
+| Charades | 4050 | charades.jerpi.org |
+| Odes for Cave Men | 4060 | odes.jerpi.org |
 | Landing | 3000 | games.jerpi.org |
 
 ## Environment Variables

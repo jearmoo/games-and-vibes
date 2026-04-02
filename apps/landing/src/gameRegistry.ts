@@ -24,11 +24,11 @@ export const games: GameEntry[] = [
     id: 'odes-for-cave-men',
     name: 'Odes for Cave Men',
     tagline: 'Explain big ideas with only small words',
-    url: 'https://odes-for-cave-men.jerpi.org',
+    url: 'https://odes.jerpi.org',
     playerCount: '4-12 players',
     accentColor: '#d97706',
     accentGlow: 'rgba(217, 119, 6, 0.4)',
-    available: false,
+    available: true,
   },
   {
     id: 'charades',
