@@ -1,3 +1,4 @@
+name: games
 services:
   adtaboo:
     build:
