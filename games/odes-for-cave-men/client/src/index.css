@@ -1,0 +1,43 @@
+@import '@games/client-core/styles.css';
+
+/* Cave-themed team button styles */
+.btn-team-a {
+  background: linear-gradient(135deg, #b45309, #d97706);
+  box-shadow: 0 0 20px rgba(217, 119, 6, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.btn-team-a:active {
+  box-shadow: 0 0 30px rgba(217, 119, 6, 0.5);
+}
+
+.btn-team-b {
+  background: linear-gradient(135deg, #047857, #059669);
+  box-shadow: 0 0 20px rgba(5, 150, 105, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.btn-team-b:active {
+  box-shadow: 0 0 30px rgba(5, 150, 105, 0.5);
+}
+
+/* BONK button */
+.bonk-btn {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  box-shadow:
+    0 0 40px rgba(239, 68, 68, 0.4),
+    0 0 80px rgba(239, 68, 68, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.1s ease;
+}
+.bonk-btn:active {
+  transform: scale(0.95);
+  box-shadow:
+    0 0 60px rgba(239, 68, 68, 0.6),
+    0 0 120px rgba(239, 68, 68, 0.3);
+}
+
+/* Bonk flash overlay on cluer screen */
+@keyframes bonk-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-bonk-flash {
+  animation: bonk-flash 0.6s ease-out forwards;
+}

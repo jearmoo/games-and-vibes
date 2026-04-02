@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev:adtaboo": "concurrently \"pnpm --filter @games/adtaboo-server dev\" \"pnpm --filter @games/adtaboo-client dev\"",
+    "dev:cave": "concurrently \"pnpm --filter @games/odes-for-cave-men-server dev\" \"pnpm --filter @games/odes-for-cave-men-client dev\"",
     "dev:landing": "pnpm --filter @games/landing dev",
     "build": "pnpm -r build",
     "lint": "eslint \"packages/*/src/**/*.ts\" \"games/*/client/src/**/*.{ts,tsx}\" \"games/*/server/src/**/*.ts\" \"apps/*/src/**/*.{ts,tsx}\"",
