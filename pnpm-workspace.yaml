@@ -3,5 +3,5 @@ packages:
   - 'games/*/client'
   - 'games/*/server'
   - 'games/*/shared'
+  - 'games/*/e2e'
   - 'apps/*'
-  - 'tests/e2e'

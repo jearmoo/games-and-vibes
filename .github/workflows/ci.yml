@@ -56,7 +56,7 @@ jobs:
         run: pnpm -r build
 
       - name: Install Playwright browsers
-        run: pnpm --filter @games/e2e exec playwright install --with-deps chromium
+        run: pnpm -r --filter='*-e2e' exec playwright install --with-deps chromium
 
       - name: Run E2E tests
         run: pnpm run test:e2e
@@ -65,7 +65,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: tests/e2e/playwright-report/
+          path: games/*/e2e/playwright-report/
           retention-days: 14
 
   docker:

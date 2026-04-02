@@ -1,5 +1,5 @@
 {
-  "name": "@games/e2e",
+  "name": "@games/adtaboo-e2e",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "test:headed": "playwright test --headed"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "tsx": "^4.19.0"
+    "@games/e2e-core": "workspace:*",
+    "@playwright/test": "^1.52.0"
   }
 }

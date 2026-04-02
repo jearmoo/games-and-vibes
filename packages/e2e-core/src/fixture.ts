@@ -7,8 +7,9 @@ export interface Player {
 }
 
 /**
- * Custom fixture that provides N isolated player browser contexts.
- * Each player gets their own localStorage (separate session).
+ * Custom Playwright fixture that provides N isolated player browser contexts.
+ * Each player gets their own localStorage (separate session), simulating
+ * separate devices in a multiplayer game.
  */
 export const test = base.extend<{
   players: Player[];
@@ -16,7 +17,7 @@ export const test = base.extend<{
 }>({
   playerCount: 4,
 
-  players: async ({ browser, playerCount, baseURL }, use) => {
+  players: async ({ browser, playerCount }, use) => {
     const names = ['Alice', 'Bob', 'Carol', 'Dave', 'Eve', 'Frank'];
     const players: Player[] = [];
 
@@ -28,7 +29,6 @@ export const test = base.extend<{
 
     await use(players);
 
-    // Cleanup
     for (const p of players) {
       await p.context.close();
     }
