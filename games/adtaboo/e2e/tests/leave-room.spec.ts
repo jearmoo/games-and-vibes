@@ -24,7 +24,7 @@ test.describe('Leave Room', () => {
 
     // Click "Leave Room" again, confirm "Leave"
     await bob.page.getByRole('button', { name: 'Leave Room' }).click();
-    await bob.page.getByRole('button', { name: 'Leave', exact: true }).click();
+    await bob.page.getByLabel('Leave Room?').getByRole('button', { name: 'Leave' }).click();
 
     // Should return to HomeScreen
     await expect(bob.page.getByText('AD TABOO')).toBeVisible({ timeout: 5_000 });

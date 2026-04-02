@@ -179,7 +179,9 @@ export default function LobbyScreen() {
         </button>
       )}
       {!host && (
-        <div className="w-full py-3 text-center text-gray-600 text-xs tracking-wider">Join a team to get started</div>
+        <div className="w-full py-3 text-center text-gray-600 text-xs tracking-wider">
+          {me?.team ? 'Waiting for host to start the game' : 'Join a team to get started'}
+        </div>
       )}
     </div>
   );
@@ -235,46 +237,6 @@ function UnassignedSection({
           hostId={hostId}
           isHost={isHost}
           hostBadgeColor="text-amber-400"
-          actions={
-            <div className="flex gap-2">
-              {p.id === myId && (
-                <>
-                  <button
-                    data-testid="lobby-self-join-a"
-                    onClick={() => socket.emit('team:join', { team: 'A' })}
-                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
-                  >
-                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
-                  </button>
-                  <button
-                    data-testid="lobby-self-join-b"
-                    onClick={() => socket.emit('team:join', { team: 'B' })}
-                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
-                  >
-                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
-                  </button>
-                </>
-              )}
-              {isHost && p.id !== myId && (
-                <>
-                  <button
-                    data-testid={`lobby-assign-${p.name}-a`}
-                    onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
-                    className="flex items-center gap-1 text-[10px] text-team-a-glow hover:text-white transition-colors"
-                  >
-                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-a" />
-                  </button>
-                  <button
-                    data-testid={`lobby-assign-${p.name}-b`}
-                    onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
-                    className="flex items-center gap-1 text-[10px] text-team-b-glow hover:text-white transition-colors"
-                  >
-                    → <span className="inline-block w-2.5 h-2.5 rounded-full bg-team-b" />
-                  </button>
-                </>
-              )}
-            </div>
-          }
         />
       ))}
     </div>
@@ -368,11 +330,6 @@ function TeamColumn({
     }
   };
 
-  const canJoin = myId && myTeam !== team;
-  const handleJoinTeam = () => {
-    if (canJoin && !editing) socket.emit('team:join', { team });
-  };
-
   return (
     <div
       ref={isHost ? setNodeRef : undefined}
@@ -381,8 +338,8 @@ function TeamColumn({
         ${isOver ? 'ring-2 ring-white/30 scale-[1.02]' : ''}
         ${isDragActive && isHost ? 'ring-1 ring-white/10' : ''}`}
     >
-      {/* Header: team name + join affordance */}
-      <div className={`${colors.header} text-center py-2.5 relative`}>
+      {/* Header: team name */}
+      <div className={`${colors.header} text-center py-2.5`}>
         {editing ? (
           <input
             data-testid={`lobby-team-name-input-${team.toLowerCase()}`}
@@ -407,10 +364,9 @@ function TeamColumn({
             <span
               onClick={() => {
                 if (isHost) setEditing(true);
-                else handleJoinTeam();
               }}
-              className={`font-display text-sm tracking-wider ${isHost ? 'cursor-text hover:opacity-80' : canJoin ? 'cursor-pointer hover:opacity-80' : ''} transition-opacity`}
-              title={isHost ? 'Click to rename' : canJoin ? `Join ${teamName}` : undefined}
+              className={`font-display text-sm tracking-wider ${isHost ? 'cursor-text hover:opacity-80' : ''} transition-opacity`}
+              title={isHost ? 'Click to rename' : undefined}
               style={{ height: '1.5em', lineHeight: '1.5em' }}
             >
               {teamName}
@@ -421,16 +377,6 @@ function TeamColumn({
               </svg>
             )}
           </div>
-        )}
-        {/* Join button for non-host players not on this team */}
-        {!isHost && canJoin && (
-          <button
-            data-testid={`lobby-join-team-${team.toLowerCase()}`}
-            onClick={handleJoinTeam}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/70 hover:text-white transition-colors font-medium"
-          >
-            Join
-          </button>
         )}
       </div>
 
@@ -445,18 +391,6 @@ function TeamColumn({
             isHost={isHost}
             hostBadgeColor="text-amber-400"
             highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
-            actions={
-              p.id === myId ? (
-                <button
-                  data-testid="lobby-leave-team"
-                  onClick={() => socket.emit('team:join', { team: null })}
-                  className="text-[10px] text-gray-400 hover:text-white transition-colors ml-1"
-                  title="Leave team"
-                >
-                  ✕
-                </button>
-              ) : undefined
-            }
           />
         ))}
         {players.length === 0 && (
@@ -465,6 +399,29 @@ function TeamColumn({
           </div>
         )}
       </div>
+
+      {/* Join / Leave button */}
+      {myId && (
+        <div className="p-2.5 pt-0">
+          {myTeam === team ? (
+            <button
+              data-testid={`lobby-leave-team-${team.toLowerCase()}`}
+              onClick={() => socket.emit('team:join', { team: null })}
+              className="w-full py-2 rounded-xl text-sm font-medium text-gray-400 border border-white/10 hover:text-white hover:border-white/20 transition-all"
+            >
+              Leave
+            </button>
+          ) : (
+            <button
+              data-testid={`lobby-join-team-${team.toLowerCase()}`}
+              onClick={() => socket.emit('team:join', { team })}
+              className={`w-full py-2 rounded-xl text-sm font-medium text-white ${colors.header} transition-all active:scale-[0.97]`}
+            >
+              Join
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

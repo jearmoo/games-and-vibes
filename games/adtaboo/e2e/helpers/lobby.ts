@@ -33,20 +33,24 @@ export async function joinRoom(page: Page, name: string, roomCode: string) {
 
 /** Player self-joins a team (works for both host and non-host) */
 export async function joinTeam(page: Page, team: 'A' | 'B') {
-  const t = team.toLowerCase();
-  const headerBtn = page.getByTestId(`lobby-join-team-${t}`);
-  const selfBtn = page.getByTestId(`lobby-self-join-${t}`);
-  if (await selfBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await selfBtn.click();
-  } else {
-    await headerBtn.click();
-  }
+  await page.getByTestId(`lobby-join-team-${team.toLowerCase()}`).click();
   await page.waitForTimeout(300);
 }
 
-/** Host assigns a player to a team (for players other than the host) */
+/** Host assigns a player to a team via socket (UI uses drag-and-drop) */
 export async function assignToTeam(hostPage: Page, playerName: string, team: 'A' | 'B') {
-  await hostPage.getByTestId(`lobby-assign-${playerName}-${team.toLowerCase()}`).click();
+  await hostPage.evaluate(
+    ({ team, playerName }) => {
+      const socket = (window as any).__socket;
+      if (!socket) throw new Error('Socket not found on window');
+      const store = (window as any).__store;
+      if (!store) throw new Error('Store not found on window');
+      const player = store.getState().players.find((p: any) => p.name === playerName);
+      if (!player) throw new Error(`Player "${playerName}" not found`);
+      socket.emit('team:assign', { team, targetPlayerId: player.id });
+    },
+    { team, playerName },
+  );
   await hostPage.waitForTimeout(300);
 }
 

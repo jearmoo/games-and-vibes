@@ -52,7 +52,7 @@ test.describe('Happy Path - Full Game', () => {
     await setTabooMaster(alice.page, carol.name);
 
     // --- 1.6 Verify non-host view ---
-    await expect(bob.page.getByText('Join a team to get started')).toBeVisible();
+    await expect(bob.page.getByText('Waiting for host to start the game')).toBeVisible();
     await expect(bob.page.getByTestId('lobby-settings')).not.toBeVisible();
 
     // --- 1.7 Start game ---

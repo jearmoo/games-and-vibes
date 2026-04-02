@@ -109,6 +109,9 @@ export const useGameStore = create<GameStore>((set) => ({
   reset: () => set(initialState),
 }));
 
+// Expose store on window for e2e tests
+(window as any).__store = useGameStore;
+
 export function useMyPlayer(): Player | undefined {
   const playerId = useGameStore((s) => s.playerId);
   const players = useGameStore((s) => s.players);
