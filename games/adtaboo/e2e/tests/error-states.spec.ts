@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam, setTabooMaster, goHome } from '../helpers/lobby';
+import { createRoom, joinRoom, joinTeam, assignToTeam, setTabooMaster, goHome } from '../helpers/lobby';
 
 test.describe('Error States', () => {
   test.use({ playerCount: 3 });
@@ -12,15 +12,15 @@ test.describe('Error States', () => {
     await joinRoom(carol.page, carol.name, roomCode);
 
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
 
     // Without taboo masters set, button should say "Each team needs a taboo master"
     await expect(alice.page.getByText('Each team needs a taboo master')).toBeVisible({ timeout: 5_000 });
 
     // Set TMs — now it should say "Need 2+ per team" (Carol alone on B)
     await setTabooMaster(alice.page, alice.name);
-    await setTabooMaster(carol.page, carol.name);
+    await setTabooMaster(alice.page, carol.name);
 
     await expect(alice.page.getByText('Need 2+ per team')).toBeVisible({ timeout: 5_000 });
   });

@@ -245,6 +245,46 @@ describe('AdtabooRoom', () => {
       expect(room.roundHistory[0].round).toBe(1);
     });
 
+    it('ends game when round reaches fixed rounds limit', () => {
+      room.settings.rounds = 1;
+      room.startGame();
+      room.game!.challenges.A.cards = [{ word: 'cat', result: null }];
+      room.game!.challenges.A.tabooWords = [];
+      room.game!.challenges.A.tabooBuzzes = {};
+      room.game!.challenges.B.cards = [{ word: 'dog', result: null }];
+      room.game!.challenges.B.tabooWords = [];
+      room.game!.challenges.B.tabooBuzzes = {};
+      room.setClueGiver('A', 'p2');
+      room.setClueGiver('B', 'p4');
+
+      room.prepareCluingPhase('A');
+      room.endCluing();
+      const result = room.endCluing();
+
+      expect(result).not.toBeNull();
+      expect(result!.nextPhase).toBe(GamePhase.GAME_OVER);
+    });
+
+    it('never auto-ends game with unlimited rounds', () => {
+      room.settings.rounds = null;
+      room.startGame();
+      room.game!.challenges.A.cards = [{ word: 'cat', result: null }];
+      room.game!.challenges.A.tabooWords = [];
+      room.game!.challenges.A.tabooBuzzes = {};
+      room.game!.challenges.B.cards = [{ word: 'dog', result: null }];
+      room.game!.challenges.B.tabooWords = [];
+      room.game!.challenges.B.tabooBuzzes = {};
+      room.setClueGiver('A', 'p2');
+      room.setClueGiver('B', 'p4');
+
+      room.prepareCluingPhase('A');
+      room.endCluing();
+      const result = room.endCluing();
+
+      expect(result).not.toBeNull();
+      expect(result!.nextPhase).toBe(GamePhase.ROUND_RESULT);
+    });
+
     it('advances to next round', () => {
       room.startGame();
       room.game!.challenges.A.cards = [{ word: 'cat', result: null }];
@@ -277,6 +317,16 @@ describe('AdtabooRoom', () => {
       expect(restored.players.size).toBe(4);
       expect(restored.game?.phase).toBe(GamePhase.PARALLEL_SETUP);
       expect(restored.tabooMasters).toEqual({ A: 'host1', B: 'p3' });
+    });
+
+    it('round-trips with unlimited rounds setting', () => {
+      room.settings.rounds = null;
+      room.startGame();
+      const json = room.toJSON();
+      const restored = AdtabooRoom.fromJSON(json);
+
+      expect(restored.settings.rounds).toBeNull();
+      expect(restored.game?.phase).toBe(GamePhase.PARALLEL_SETUP);
     });
 
     it('restores players as disconnected', () => {

@@ -6,12 +6,12 @@ import type { TeamId } from '@games/odes-for-cave-men-shared';
 export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
   const { io, socket, rooms } = ctx;
 
-  // Team join
+  // Host joins a team themselves
   socket.on('team:join', ({ team }: { team: TeamId | null }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
-    if (!room) return;
+    if (!room || room.hostId !== playerId) return;
     if (room.isGameActive()) return;
 
     const player = room.getPlayer(playerId);
@@ -21,11 +21,35 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
     player.team = team;
     room.touch();
 
-    // Leave old team socket room, join new one
     if (oldTeam) socket.leave(`${room.code}:team${oldTeam}`);
     if (team) socket.join(`${room.code}:team${team}`);
 
-    logger.info('room', 'Player changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
+    logger.info('room', 'Host changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
+    io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
+  });
+
+  // Host assigns a player to a team
+  socket.on('team:assign', ({ team, targetPlayerId }: { team: TeamId | null; targetPlayerId: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room || room.hostId !== playerId) return;
+    if (room.isGameActive()) return;
+
+    const target = room.getPlayer(targetPlayerId);
+    if (!target) return;
+
+    const oldTeam = target.team;
+    target.team = team;
+    room.touch();
+
+    const targetSocket = io.sockets.sockets.get(target.socketId);
+    if (targetSocket) {
+      if (oldTeam) targetSocket.leave(`${room.code}:team${oldTeam}`);
+      if (team) targetSocket.join(`${room.code}:team${team}`);
+    }
+
+    logger.info('room', 'Host assigned player to team', { room: room.code, player: target.name, team });
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
   });
 

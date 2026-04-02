@@ -10,23 +10,57 @@ import { emitSetupCards } from './setupHandlers.js';
 export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
   const { io, socket, rooms, metrics } = ctx;
 
+  // Host joins a team themselves
   socket.on('team:join', ({ team }: { team: TeamId }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
-    if (!room) return;
+    if (!room || room.hostId !== playerId) return;
     const player = room.getPlayer(playerId);
     if (!player) return;
     if (player.team) socket.leave(`${room.code}:team${player.team}`);
     player.team = team;
     socket.join(`${room.code}:team${team}`);
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
-    logger.info('room', 'Player joined team', { room: room.code, player: player.name, team });
+    logger.info('room', 'Host joined team', { room: room.code, player: player.name, team });
 
     // Mid-game joiner picked a team — send them full game state
     if (room.isGameActive()) {
       socket.emit('room:mid-game-ready', {
         game: buildGameState(room, playerId),
+        room: room.toDTO(),
+      });
+    }
+  });
+
+  // Host assigns a player to a team
+  socket.on('team:assign', ({ team, targetPlayerId }: { team: TeamId; targetPlayerId: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room || room.hostId !== playerId) return;
+
+    const target = room.getPlayer(targetPlayerId);
+    if (!target) return;
+
+    const oldTeam = target.team;
+    target.team = team;
+    room.touch();
+
+    // Update socket rooms for the target player
+    const targetSocket = io.sockets.sockets.get(target.socketId);
+    if (targetSocket) {
+      if (oldTeam) targetSocket.leave(`${room.code}:team${oldTeam}`);
+      targetSocket.join(`${room.code}:team${team}`);
+    }
+
+    io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
+    logger.info('room', 'Host assigned player to team', { room: room.code, player: target.name, team });
+
+    // Mid-game joiner picked a team — send them full game state
+    if (room.isGameActive()) {
+      targetSocket?.emit('room:mid-game-ready', {
+        game: buildGameState(room, targetPlayerId),
         room: room.toDTO(),
       });
     }
@@ -47,12 +81,29 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
-    if (!room) return;
-    if (room.game?.phase === GamePhase.CLUING_A || room.game?.phase === GamePhase.CLUING_B) return;
+    if (!room || room.hostId !== playerId) return;
     if (room.setTabooMaster(team, masterId)) {
       io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
       const masterName = room.getPlayer(masterId)?.name;
       logger.info('room', 'Taboo master set', { room: room.code, team, master: masterName });
+
+      // If swapped during cluing, send the new TM the taboo words/buzzes they need
+      const cluingTeam = room.getCluingTeam();
+      if (cluingTeam) {
+        const challenge = room.game!.challenges[cluingTeam];
+        const newMaster = room.getPlayer(masterId);
+        if (newMaster) {
+          io.to(newMaster.socketId).emit('clue:start', {
+            clueGiverId: challenge.clueGiverId,
+            timerEnd: room.game!.timerEnd,
+            phase: room.game!.phase,
+            team: cluingTeam,
+            cards: challenge.cards.map((c) => ({ word: c.word, result: c.result })),
+            tabooWords: challenge.tabooWords,
+            tabooBuzzes: challenge.tabooBuzzes,
+          });
+        }
+      }
     }
   });
 
@@ -64,7 +115,7 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
       wordsPerTurn,
       maxTabooWords,
     }: {
-      rounds?: number;
+      rounds?: number | null;
       timerSeconds?: number;
       wordsPerTurn?: number;
       maxTabooWords?: number;
@@ -73,7 +124,7 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
       if (!playerId) return;
       const room = rooms.getRoomForPlayer(playerId);
       if (!room || room.hostId !== playerId) return;
-      if (rounds !== undefined) room.settings.rounds = Math.max(1, Math.min(5, rounds));
+      if (rounds !== undefined) room.settings.rounds = rounds === null ? null : Math.max(1, Math.min(5, rounds));
       if (timerSeconds !== undefined) room.settings.timerSeconds = Math.max(10, Math.min(600, timerSeconds));
       if (wordsPerTurn !== undefined) room.settings.wordsPerTurn = Math.max(1, Math.min(10, wordsPerTurn));
       if (maxTabooWords !== undefined) room.settings.maxTabooWords = Math.max(5, Math.min(30, maxTabooWords));

@@ -1,4 +1,4 @@
-import { useGameStore, useLiveScore, useTeamName } from '../store';
+import { useGameStore, useLiveScore, useTeamName, useClueGiverInfo } from '../store';
 import { socket } from '../socket';
 import Timer from './Timer';
 
@@ -10,6 +10,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
   const cluingTeam = useGameStore((s) => s.cluingTeam);
   const cluingTeamName = useTeamName(cluingTeam ?? 'A');
   const settings = useGameStore((s) => s.settings);
+  const { disconnected: cgDisconnected, name: cgName } = useClueGiverInfo();
 
   const { totalBuzzes, liveScore } = useLiveScore();
 
@@ -18,7 +19,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
       <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
         <div className="glass-card rounded-2xl p-6 border border-white/5 max-w-xs text-center">
           <div className="font-display text-xl text-white tracking-wider mb-2">{cluingTeamName}'s Turn</div>
-          <div className="text-gray-400 text-sm">Waiting for clue-giver to begin...</div>
+          <div className="text-gray-400 text-sm">Waiting for {cgName ?? 'clue-giver'} to begin...</div>
         </div>
       </div>
     );
@@ -37,6 +38,13 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
           </div>
         </div>
       </div>
+
+      {/* Clue-giver disconnect banner */}
+      {cgDisconnected && (
+        <div className="text-center px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          Clue-giver disconnected — waiting for reconnect...
+        </div>
+      )}
 
       {/* Role indicator */}
       <div className="text-center text-xs">

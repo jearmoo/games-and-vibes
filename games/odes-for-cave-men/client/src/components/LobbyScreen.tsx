@@ -46,6 +46,14 @@ export default function LobbyScreen() {
         </button>
       </div>
 
+      {/* Player identity */}
+      {me && (
+        <div className="text-center">
+          <span className="text-gray-500 text-xs">Playing as </span>
+          <span className="text-white text-sm font-semibold">{me.name}</span>
+        </div>
+      )}
+
       {/* Teams */}
       <div className="flex gap-3 flex-1 min-h-0">
         <TeamColumn
@@ -54,6 +62,7 @@ export default function LobbyScreen() {
           players={teamA}
           myId={me?.id ?? null}
           hostId={hostId}
+          isHost={host}
           onJoin={() => socket.emit('team:join', { team: 'A' })}
         />
         <TeamColumn
@@ -62,13 +71,44 @@ export default function LobbyScreen() {
           players={teamB}
           myId={me?.id ?? null}
           hostId={hostId}
+          isHost={host}
           onJoin={() => socket.emit('team:join', { team: 'B' })}
         />
       </div>
 
       {unassigned.length > 0 && (
-        <div className="text-center text-amber-400/80 text-xs font-medium">
-          Unassigned: {unassigned.map((p) => p.name).join(', ')}
+        <div className="space-y-1.5">
+          <div className="text-center text-amber-400/80 text-xs font-medium">Unassigned</div>
+          {unassigned.map((p) => (
+            <div
+              key={p.id}
+              className={`flex items-center justify-between px-3 py-2 glass-card rounded-xl text-sm ${
+                p.id === me?.id ? 'text-white font-semibold' : 'text-gray-300'
+              }`}
+            >
+              <span>
+                {p.name}
+                {p.id === me?.id && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
+                {p.id === hostId && <span className="text-amber-400 text-[10px] ml-1 font-medium">HOST</span>}
+              </span>
+              {host && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
+                    className="text-[10px] text-team-a-glow hover:text-white transition-colors"
+                  >
+                    → A
+                  </button>
+                  <button
+                    onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
+                    className="text-[10px] text-team-b-glow hover:text-white transition-colors"
+                  >
+                    → B
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -132,7 +172,7 @@ export default function LobbyScreen() {
       )}
       {!host && (
         <div className="w-full py-3 text-center text-gray-600 text-xs tracking-wider">
-          Waiting for host to start the game...
+          Waiting for host to set up the game...
         </div>
       )}
     </div>
@@ -145,6 +185,7 @@ function TeamColumn({
   players,
   myId,
   hostId,
+  isHost,
   onJoin,
 }: {
   team: string;
@@ -152,6 +193,7 @@ function TeamColumn({
   players: Array<{ id: string; name: string; connected: boolean }>;
   myId: string | null;
   hostId: string | null;
+  isHost: boolean;
   onJoin: () => void;
 }) {
   const isOnTeam = players.some((p) => p.id === myId);
@@ -179,7 +221,7 @@ function TeamColumn({
           </div>
         ))}
       </div>
-      {!isOnTeam && (
+      {isHost && !isOnTeam && (
         <div className="p-2.5 pt-0">
           <button
             onClick={onJoin}

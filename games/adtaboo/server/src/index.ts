@@ -79,18 +79,18 @@ createGameServer<AdtabooRoom>({
         }
       }
 
-      // Auto-end turn if clue-giver disconnects during cluing
+      // Clue-giver disconnected during cluing — timer continues, they can rejoin
       if (phase === GamePhase.CLUING_A || phase === GamePhase.CLUING_B) {
         const cluingTeam = room.getCluingTeam();
         if (cluingTeam) {
           const challenge = room.game.challenges[cluingTeam];
           if (challenge.clueGiverId === playerId) {
-            logger.info('conn', 'Clue giver disconnected during cluing, auto-ending turn', {
+            logger.info('conn', 'Clue giver disconnected during cluing, timer continues', {
               room: room.code,
               team: cluingTeam,
               player: player.name,
+              timerEnd: room.game.timerEnd,
             });
-            handleTurnEnd(room, cluingTeam, io, metrics);
           }
         }
       }

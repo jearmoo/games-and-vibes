@@ -1,26 +1,26 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
+import { createRoom, joinRoom, joinTeam, assignToTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
 import { beginCluing } from '../helpers/cluing';
 
-test.describe('Clue-Giver Disconnect', () => {
-  test('turn auto-ends when clue-giver disconnects during cluing', async ({ players }) => {
+test.describe('Clue-Giver Disconnect Resilience', () => {
+  test('timer continues when clue-giver disconnects during cluing', async ({ players }) => {
     const [alice, bob, carol, dave] = players;
 
     const roomCode = await createRoom(alice.page, alice.name);
-    await configureSettings(alice.page, { rounds: 1, timerSeconds: 60, wordsPerTurn: 3, maxTabooWords: 5 });
+    await configureSettings(alice.page, { rounds: 1, timerSeconds: 10, wordsPerTurn: 3, maxTabooWords: 5 });
 
     await joinRoom(bob.page, bob.name, roomCode);
     await joinRoom(carol.page, carol.name, roomCode);
     await joinRoom(dave.page, dave.name, roomCode);
 
     await joinTeam(alice.page, 'A');
-    await joinTeam(bob.page, 'A');
-    await joinTeam(carol.page, 'B');
-    await joinTeam(dave.page, 'B');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
+    await assignToTeam(alice.page, dave.name, 'B');
 
     await setTabooMaster(alice.page, alice.name);
-    await setTabooMaster(carol.page, carol.name);
+    await setTabooMaster(alice.page, carol.name);
     await startGame(alice.page);
 
     // Setup
@@ -38,7 +38,11 @@ test.describe('Clue-Giver Disconnect', () => {
     // Close Bob's page (disconnect during active cluing)
     await bob.page.close();
 
-    // Turn should auto-end → Dave should see "Begin Cluing" for Team B's turn
-    await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
+    // Alice (guesser) should see disconnect banner — turn does NOT auto-end
+    await expect(alice.page.getByText('Clue-giver disconnected')).toBeVisible({ timeout: 10_000 });
+
+    // Timer expires naturally → transitions to Team B's turn (not immediate turn-end)
+    // Dave should see "Begin Cluing" for Team B after the 10s timer
+    await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 20_000 });
   });
 });

@@ -37,6 +37,12 @@ export async function joinTeam(page: Page, team: 'A' | 'B') {
   await page.waitForTimeout(300);
 }
 
+/** Host assigns a player to a team */
+export async function assignToTeam(hostPage: Page, playerName: string, team: 'A' | 'B') {
+  await hostPage.getByTestId(`lobby-assign-${playerName}-${team.toLowerCase()}`).click();
+  await hostPage.waitForTimeout(300);
+}
+
 /** Set a player as taboo master */
 export async function setTabooMaster(page: Page, playerName: string) {
   await page.getByTestId(`lobby-set-tm-${playerName}`).click();

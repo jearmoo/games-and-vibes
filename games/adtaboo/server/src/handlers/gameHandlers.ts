@@ -179,6 +179,27 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
       });
   });
 
+  socket.on('game:end', () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game || room.game.phase !== GamePhase.ROUND_RESULT) return;
+    if (room.hostId !== playerId) return;
+
+    room.game.phase = GamePhase.GAME_OVER;
+    room.touch();
+    metrics.gameCompleted();
+    logger.info('game', 'Host ended game', { room: room.code, round: room.game.round });
+
+    io.to(room.code).emit('round:ended', {
+      phase: GamePhase.GAME_OVER,
+      scores: room.game.scores,
+      round: room.game.round,
+      turnResults: room.game.turnResults,
+      roundHistory: room.getRoundHistory(),
+    });
+  });
+
   socket.on('game:play-again', () => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;

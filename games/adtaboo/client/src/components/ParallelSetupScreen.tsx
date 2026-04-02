@@ -29,6 +29,7 @@ export default function ParallelSetupScreen() {
   const challengeForMyTeam = myTeam ? setupStatus[myTeam!] : null;
 
   const clueGiverName = ownClueGiverId ? teamPlayers.find((p) => p.id === ownClueGiverId)?.name : null;
+  const tmName = myTeam ? teamPlayers.find((p) => p.id === tabooMasters[myTeam])?.name : null;
 
   const handleAdd = () => {
     const word = input.trim();
@@ -52,7 +53,8 @@ export default function ParallelSetupScreen() {
       {/* Header */}
       <div className="text-center">
         <div className="text-[10px] uppercase tracking-[0.3em] text-gray-300">
-          Round {round} of {settings.rounds}
+          Round {round}
+          {settings.rounds !== null ? ` of ${settings.rounds}` : ''}
         </div>
         <div className="font-display text-lg text-white tracking-wider mt-1">Team Setup</div>
       </div>
@@ -103,7 +105,7 @@ export default function ParallelSetupScreen() {
               ))}
           </div>
         ) : (
-          <span className="text-gray-400 text-xs">Waiting for TM to pick...</span>
+          <span className="text-gray-400 text-xs">Waiting for TM {tmName ?? '...'} to select clue-giver...</span>
         )}
       </div>
 

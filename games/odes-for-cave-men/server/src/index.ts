@@ -61,14 +61,14 @@ createGameServer<CaveRoom>({
       const player = room.getPlayer(playerId);
       if (!player?.team || !room.game) return;
 
-      // Auto-end turn if cluer disconnects during play
+      // Cluer disconnected during play — timer continues, they can rejoin
       if (room.game.phase === GamePhase.PLAYING && room.game.cluerId === playerId) {
-        logger.info('conn', 'Cluer disconnected during play, auto-ending turn', {
+        logger.info('conn', 'Cluer disconnected during play, timer continues', {
           room: room.code,
           team: room.game.playingTeam,
           player: player.name,
+          timerEnd: room.game.timerEnd,
         });
-        handleTurnEnd(room, io, metrics);
       }
     },
   },

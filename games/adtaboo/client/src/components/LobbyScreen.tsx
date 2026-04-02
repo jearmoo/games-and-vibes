@@ -49,6 +49,14 @@ export default function LobbyScreen() {
         </button>
       </div>
 
+      {/* Player identity */}
+      {me && (
+        <div className="text-center">
+          <span className="text-gray-400 text-xs">Playing as </span>
+          <span className="text-white text-sm font-semibold">{me.name}</span>
+        </div>
+      )}
+
       {/* Teams */}
       <div className="flex gap-3 flex-1 min-h-0">
         <TeamColumn
@@ -76,8 +84,40 @@ export default function LobbyScreen() {
       </div>
 
       {unassigned.length > 0 && (
-        <div className="text-center text-amber-400/80 text-xs font-medium">
-          Unassigned: {unassigned.map((p) => p.name).join(', ')}
+        <div className="space-y-1.5">
+          <div className="text-center text-amber-400/80 text-xs font-medium">Unassigned</div>
+          {unassigned.map((p) => (
+            <div
+              key={p.id}
+              className={`flex items-center justify-between px-3 py-2 glass-card rounded-xl text-sm ${
+                p.id === me?.id ? 'text-white font-semibold' : 'text-gray-300'
+              }`}
+            >
+              <span>
+                {p.name}
+                {p.id === me?.id && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
+                {p.id === hostId && <span className="text-indigo-400 text-[10px] ml-1 font-medium">HOST</span>}
+              </span>
+              {host && (
+                <div className="flex gap-2">
+                  <button
+                    data-testid={`lobby-assign-${p.name}-a`}
+                    onClick={() => socket.emit('team:assign', { team: 'A', targetPlayerId: p.id })}
+                    className="text-[10px] text-team-a-glow hover:text-white transition-colors"
+                  >
+                    → A
+                  </button>
+                  <button
+                    data-testid={`lobby-assign-${p.name}-b`}
+                    onClick={() => socket.emit('team:assign', { team: 'B', targetPlayerId: p.id })}
+                    className="text-[10px] text-team-b-glow hover:text-white transition-colors"
+                  >
+                    → B
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -88,8 +128,11 @@ export default function LobbyScreen() {
             <span className="text-gray-400">Rounds</span>
             <select
               data-testid="lobby-rounds-select"
-              value={settings.rounds}
-              onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
+              value={settings.rounds === null ? 'unlimited' : settings.rounds}
+              onChange={(e) => {
+                const val = e.target.value === 'unlimited' ? null : parseInt(e.target.value);
+                socket.emit('settings:update', { rounds: val });
+              }}
               className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
             >
               {[1, 2, 3, 4, 5].map((n) => (
@@ -97,6 +140,7 @@ export default function LobbyScreen() {
                   {n}
                 </option>
               ))}
+              <option value="unlimited">Unlimited</option>
             </select>
           </label>
           <label className="flex items-center justify-between text-gray-300">
@@ -185,7 +229,7 @@ export default function LobbyScreen() {
       )}
       {!host && (
         <div className="w-full py-3 text-center text-gray-500 text-xs tracking-wider">
-          Waiting for host to start the game...
+          Waiting for host to set up the game...
         </div>
       )}
 
@@ -289,7 +333,7 @@ function TeamColumn({
               {p.id === tabooMasterId && <span className="text-accent text-[10px] ml-1 font-medium">TM</span>}
               {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
-            {isOnTeam && p.id !== tabooMasterId && (
+            {isHost && p.id !== tabooMasterId && (
               <button
                 data-testid={`lobby-set-tm-${p.name}`}
                 onClick={() => onSetMaster(p.id)}
@@ -301,7 +345,7 @@ function TeamColumn({
           </div>
         ))}
       </div>
-      {!isOnTeam && (
+      {isHost && !isOnTeam && (
         <div className="p-2.5 pt-0">
           <button
             data-testid={`lobby-join-team-${team.toLowerCase()}`}

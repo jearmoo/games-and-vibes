@@ -9,12 +9,20 @@ export default function GuesserScreen() {
   const players = useGameStore((s) => s.players);
   const cluerId = useGameStore((s) => s.cluerId);
 
-  const cluerName = players.find((p) => p.id === cluerId)?.name ?? 'Cluer';
+  const cluer = players.find((p) => p.id === cluerId);
+  const cluerName = cluer?.name ?? 'Cluer';
+  const cluerDisconnected = cluer ? !cluer.connected : false;
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
       {/* Timer */}
       <div className="w-full max-w-xs">{timerEnd && <Timer endTime={timerEnd} duration={settings.timerSeconds} />}</div>
+
+      {cluerDisconnected && (
+        <div className="w-full max-w-xs text-center px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          Cluer disconnected — waiting for reconnect...
+        </div>
+      )}
 
       {/* Main prompt */}
       <div className="glass-card rounded-2xl p-8 border border-white/5 w-full max-w-xs text-center">
