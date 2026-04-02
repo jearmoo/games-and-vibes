@@ -4,3 +4,4 @@ packages:
   - 'games/*/server'
   - 'games/*/shared'
   - 'apps/*'
+  - 'tests/e2e'

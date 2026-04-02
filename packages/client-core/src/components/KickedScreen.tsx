@@ -24,6 +24,7 @@ export default function KickedScreen({ reason, onReturn }: { reason: string; onR
         </div>
 
         <button
+          data-testid="kicked-back-button"
           onClick={onReturn}
           className="w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97] bg-surface-raised hover:bg-surface-hover border border-white/5"
         >

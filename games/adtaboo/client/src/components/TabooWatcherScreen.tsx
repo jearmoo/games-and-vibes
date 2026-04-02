@@ -81,6 +81,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
               return (
                 <div key={word} className="flex items-center gap-0.5">
                   <button
+                    data-testid={`taboo-buzz-${word}`}
                     onClick={() => socket.emit('taboo:buzz', { tabooWord: word })}
                     className={`px-3 py-2 min-h-[44px] rounded-l-xl text-sm font-medium transition-all active:scale-[0.95] border ${
                       isBuzzed
@@ -93,6 +94,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
                   </button>
                   {isBuzzed && (
                     <button
+                      data-testid={`taboo-undo-buzz-${word}`}
                       onClick={() => socket.emit('taboo:undo-buzz', { tabooWord: word })}
                       className="px-2 py-2 min-h-[44px] rounded-r-xl bg-surface-raised text-gray-400 hover:text-white text-xs border border-white/10 transition-colors"
                     >

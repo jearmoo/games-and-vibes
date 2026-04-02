@@ -15,7 +15,8 @@
     "format": "prettier --write \"packages/*/src/**/*.ts\" \"games/*/client/src/**/*.{ts,tsx}\" \"games/*/server/src/**/*.ts\" \"apps/*/src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"games/*/client/src/**/*.{ts,tsx}\" \"games/*/server/src/**/*.ts\" \"apps/*/src/**/*.{ts,tsx}\"",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r --filter='!@games/e2e' test",
+    "test:e2e": "pnpm --filter @games/e2e test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

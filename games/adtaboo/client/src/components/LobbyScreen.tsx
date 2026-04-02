@@ -83,10 +83,11 @@ export default function LobbyScreen() {
 
       {/* Settings */}
       {host && (
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-2 gap-3 text-xs" data-testid="lobby-settings">
           <label className="flex items-center justify-between text-gray-300">
             <span className="text-gray-400">Rounds</span>
             <select
+              data-testid="lobby-rounds-select"
               value={settings.rounds}
               onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
               className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
@@ -101,6 +102,7 @@ export default function LobbyScreen() {
           <label className="flex items-center justify-between text-gray-300">
             <span className="text-gray-400">Timer (s)</span>
             <input
+              data-testid="lobby-timer-input"
               type="number"
               min={10}
               max={600}
@@ -122,6 +124,7 @@ export default function LobbyScreen() {
           <label className="flex items-center justify-between text-gray-300">
             <span className="text-gray-400">Words</span>
             <select
+              data-testid="lobby-words-select"
               value={settings.wordsPerTurn}
               onChange={(e) => socket.emit('settings:update', { wordsPerTurn: parseInt(e.target.value) })}
               className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
@@ -136,6 +139,7 @@ export default function LobbyScreen() {
           <label className="flex items-center justify-between text-gray-300">
             <span className="text-gray-400">Taboos</span>
             <select
+              data-testid="lobby-taboos-select"
               value={settings.maxTabooWords}
               onChange={(e) => socket.emit('settings:update', { maxTabooWords: parseInt(e.target.value) })}
               className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
@@ -160,6 +164,7 @@ export default function LobbyScreen() {
       {/* Start */}
       {host && (
         <button
+          data-testid="lobby-start-button"
           onClick={() => {
             setStarting(true);
             socket.emit('game:start');
@@ -235,7 +240,7 @@ function TeamColumn({
   };
 
   return (
-    <div className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border`}>
+    <div data-testid={`lobby-team-${team.toLowerCase()}`} className={`flex-1 flex flex-col glass-card rounded-2xl overflow-hidden ${colors.border} border`}>
       <div className={`${colors.header} text-center py-2.5 font-display text-sm tracking-wider`}>
         {editing ? (
           <input
@@ -283,6 +288,7 @@ function TeamColumn({
             </span>
             {isOnTeam && p.id !== tabooMasterId && (
               <button
+                data-testid={`lobby-set-tm-${p.name}`}
                 onClick={() => onSetMaster(p.id)}
                 className="text-[10px] text-gray-400 hover:text-white transition-colors"
               >
@@ -295,6 +301,7 @@ function TeamColumn({
       {!isOnTeam && (
         <div className="p-2.5 pt-0">
           <button
+            data-testid={`lobby-join-team-${team.toLowerCase()}`}
             onClick={onJoin}
             className={`w-full py-2.5 rounded-xl text-white text-sm font-display tracking-wider transition-all active:scale-[0.97] ${colors.header}`}
           >
