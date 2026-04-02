@@ -30,6 +30,12 @@ export function registerConnectionHandlers<T extends BaseRoom>(
     const player = room.getPlayer(playerId);
     if (!player) return;
 
+    // Player already reconnected with a different socket — ignore this stale disconnect
+    if (player.socketId !== socket.id) {
+      socket.leave(room.code);
+      return;
+    }
+
     player.connected = false;
     player.disconnectedAt = Date.now();
     io.to(room.code).emit('room:player-disconnected', { playerId });
@@ -55,8 +61,10 @@ export function registerConnectionHandlers<T extends BaseRoom>(
     }
 
     // Grace period — remove if still disconnected
+    const disconnectSocketId = socket.id;
     setTimeout(() => {
       if (player.connected) return;
+      if (player.socketId !== disconnectSocketId) return; // reconnected since this timer was set
       logger.info('conn', 'Player removed after grace period', { room: room.code, player: player.name });
       handleLeave(ctx, callbacks);
     }, RECONNECT_GRACE_MS);

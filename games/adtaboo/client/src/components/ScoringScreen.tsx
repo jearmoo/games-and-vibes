@@ -55,6 +55,7 @@ export default function ScoringScreen() {
 
       {host && !isGameOver && (
         <button
+          data-testid="scoring-next-round-button"
           onClick={() => socket.emit('round:next')}
           className="btn-primary w-full max-w-xs py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
         >
@@ -68,6 +69,7 @@ export default function ScoringScreen() {
       {isGameOver && (
         <div className="w-full max-w-xs space-y-3">
           <button
+            data-testid="scoring-play-again-button"
             onClick={() => socket.emit('game:play-again')}
             className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
           >

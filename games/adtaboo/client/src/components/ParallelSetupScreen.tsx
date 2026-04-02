@@ -93,6 +93,7 @@ export default function ParallelSetupScreen() {
               .map((p) => (
                 <button
                   key={p.id}
+                  data-testid={`setup-pick-clue-giver-${p.name}`}
                   onClick={() => socket.emit('setup:pick-clue-giver', { clueGiverId: p.id })}
                   className="px-3 py-1.5 bg-surface-raised hover:bg-surface-hover rounded-lg text-white text-sm
                            transition-all active:scale-[0.97] border border-white/5"
@@ -150,6 +151,7 @@ export default function ParallelSetupScreen() {
 
       <div className="flex gap-2">
         <input
+          data-testid="setup-taboo-input"
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -160,6 +162,7 @@ export default function ParallelSetupScreen() {
           className="game-input flex-1 px-4 py-3 rounded-xl text-white placeholder-gray-500 disabled:opacity-50"
         />
         <button
+          data-testid="setup-taboo-add-button"
           onClick={handleAdd}
           disabled={!input.trim() || wordsLoading || isLocked}
           className="btn-team-b px-5 py-3 rounded-xl text-white font-display tracking-wider
@@ -200,6 +203,7 @@ export default function ParallelSetupScreen() {
       {isTM ? (
         challengeIAmCreating?.ready ? (
           <button
+            data-testid="setup-unconfirm-button"
             onClick={() => socket.emit('setup:unconfirm')}
             className="w-full py-4 bg-surface-raised hover:bg-surface-hover border border-emerald-500/30
                        rounded-2xl text-emerald-400 font-display text-lg tracking-wider
@@ -209,6 +213,7 @@ export default function ParallelSetupScreen() {
           </button>
         ) : (
           <button
+            data-testid="setup-confirm-button"
             onClick={() => socket.emit('setup:confirm')}
             disabled={!canLockIn || wordsLoading}
             className="btn-success w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider

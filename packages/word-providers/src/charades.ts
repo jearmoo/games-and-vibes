@@ -1,4 +1,4 @@
-import { WordProvider } from './WordProvider.js';
+import { WordProvider } from './types.js';
 
 const BASE_URL = 'https://randomwordgenerator.com/charades.php';
 

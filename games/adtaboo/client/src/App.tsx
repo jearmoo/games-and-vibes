@@ -1,5 +1,6 @@
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ReconnectBanner, ErrorToast, KickedScreen } from '@games/client-core';
 import { useGameStore, useMyRole } from './store';
 import HomeScreen from './components/HomeScreen';
 import LobbyScreen from './components/LobbyScreen';
@@ -18,6 +19,12 @@ export default function App() {
   const connected = useGameStore((s) => s.connected);
   const error = useGameStore((s) => s.error);
   const roomCode = useGameStore((s) => s.roomCode);
+  const kickReason = useGameStore((s) => s.kickReason);
+  const dismissError = useCallback(() => useGameStore.setState({ error: null }), []);
+
+  if (kickReason) {
+    return <KickedScreen reason={kickReason} onReturn={() => useGameStore.setState({ kickReason: null })} />;
+  }
 
   if (!connected && !roomCode) {
     return (
@@ -32,8 +39,8 @@ export default function App() {
       <>
         <HomeScreen />
         <FloatingHelpButton />
-        {!connected && <ReconnectBanner />}
-        {error && <ErrorToast message={error} />}
+        <ReconnectBanner visible={!connected} />
+        <ErrorToast message={error} onDismiss={dismissError} />
       </>
     );
 
@@ -55,8 +62,8 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </div>
-      {!connected && <ReconnectBanner />}
-      {error && <ErrorToast message={error} />}
+      <ReconnectBanner visible={!connected} />
+      <ErrorToast message={error} onDismiss={dismissError} />
     </div>
   );
 }
@@ -90,24 +97,6 @@ function FloatingHelpButton() {
   return (
     <div className="fixed top-3 right-3 z-40">
       <HelpButton className="w-7 h-7 flex items-center justify-center rounded-full glass-card border border-white/10 text-xs text-gray-400 hover:text-accent transition-colors font-semibold" />
-    </div>
-  );
-}
-
-function ReconnectBanner() {
-  return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-amber-600/90 text-white text-center text-sm py-1.5 animate-fade-in">
-      <span className="animate-pulse">Reconnecting...</span>
-    </div>
-  );
-}
-
-function ErrorToast({ message }: { message: string }) {
-  return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 flex justify-center animate-slide-up">
-      <div className="glass-card border border-team-b/30 rounded-xl px-4 py-3 text-sm text-team-b-glow max-w-sm">
-        {message}
-      </div>
     </div>
   );
 }

@@ -25,7 +25,7 @@ describe('lobbyHandlers', () => {
     metrics = mock.metrics;
 
     registerLobbyHandlers(mock.ctx, {
-      buildGameState: () => null,
+      buildGameState: (_room, _playerId) => null,
     });
   });
 
@@ -131,7 +131,7 @@ describe('lobbyHandlers', () => {
     const mock = createMockSocketContext<TestRoom>(socketOpts);
     let midGameJoinCalled = false;
     registerLobbyHandlers(mock.ctx, {
-      buildGameState: () => ({ phase: 'PLAYING' }),
+      buildGameState: (_room, _playerId) => ({ phase: 'PLAYING' }),
       onMidGameJoin: () => {
         midGameJoinCalled = true;
       },
@@ -174,7 +174,7 @@ describe('connectionHandlers', () => {
     metrics = mock.metrics;
 
     registerLobbyHandlers(mock.ctx, {
-      buildGameState: () => null,
+      buildGameState: (_room, _playerId) => null,
     });
 
     const disconnectCallbacks: string[] = [];

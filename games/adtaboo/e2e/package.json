@@ -1,0 +1,14 @@
+{
+  "name": "@games/adtaboo-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@games/e2e-core": "workspace:*",
+    "@playwright/test": "^1.52.0"
+  }
+}

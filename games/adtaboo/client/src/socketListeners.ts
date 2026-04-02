@@ -1,6 +1,6 @@
-import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
+import { socket, autoReconnecting, reconnectExpired, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
-import { clientLogger } from '@games/client-core';
+import { clientLogger, clearSession } from '@games/client-core';
 
 function saveSession() {
   const { roomCode, playerId, playerName } = useGameStore.getState();
@@ -12,9 +12,27 @@ function saveSession() {
 // Connection
 socket.on('connect', () => {
   useGameStore.setState({ connected: true });
+  if (reconnectExpired.current) {
+    reconnectExpired.current = false;
+    useGameStore.getState().reset();
+    useGameStore.setState({ connected: true });
+    useGameStore.getState().setError('You were disconnected too long. Please rejoin.');
+    window.history.replaceState(null, '', '/');
+  }
 });
 socket.on('disconnect', () => {
   useGameStore.setState({ connected: false });
+});
+
+// Session takeover — another connection took over this session
+socket.on('session:taken-over', () => {
+  socket.disconnect();
+  clearSession(SESSION_KEY);
+  useGameStore.setState({
+    ...initialState,
+    kickReason: "Someone else joined with your name. You've been disconnected from the room.",
+  });
+  window.history.replaceState(null, '', '/');
 });
 
 // Room lifecycle
@@ -167,10 +185,14 @@ socket.on('room:player-disconnected', ({ playerId: pid }) => {
     players: s.players.map((p) => (p.id === pid ? { ...p, connected: false } : p)),
   }));
 });
-socket.on('room:player-reconnected', ({ playerId: pid }) => {
-  useGameStore.setState((s) => ({
-    players: s.players.map((p) => (p.id === pid ? { ...p, connected: true } : p)),
-  }));
+socket.on('room:player-reconnected', ({ playerId: pid, players: updatedPlayers }) => {
+  if (updatedPlayers) {
+    useGameStore.setState({ players: updatedPlayers });
+  } else {
+    useGameStore.setState((s) => ({
+      players: s.players.map((p) => (p.id === pid ? { ...p, connected: true } : p)),
+    }));
+  }
 });
 socket.on('room:host-updated', ({ hostId }) => {
   useGameStore.setState({ hostId });
@@ -194,6 +216,10 @@ socket.on('room:error', ({ message }) => {
     clearAutoReconnecting();
     if (message === 'Room not found') {
       localStorage.removeItem(SESSION_KEY);
+      useGameStore.getState().reset();
+      useGameStore.setState({ connected: true });
+      useGameStore.getState().setError('Your game room has expired.');
+      window.history.replaceState(null, '', '/');
       return;
     }
   }

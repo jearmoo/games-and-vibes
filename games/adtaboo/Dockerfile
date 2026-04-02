@@ -12,6 +12,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 # Copy all package.jsons for workspace resolution
 COPY packages/server-core/package.json packages/server-core/
 COPY packages/client-core/package.json packages/client-core/
+COPY packages/word-providers/package.json packages/word-providers/
 COPY games/adtaboo/shared/package.json games/adtaboo/shared/
 COPY games/adtaboo/server/package.json games/adtaboo/server/
 COPY games/adtaboo/client/package.json games/adtaboo/client/
@@ -24,6 +25,7 @@ COPY games/adtaboo/ games/adtaboo/
 
 # Build in dependency order
 RUN pnpm --filter @games/server-core build
+RUN pnpm --filter @games/word-providers build
 RUN pnpm --filter @games/adtaboo-shared build
 RUN pnpm --filter @games/adtaboo-server build
 
@@ -40,6 +42,7 @@ WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/server-core/package.json packages/server-core/
+COPY packages/word-providers/package.json packages/word-providers/
 COPY games/adtaboo/shared/package.json games/adtaboo/shared/
 COPY games/adtaboo/server/package.json games/adtaboo/server/
 
@@ -48,6 +51,7 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy built artifacts
 COPY --from=build /app/games/adtaboo/shared/dist games/adtaboo/shared/dist
 COPY --from=build /app/packages/server-core/dist packages/server-core/dist
+COPY --from=build /app/packages/word-providers/dist packages/word-providers/dist
 COPY --from=build /app/games/adtaboo/server/dist games/adtaboo/server/dist
 COPY --from=build /app/games/adtaboo/client/dist games/adtaboo/server/public
 

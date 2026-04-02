@@ -31,6 +31,7 @@ export default function ClueGiverScreen() {
         </div>
 
         <button
+          data-testid="clue-begin-button"
           onClick={() => {
             setBeginning(true);
             socket.emit('clue:begin');
@@ -92,6 +93,7 @@ export default function ClueGiverScreen() {
               </div>
               {card.result === 'correct' ? (
                 <button
+                  data-testid={`clue-undo-${i}`}
                   onClick={() => socket.emit('clue:undo', { cardIndex: i })}
                   className="text-xs text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-surface-raised"
                 >
@@ -99,6 +101,7 @@ export default function ClueGiverScreen() {
                 </button>
               ) : (
                 <button
+                  data-testid={`clue-got-it-${i}`}
                   onClick={() => socket.emit('clue:got-it', { cardIndex: i })}
                   className="btn-success px-4 py-2 rounded-xl text-white font-display text-sm tracking-wider transition-all active:scale-[0.95]"
                 >
@@ -132,6 +135,7 @@ export default function ClueGiverScreen() {
 
       {/* End Turn Early */}
       <button
+        data-testid="clue-end-turn-button"
         onClick={() => socket.emit('clue:end-turn')}
         className="w-full py-2.5 rounded-xl border border-gray-600 text-gray-400 font-display text-xs
                    tracking-wider hover:border-gray-400 hover:text-gray-200 hover:bg-white/[0.03]

@@ -26,7 +26,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = SCRIPT_DIR.parent.parent
 LOG_FILE = SCRIPT_DIR / 'deploy.log'
 PORT = 9877
-IMAGES = ['games-adtaboo', 'games-landing']
+IMAGES = ['games-adtaboo', 'games-charades', 'games-landing']
 DEPLOY_TIMEOUT = 280  # seconds (buffer under CI's 300s timeout)
 MAX_DEPLOY_CYCLES = 5  # safety valve for the deploy loop
 
@@ -158,7 +158,7 @@ def run_deploy(target_sha: str) -> tuple[int, str]:
     log_and_collect(f'Rebuilding for commit {target_sha}...')
     env = {**os.environ, 'GIT_COMMIT': target_sha}
     result = run_cmd(
-        ['docker', 'compose', 'up', '--build', '-d'],
+        ['docker', 'compose', 'up', '--build', '--force-recreate', '-d'],
         env=env,
         timeout=DEPLOY_TIMEOUT,
     )

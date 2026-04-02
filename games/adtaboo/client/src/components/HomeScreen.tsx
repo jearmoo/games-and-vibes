@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { socket } from '../socket';
 import { useGameStore, getRoomCodeFromUrl, SESSION_KEY } from '../store';
 
 export default function HomeScreen() {
   const urlCode = getRoomCodeFromUrl();
   const storedName = useGameStore((s) => s.playerName);
+  const error = useGameStore((s) => s.error);
   const [name, setName] = useState(storedName || '');
   const [joinCode, setJoinCode] = useState(urlCode || '');
   const [mode, setMode] = useState<'menu' | 'join'>(urlCode ? 'join' : 'menu');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (error) setLoading(false);
+  }, [error]);
 
   const handleCreate = () => {
     if (!name.trim() || loading) return;
@@ -55,6 +60,7 @@ export default function HomeScreen() {
 
       <div className="w-full max-w-xs space-y-4 relative z-10">
         <input
+          data-testid="home-name-input"
           type="text"
           placeholder="Your name"
           value={name}
@@ -72,6 +78,7 @@ export default function HomeScreen() {
         {mode === 'menu' ? (
           <div className="space-y-3 animate-slide-up">
             <button
+              data-testid="home-create-button"
               onClick={handleCreate}
               disabled={!name.trim() || loading}
               className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider disabled:opacity-30 disabled:shadow-none transition-all active:scale-[0.97]"
@@ -79,6 +86,7 @@ export default function HomeScreen() {
               {loading ? 'Creating...' : 'Create Room'}
             </button>
             <button
+              data-testid="home-join-mode-button"
               onClick={() => setMode('join')}
               disabled={!name.trim()}
               className="w-full py-4 bg-surface-raised hover:bg-surface-hover rounded-2xl text-white font-display text-lg tracking-wider disabled:opacity-30 transition-all active:scale-[0.97] border border-white/5"
@@ -89,6 +97,7 @@ export default function HomeScreen() {
         ) : (
           <div className="space-y-3 animate-slide-up">
             <input
+              data-testid="home-code-input"
               type="text"
               placeholder="CODE"
               value={joinCode}
@@ -98,6 +107,7 @@ export default function HomeScreen() {
               className="game-input w-full px-5 py-4 rounded-2xl text-white text-center text-3xl tracking-[0.4em] font-display placeholder-gray-500 uppercase"
             />
             <button
+              data-testid="home-join-button"
               onClick={handleJoin}
               disabled={!name.trim() || joinCode.length < 4 || loading}
               className="btn-success w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider disabled:opacity-30 disabled:shadow-none transition-all active:scale-[0.97]"

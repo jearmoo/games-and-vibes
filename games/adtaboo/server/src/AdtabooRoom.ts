@@ -173,11 +173,19 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       const current = this.getPlayer(currentId);
       if (current && current.connected && current.team === team) return currentId;
     }
-    const teamPlayers = this.getTeamPlayers(team);
-    if (teamPlayers.length > 0) {
-      this.tabooMasters[team] = teamPlayers[0].id;
-      if (this.game) this.game.tabooMasters[team] = teamPlayers[0].id;
-      return teamPlayers[0].id;
+    // Prefer connected players
+    const connectedPlayers = this.getTeamPlayers(team);
+    if (connectedPlayers.length > 0) {
+      this.tabooMasters[team] = connectedPlayers[0].id;
+      if (this.game) this.game.tabooMasters[team] = connectedPlayers[0].id;
+      return connectedPlayers[0].id;
+    }
+    // Fallback: any non-removed player on this team (even disconnected)
+    const anyTeamPlayer = Array.from(this.players.values()).find((p) => p.team === team && !p.removed);
+    if (anyTeamPlayer) {
+      this.tabooMasters[team] = anyTeamPlayer.id;
+      if (this.game) this.game.tabooMasters[team] = anyTeamPlayer.id;
+      return anyTeamPlayer.id;
     }
     return null;
   }
@@ -214,8 +222,8 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       fetchWords(this.settings.wordsPerTurn),
     ]);
     if (!this.game) return;
-    this.game.challenges.A.cards = wordsForA.map((w) => ({ word: w, result: null }));
-    this.game.challenges.B.cards = wordsForB.map((w) => ({ word: w, result: null }));
+    this.game.challenges.A.cards = wordsForA.map((w: string) => ({ word: w, result: null }));
+    this.game.challenges.B.cards = wordsForB.map((w: string) => ({ word: w, result: null }));
     this.touch();
   }
 
@@ -395,11 +403,11 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     return current + 1;
   }
 
-  undoBuzzTabooWord(word: string): number {
+  undoBuzzTabooWord(word: string): number | null {
     const challenge = this.getActiveChallenge();
-    if (!challenge || !this.game) return 0;
+    if (!challenge || !this.game) return null;
     const current = challenge.tabooBuzzes[word] || 0;
-    if (current <= 0) return 0;
+    if (current <= 0) return null;
     challenge.tabooBuzzes[word] = current - 1;
     const team = this.getCluingTeam()!;
     this.game.scores[team] += 1;
@@ -416,8 +424,9 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     return { correct, missed, buzzes, points: correct * 3 - buzzes };
   }
 
-  endCluing(): { nextPhase: GamePhase; turnScore: TurnScoreData } {
-    if (!this.game) return { nextPhase: GamePhase.LOBBY, turnScore: { correct: 0, missed: 0, buzzes: 0, points: 0 } };
+  endCluing(): { nextPhase: GamePhase; turnScore: TurnScoreData } | null {
+    if (!this.game) return null;
+    if (this.game.phase !== GamePhase.CLUING_A && this.game.phase !== GamePhase.CLUING_B) return null;
     this.clearTimer();
     const team = this.getCluingTeam()!;
     const score = this.turnScore(team);

@@ -35,7 +35,38 @@ jobs:
         run: pnpm run typecheck
 
       - name: Test
-        run: pnpm -r test
+        run: pnpm run test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Install Playwright browsers
+        run: pnpm -r --filter='*-e2e' exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: games/*/e2e/playwright-report/
+          retention-days: 14
 
   docker:
     runs-on: ubuntu-latest
@@ -45,12 +76,15 @@ jobs:
       - name: Build adtaboo image
         run: docker build -f games/adtaboo/Dockerfile -t adtaboo .
 
+      - name: Build charades image
+        run: docker build -f games/charades/Dockerfile -t charades .
+
       - name: Build landing image
         run: docker build -f apps/landing/Dockerfile -t landing .
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, docker]
+    needs: [check, docker, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Trigger deploy webhook

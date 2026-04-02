@@ -213,9 +213,10 @@ describe('AdtabooRoom', () => {
     it('ends cluing and transitions', () => {
       room.resolveCard(0);
       const result = room.endCluing();
-      expect(result.nextPhase).toBe(GamePhase.CLUING_B);
-      expect(result.turnScore.correct).toBe(1);
-      expect(result.turnScore.missed).toBe(1);
+      expect(result).not.toBeNull();
+      expect(result!.nextPhase).toBe(GamePhase.CLUING_B);
+      expect(result!.turnScore.correct).toBe(1);
+      expect(result!.turnScore.missed).toBe(1);
     });
   });
 
@@ -238,7 +239,8 @@ describe('AdtabooRoom', () => {
       room.resolveCard(0);
       const result = room.endCluing();
 
-      expect(result.nextPhase).toBe(GamePhase.ROUND_RESULT);
+      expect(result).not.toBeNull();
+      expect(result!.nextPhase).toBe(GamePhase.ROUND_RESULT);
       expect(room.roundHistory).toHaveLength(1);
       expect(room.roundHistory[0].round).toBe(1);
     });
