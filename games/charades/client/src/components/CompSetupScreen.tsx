@@ -29,13 +29,13 @@ export default function CompSetupScreen() {
         <div className="w-full flex flex-col gap-4">
           {teams.map((team, i) => (
             <div key={i}>
-              <label className="text-gray-400 text-sm mb-1 block">Team {i + 1}</label>
+              <label className={`text-sm mb-1 block ${i === 0 ? 'text-team1' : 'text-team2'}`}>Team {i + 1}</label>
               <input
                 type="text"
                 value={team.name}
                 onChange={(e) => setTeamName(i, e.target.value)}
                 maxLength={20}
-                className="w-full px-4 py-3 rounded-xl bg-surface-raised border border-white/10 text-white font-sans focus:outline-none focus:border-charades/50 transition-colors"
+                className={`w-full px-4 py-3 rounded-xl bg-surface-raised border text-white font-sans focus:outline-none transition-colors ${i === 0 ? 'border-team1/30 focus:border-team1/50' : 'border-team2/30 focus:border-team2/50'}`}
               />
             </div>
           ))}
@@ -66,7 +66,9 @@ export default function CompSetupScreen() {
                 key={i}
                 onClick={() => setStartingTeam(i)}
                 className={`py-3 rounded-xl font-semibold transition-all ${
-                  startingTeam === i ? 'btn-charades text-white' : 'glass-card text-gray-400 hover:text-white'
+                  startingTeam === i
+                    ? `${i === 0 ? 'btn-team1' : 'btn-team2'} text-white`
+                    : 'glass-card text-gray-400 hover:text-white'
                 }`}
               >
                 {team.name || `Team ${i + 1}`}
