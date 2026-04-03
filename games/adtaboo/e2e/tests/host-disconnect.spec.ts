@@ -15,8 +15,8 @@ test.describe('Host Disconnect', () => {
     await assignToTeam(alice.page, bob.name, 'A');
     await assignToTeam(alice.page, carol.name, 'B');
 
-    // Verify Alice has HOST badge
-    await expect(alice.page.getByText('HOST')).toBeVisible();
+    // Verify Alice has host badge ("H")
+    await expect(alice.page.getByTestId(`lobby-player-${alice.name}`).getByText('H')).toBeVisible();
 
     // Close Alice's page (simulate disconnect)
     await alice.page.close();
@@ -24,7 +24,7 @@ test.describe('Host Disconnect', () => {
     // Wait for server to detect disconnect and reassign host
     await bob.page.waitForTimeout(3000);
 
-    // HOST badge should appear on another player's view
-    await expect(bob.page.getByText('HOST')).toBeVisible({ timeout: 10_000 });
+    // Host badge should appear on another player's view
+    await expect(bob.page.getByTestId(`lobby-player-${bob.name}`).getByText('H')).toBeVisible({ timeout: 10_000 });
   });
 });

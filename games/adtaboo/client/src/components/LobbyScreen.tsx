@@ -301,7 +301,6 @@ function PlayerPill({
   myId,
   hostId,
   isHost,
-  hostBadgeColor,
   highlight,
   actions,
 }: {
@@ -309,7 +308,6 @@ function PlayerPill({
   myId: string | null;
   hostId: string | null;
   isHost: boolean;
-  hostBadgeColor: string;
   highlight?: string;
   actions?: React.ReactNode;
 }) {
@@ -330,11 +328,17 @@ function PlayerPill({
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
-      <span className="truncate">
-        {player.name}
-        {player.id === myId && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
-        {player.id === hostId && <span className={`${hostBadgeColor} text-[10px] ml-1 font-medium`}>HOST</span>}
-        {!player.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
+      <span className="flex items-center gap-1.5 min-w-0">
+        <span className="truncate">
+          {player.name}
+          {player.id === myId && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
+          {!player.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
+        </span>
+        {player.id === hostId && (
+          <span className="shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/20 leading-none">
+            H
+          </span>
+        )}
       </span>
       {actions}
     </div>
@@ -447,7 +451,6 @@ function TeamColumn({
             myId={myId}
             hostId={hostId}
             isHost={isHost}
-            hostBadgeColor="text-indigo-400"
             highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
             actions={
               <span className="flex items-center gap-1.5 shrink-0">
