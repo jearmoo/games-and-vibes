@@ -15,7 +15,8 @@ COPY packages/client-core/package.json packages/client-core/
 COPY games/charades/server/package.json games/charades/server/
 COPY games/charades/client/package.json games/charades/client/
 
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # Copy source
 COPY packages/ packages/
@@ -39,7 +40,8 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/word-providers/package.json packages/word-providers/
 COPY games/charades/server/package.json games/charades/server/
 
-RUN pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod
 
 # Copy built artifacts
 COPY --from=build /app/packages/word-providers/dist packages/word-providers/dist

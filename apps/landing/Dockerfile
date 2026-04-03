@@ -10,7 +10,8 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/client-core/package.json packages/client-core/
 COPY apps/landing/package.json apps/landing/
 
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 COPY packages/client-core/ packages/client-core/
 COPY apps/landing/ apps/landing/
@@ -23,7 +24,8 @@ RUN pnpm --filter @games/landing build
 FROM node:20-alpine
 ARG GIT_COMMIT=unknown
 LABEL org.opencontainers.image.revision=$GIT_COMMIT
-RUN npm install -g serve
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g serve
 COPY --from=build /app/apps/landing/dist /app/dist
 
 ENV PORT=3000

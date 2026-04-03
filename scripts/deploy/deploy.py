@@ -24,6 +24,16 @@ LOG_FILE = SCRIPT_DIR / 'deploy.log'
 IMAGES = ['adversarial-taboo', 'charades', 'odes-for-cave-men', 'games-landing']
 DEPLOY_TIMEOUT = 280  # seconds
 
+# Path prefixes → docker compose service names for selective rebuilds
+SERVICE_PATHS = {
+    'adtaboo': {'games/adtaboo/', 'packages/server-core/', 'packages/client-core/', 'packages/word-providers/', 'packages/test-utils/'},
+    'charades': {'games/charades/', 'packages/word-providers/', 'packages/client-core/'},
+    'odes-for-cave-men': {'games/odes-for-cave-men/', 'packages/server-core/', 'packages/client-core/', 'packages/test-utils/'},
+    'landing': {'apps/landing/', 'packages/client-core/'},
+}
+# Changes to these files trigger a full rebuild of all services
+GLOBAL_PATHS = {'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'tsconfig.base.json', 'docker-compose.yml'}
+
 # --- Logging (shared log file with listener) ---
 
 logger = logging.getLogger('deploy.exec')
@@ -77,6 +87,30 @@ def get_deployed_sha() -> str | None:
     return None
 
 
+def changed_services(old_sha: str, new_sha: str) -> list[str] | None:
+    """Return service names that need rebuilding based on changed files.
+
+    Returns None to rebuild all (fallback), [] if no services affected.
+    """
+    result = run_cmd(['git', 'diff', '--name-only', old_sha, new_sha])
+    if result.returncode != 0:
+        return None
+    files = [f for f in result.stdout.strip().splitlines() if f]
+    if not files:
+        return []
+
+    if any(f in GLOBAL_PATHS for f in files):
+        return None
+
+    services = set()
+    for f in files:
+        for svc, prefixes in SERVICE_PATHS.items():
+            if any(f.startswith(p) for p in prefixes):
+                services.add(svc)
+
+    return sorted(services)
+
+
 def log_and_print(msg: str) -> None:
     logger.info(msg)
     print(msg)
@@ -111,13 +145,22 @@ def deploy(target_sha: str) -> int:
         log_and_print(f'git checkout failed (exit {result.returncode})')
         return result.returncode
 
-    log_and_print(f'Rebuilding for commit {target_sha}...')
+    services = changed_services(deployed, target_sha) if deployed else None
+
+    if services is not None and len(services) == 0:
+        log_and_print('No Docker-relevant files changed. Skipping build.')
+        return 0
+
     env = {**os.environ, 'GIT_COMMIT': target_sha}
-    result = run_cmd(
-        ['docker', 'compose', 'up', '--build', '--force-recreate', '-d'],
-        env=env,
-        timeout=DEPLOY_TIMEOUT,
-    )
+    cmd = ['docker', 'compose', 'up', '--build', '-d']
+
+    if services is not None:
+        log_and_print(f'Selective rebuild: {", ".join(services)}')
+        cmd.extend(services)
+    else:
+        log_and_print('Rebuilding all services...')
+
+    result = run_cmd(cmd, env=env, timeout=DEPLOY_TIMEOUT)
 
     if result.returncode != 0:
         log_and_print(f'docker compose failed (exit {result.returncode})')
