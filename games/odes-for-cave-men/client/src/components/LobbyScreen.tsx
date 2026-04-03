@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '@games/odes-for-cave-men-shared';
 import { socket } from '../socket';
@@ -65,32 +66,55 @@ export default function LobbyScreen() {
     socket.emit('team:assign', { team: targetTeam, targetPlayerId: playerId });
   };
 
+  const [showSettings, setShowSettings] = useState(false);
+
+  const settingsSummary = `${settings.rounds} rds · ${settings.timerSeconds}s`;
+
   const content = (
-    <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
-      {/* Room code */}
-      <div className="text-center py-2">
-        <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-medium">Room Code</div>
+    <div className="h-full flex flex-col p-4 gap-2 animate-fade-in overflow-y-auto">
+      {/* Compact header row 1: room code + identity */}
+      <div className="flex items-center justify-between">
         <div
-          className="font-display text-4xl tracking-[0.3em] text-white mt-1"
+          className="font-display text-2xl tracking-[0.2em] text-white"
           style={{ textShadow: '0 0 30px rgba(217, 119, 6, 0.3)' }}
         >
           {roomCode}
         </div>
-        <button onClick={handleCopy} className="text-amber-400 text-xs mt-1 hover:text-amber-300 transition-colors">
-          {copied ? 'Copied!' : 'Copy link'}
-        </button>
+        {me && (
+          <div className="text-right">
+            <span className="text-gray-500 text-xs">Playing as </span>
+            <span className="text-white text-sm font-semibold">{me.name}</span>
+          </div>
+        )}
       </div>
 
-      {/* Player identity */}
-      {me && (
-        <div className="text-center">
-          <span className="text-gray-500 text-xs">Playing as </span>
-          <span className="text-white text-sm font-semibold">{me.name}</span>
-        </div>
-      )}
+      {/* Compact header row 2: copy link + settings summary */}
+      <div className="flex items-center justify-between">
+        <button onClick={handleCopy} className="text-amber-400 text-xs hover:text-amber-300 transition-colors">
+          {copied ? 'Copied!' : 'Copy link'}
+        </button>
+        {host ? (
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-1.5 text-gray-400 text-xs hover:text-white transition-colors"
+          >
+            <span>{settingsSummary}</span>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        ) : (
+          <span className="text-gray-500 text-xs">{settingsSummary}</span>
+        )}
+      </div>
 
       {/* Teams */}
-      <div className="flex gap-3 flex-1 min-h-0">
+      <div className="flex gap-3 flex-1 min-h-[200px]">
         <TeamColumn
           team="A"
           variant="a"
@@ -122,47 +146,6 @@ export default function LobbyScreen() {
         isDragActive={!!activePlayer}
       />
 
-      {/* Settings */}
-      {host && (
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <label className="flex items-center justify-between text-gray-400">
-            <span className="text-gray-500">Rounds</span>
-            <select
-              value={settings.rounds}
-              onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
-              className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center justify-between text-gray-400">
-            <span className="text-gray-500">Timer (s)</span>
-            <input
-              type="number"
-              min={30}
-              max={180}
-              value={timerInput}
-              onChange={(e) => setTimerInput(e.target.value)}
-              onBlur={() => {
-                const v = parseInt(timerInput);
-                if (v && v > 0) {
-                  const clamped = Math.max(30, Math.min(180, v));
-                  socket.emit('settings:update', { timerSeconds: clamped });
-                  setTimerInput(String(clamped));
-                } else {
-                  setTimerInput(String(settings.timerSeconds));
-                }
-              }}
-              className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm w-16 text-center"
-            />
-          </label>
-        </div>
-      )}
-
       {/* Start */}
       {host && (
         <button
@@ -182,6 +165,16 @@ export default function LobbyScreen() {
         <div className="w-full py-3 text-center text-gray-600 text-xs tracking-wider">
           {me?.team ? 'Waiting for host to start the game' : 'Join a team to get started'}
         </div>
+      )}
+
+      {/* Settings modal (host only) */}
+      {showSettings && (
+        <CaveSettingsModal
+          settings={settings}
+          timerInput={timerInput}
+          setTimerInput={setTimerInput}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   );
@@ -223,17 +216,67 @@ function UnassignedSection({
     <div
       ref={isHost ? setNodeRef : undefined}
       data-testid="lobby-unassigned"
-      className={`space-y-1.5 rounded-xl transition-colors ${
+      className={`rounded-xl px-3 py-2 transition-colors text-xs ${
         isOver ? 'bg-white/5 ring-1 ring-white/20' : ''
-      } ${isDragActive && isHost ? 'p-2 border border-dashed border-white/10' : ''}`}
+      } ${isDragActive && isHost ? 'border border-dashed border-white/10' : ''}`}
     >
-      <div className="text-center text-amber-400/80 text-xs font-medium">
-        {players.length > 0 ? 'Unassigned' : 'Drop here to unassign'}
-      </div>
-      {players.map((p) => (
-        <PlayerPill key={p.id} player={p} myId={myId} hostId={hostId} isHost={isHost} />
-      ))}
+      {players.length === 0 ? (
+        <div className="text-center text-amber-400/80 font-medium">Drop here to unassign</div>
+      ) : (
+        <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+          <span className="text-amber-400/80 font-medium mr-0.5">Unassigned:</span>
+          {players.map((p, i) => (
+            <UnassignedChip
+              key={p.id}
+              player={p}
+              myId={myId}
+              hostId={hostId}
+              isHost={isHost}
+              isLast={i === players.length - 1}
+            />
+          ))}
+        </span>
+      )}
     </div>
+  );
+}
+
+function UnassignedChip({
+  player,
+  myId,
+  hostId,
+  isHost,
+  isLast,
+}: {
+  player: { id: string; name: string; connected: boolean };
+  myId: string | null;
+  hostId: string | null;
+  isHost: boolean;
+  isLast: boolean;
+}) {
+  const isDraggable = isHost;
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: player.id,
+    disabled: !isDraggable,
+  });
+
+  return (
+    <span
+      ref={isDraggable ? setNodeRef : undefined}
+      {...(isDraggable ? { ...attributes, ...listeners } : {})}
+      data-testid={`lobby-player-${player.name}`}
+      className={`inline-flex items-center whitespace-nowrap transition-all
+        ${player.id === myId ? 'text-white font-semibold' : 'text-gray-300'}
+        ${!player.connected ? 'opacity-30' : ''}
+        ${isDragging ? 'opacity-30' : ''}
+        ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
+    >
+      {player.name}
+      {player.id === myId && <span className="text-[9px] opacity-60 ml-0.5">(you)</span>}
+      {player.id === hostId && <span className="text-amber-400 text-[9px] ml-0.5 font-medium">HOST</span>}
+      {!player.connected && <span className="text-[8px] text-gray-500 ml-0.5 italic">offline</span>}
+      {!isLast && <span className="text-gray-600">,</span>}
+    </span>
   );
 }
 
@@ -421,5 +464,92 @@ function TeamColumn({
         </div>
       )}
     </div>
+  );
+}
+
+function CaveSettingsModal({
+  settings,
+  timerInput,
+  setTimerInput,
+  onClose,
+}: {
+  settings: { rounds: number; timerSeconds: number };
+  timerInput: string;
+  setTimerInput: (v: string) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative glass-card rounded-2xl border border-white/10 max-w-xs w-full p-6 animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="font-display text-lg text-white tracking-wider mb-4"
+          style={{ textShadow: '0 0 20px rgba(217,119,6,0.3)' }}
+        >
+          Settings
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Rounds</span>
+            <select
+              value={settings.rounds}
+              onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
+              className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Timer (s)</span>
+            <input
+              type="number"
+              min={30}
+              max={180}
+              value={timerInput}
+              onChange={(e) => setTimerInput(e.target.value)}
+              onBlur={() => {
+                const v = parseInt(timerInput);
+                if (v && v > 0) {
+                  const clamped = Math.max(30, Math.min(180, v));
+                  socket.emit('settings:update', { timerSeconds: clamped });
+                  setTimerInput(String(clamped));
+                } else {
+                  setTimerInput(String(settings.timerSeconds));
+                }
+              }}
+              className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5 w-16 text-center"
+            />
+          </label>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full mt-4 py-3 rounded-xl text-white font-display tracking-wider btn-primary transition-all active:scale-[0.97]"
+        >
+          Done
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '../store';
 import { socket } from '../socket';
@@ -67,32 +68,56 @@ export default function LobbyScreen() {
     socket.emit('team:assign', { team: targetTeam, targetPlayerId: playerId });
   };
 
+  const [showSettings, setShowSettings] = useState(false);
+
+  const settingsSummary = `${settings.rounds === null ? '∞' : settings.rounds} rds · ${settings.timerSeconds}s · ${settings.wordsPerTurn}w · ${settings.maxTabooWords} taboo`;
+
   const content = (
-    <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
-      {/* Room code */}
-      <div className="text-center py-2">
-        <div className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-medium">Room Code</div>
+    <div className="h-full flex flex-col p-4 gap-2 animate-fade-in overflow-y-auto">
+      {/* Compact header row 1: room code + identity (pr-10 avoids floating help button) */}
+      <div className="flex items-center justify-between pr-10">
         <div
-          className="font-display text-4xl tracking-[0.3em] text-white mt-1"
+          className="font-display text-2xl tracking-[0.2em] text-white"
           style={{ textShadow: '0 0 30px rgba(99, 102, 241, 0.3)' }}
         >
           {roomCode}
         </div>
-        <button onClick={handleCopy} className="text-indigo-400 text-xs mt-1 hover:text-indigo-300 transition-colors">
-          {copied ? 'Copied!' : 'Copy link'}
-        </button>
+        {me && (
+          <div className="text-right">
+            <span className="text-gray-400 text-xs">Playing as </span>
+            <span className="text-white text-sm font-semibold">{me.name}</span>
+          </div>
+        )}
       </div>
 
-      {/* Player identity */}
-      {me && (
-        <div className="text-center">
-          <span className="text-gray-400 text-xs">Playing as </span>
-          <span className="text-white text-sm font-semibold">{me.name}</span>
-        </div>
-      )}
+      {/* Compact header row 2: copy link + settings summary */}
+      <div className="flex items-center justify-between">
+        <button onClick={handleCopy} className="text-indigo-400 text-xs hover:text-indigo-300 transition-colors">
+          {copied ? 'Copied!' : 'Copy link'}
+        </button>
+        {host ? (
+          <button
+            data-testid="lobby-settings-trigger"
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-1.5 text-gray-400 text-xs hover:text-white transition-colors"
+          >
+            <span>{settingsSummary}</span>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        ) : (
+          <span className="text-gray-500 text-xs">{settingsSummary}</span>
+        )}
+      </div>
 
       {/* Teams */}
-      <div className="flex gap-3 flex-1 min-h-0">
+      <div className="flex gap-3 flex-1 min-h-[200px]">
         <TeamColumn
           team="A"
           variant="a"
@@ -128,90 +153,6 @@ export default function LobbyScreen() {
         isDragActive={!!activePlayer}
       />
 
-      {/* Settings */}
-      {host && (
-        <div className="grid grid-cols-2 gap-3 text-xs" data-testid="lobby-settings">
-          <label className="flex items-center justify-between text-gray-300">
-            <span className="text-gray-400">Rounds</span>
-            <select
-              data-testid="lobby-rounds-select"
-              value={settings.rounds === null ? 'unlimited' : settings.rounds}
-              onChange={(e) => {
-                const val = e.target.value === 'unlimited' ? null : parseInt(e.target.value);
-                socket.emit('settings:update', { rounds: val });
-              }}
-              className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
-            >
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-              <option value="unlimited">Unlimited</option>
-            </select>
-          </label>
-          <label className="flex items-center justify-between text-gray-300">
-            <span className="text-gray-400">Timer (s)</span>
-            <input
-              data-testid="lobby-timer-input"
-              type="number"
-              min={10}
-              max={600}
-              value={timerInput}
-              onChange={(e) => setTimerInput(e.target.value)}
-              onBlur={() => {
-                const v = parseInt(timerInput);
-                if (v && v > 0) {
-                  const clamped = Math.max(10, Math.min(600, v));
-                  socket.emit('settings:update', { timerSeconds: clamped });
-                  setTimerInput(String(clamped));
-                } else {
-                  setTimerInput(String(settings.timerSeconds));
-                }
-              }}
-              className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm w-16 text-center"
-            />
-          </label>
-          <label className="flex items-center justify-between text-gray-300">
-            <span className="text-gray-400">Words</span>
-            <select
-              data-testid="lobby-words-select"
-              value={settings.wordsPerTurn}
-              onChange={(e) => socket.emit('settings:update', { wordsPerTurn: parseInt(e.target.value) })}
-              className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
-            >
-              {[3, 4, 5, 6, 7, 8, 10].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center justify-between text-gray-300">
-            <span className="text-gray-400">Taboos</span>
-            <select
-              data-testid="lobby-taboos-select"
-              value={settings.maxTabooWords}
-              onChange={(e) => socket.emit('settings:update', { maxTabooWords: parseInt(e.target.value) })}
-              className="bg-surface-raised text-white rounded-lg px-2 py-1 border border-white/5 text-sm"
-            >
-              {[5, 10, 15, 20, 25, 30].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-
-      {/* Avg time info */}
-      {host && settings.wordsPerTurn > 0 && (
-        <div className="text-center text-[10px] text-gray-500">
-          {Math.round(settings.timerSeconds / settings.wordsPerTurn)}s avg per word
-        </div>
-      )}
-
       {/* Start */}
       {host && (
         <button
@@ -241,6 +182,16 @@ export default function LobbyScreen() {
       )}
 
       <LeaveRoomButton className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm" />
+
+      {/* Settings modal (host only) */}
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          timerInput={timerInput}
+          setTimerInput={setTimerInput}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 
@@ -281,24 +232,67 @@ function UnassignedSection({
     <div
       ref={isHost ? setNodeRef : undefined}
       data-testid="lobby-unassigned"
-      className={`space-y-1.5 rounded-xl transition-colors ${
+      className={`rounded-xl px-3 py-2 transition-colors text-xs ${
         isOver ? 'bg-white/5 ring-1 ring-white/20' : ''
-      } ${isDragActive && isHost ? 'p-2 border border-dashed border-white/10' : ''}`}
+      } ${isDragActive && isHost ? 'border border-dashed border-white/10' : ''}`}
     >
-      <div className="text-center text-amber-400/80 text-xs font-medium">
-        {players.length > 0 ? 'Unassigned' : 'Drop here to unassign'}
-      </div>
-      {players.map((p) => (
-        <PlayerPill
-          key={p.id}
-          player={p}
-          myId={myId}
-          hostId={hostId}
-          isHost={isHost}
-
-        />
-      ))}
+      {players.length === 0 ? (
+        <div className="text-center text-amber-400/80 font-medium">Drop here to unassign</div>
+      ) : (
+        <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+          <span className="text-amber-400/80 font-medium mr-0.5">Unassigned:</span>
+          {players.map((p, i) => (
+            <UnassignedChip
+              key={p.id}
+              player={p}
+              myId={myId}
+              hostId={hostId}
+              isHost={isHost}
+              isLast={i === players.length - 1}
+            />
+          ))}
+        </span>
+      )}
     </div>
+  );
+}
+
+function UnassignedChip({
+  player,
+  myId,
+  hostId,
+  isHost,
+  isLast,
+}: {
+  player: { id: string; name: string; connected: boolean };
+  myId: string | null;
+  hostId: string | null;
+  isHost: boolean;
+  isLast: boolean;
+}) {
+  const isDraggable = isHost;
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: player.id,
+    disabled: !isDraggable,
+  });
+
+  return (
+    <span
+      ref={isDraggable ? setNodeRef : undefined}
+      {...(isDraggable ? { ...attributes, ...listeners } : {})}
+      data-testid={`lobby-player-${player.name}`}
+      className={`inline-flex items-center whitespace-nowrap transition-all
+        ${player.id === myId ? 'text-white font-semibold' : 'text-gray-300'}
+        ${!player.connected ? 'opacity-30' : ''}
+        ${isDragging ? 'opacity-30' : ''}
+        ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
+    >
+      {player.name}
+      {player.id === myId && <span className="text-[9px] opacity-60 ml-0.5">(you)</span>}
+      {player.id === hostId && <span className="text-indigo-400 text-[9px] ml-0.5 font-medium">HOST</span>}
+      {!player.connected && <span className="text-[8px] text-gray-500 ml-0.5 italic">offline</span>}
+      {!isLast && <span className="text-gray-600">,</span>}
+    </span>
   );
 }
 
@@ -505,5 +499,133 @@ function TeamColumn({
         </div>
       )}
     </div>
+  );
+}
+
+function SettingsModal({
+  settings,
+  timerInput,
+  setTimerInput,
+  onClose,
+}: {
+  settings: { rounds: number | null; timerSeconds: number; wordsPerTurn: number; maxTabooWords: number };
+  timerInput: string;
+  setTimerInput: (v: string) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative glass-card rounded-2xl border border-white/10 max-w-xs w-full p-6 animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="font-display text-lg text-white tracking-wider mb-4"
+          style={{ textShadow: '0 0 20px rgba(99,102,241,0.3)' }}
+        >
+          Settings
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-sm" data-testid="lobby-settings">
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Rounds</span>
+            <select
+              data-testid="lobby-rounds-select"
+              value={settings.rounds === null ? 'unlimited' : settings.rounds}
+              onChange={(e) => {
+                const val = e.target.value === 'unlimited' ? null : parseInt(e.target.value);
+                socket.emit('settings:update', { rounds: val });
+              }}
+              className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5"
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+              <option value="unlimited">∞</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Timer (s)</span>
+            <input
+              data-testid="lobby-timer-input"
+              type="number"
+              min={10}
+              max={600}
+              value={timerInput}
+              onChange={(e) => setTimerInput(e.target.value)}
+              onBlur={() => {
+                const v = parseInt(timerInput);
+                if (v && v > 0) {
+                  const clamped = Math.max(10, Math.min(600, v));
+                  socket.emit('settings:update', { timerSeconds: clamped });
+                  setTimerInput(String(clamped));
+                } else {
+                  setTimerInput(String(settings.timerSeconds));
+                }
+              }}
+              className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5 w-16 text-center"
+            />
+          </label>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Words</span>
+            <select
+              data-testid="lobby-words-select"
+              value={settings.wordsPerTurn}
+              onChange={(e) => socket.emit('settings:update', { wordsPerTurn: parseInt(e.target.value) })}
+              className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5"
+            >
+              {[3, 4, 5, 6, 7, 8, 10].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center justify-between text-gray-300">
+            <span className="text-gray-400">Taboos</span>
+            <select
+              data-testid="lobby-taboos-select"
+              value={settings.maxTabooWords}
+              onChange={(e) => socket.emit('settings:update', { maxTabooWords: parseInt(e.target.value) })}
+              className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5"
+            >
+              {[5, 10, 15, 20, 25, 30].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {settings.wordsPerTurn > 0 && (
+          <div className="text-center text-[10px] text-gray-500 mt-3">
+            {Math.round(settings.timerSeconds / settings.wordsPerTurn)}s avg per word
+          </div>
+        )}
+        <button
+          onClick={onClose}
+          className="w-full mt-4 py-3 rounded-xl text-white font-display tracking-wider btn-primary transition-all active:scale-[0.97]"
+        >
+          Done
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }

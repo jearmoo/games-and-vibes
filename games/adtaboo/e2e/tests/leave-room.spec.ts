@@ -20,7 +20,7 @@ test.describe('Leave Room', () => {
 
     // Click "Stay" — stays in lobby
     await bob.page.getByRole('button', { name: 'Stay' }).click();
-    await expect(bob.page.getByText('Room Code')).toBeVisible();
+    await expect(bob.page.getByText('Copy link')).toBeVisible();
 
     // Click "Leave Room" again, confirm "Leave"
     await bob.page.getByRole('button', { name: 'Leave Room' }).click();

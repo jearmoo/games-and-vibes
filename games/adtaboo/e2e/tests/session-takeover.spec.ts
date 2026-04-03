@@ -29,7 +29,7 @@ test.describe('Session Takeover', () => {
     expect(session).toBeNull();
 
     // New Bob should be in the lobby
-    await expect(newBobPage.getByText('Room Code')).toBeVisible();
+    await expect(newBobPage.getByText('Copy link')).toBeVisible();
 
     // "Back to Home" button is visible
     await expect(bob.page.getByTestId('kicked-back-button')).toBeVisible();
