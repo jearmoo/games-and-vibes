@@ -18,7 +18,8 @@ COPY games/adtaboo/shared/package.json games/adtaboo/shared/
 COPY games/adtaboo/server/package.json games/adtaboo/server/
 COPY games/adtaboo/client/package.json games/adtaboo/client/
 
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # Copy source
 COPY packages/ packages/
@@ -47,7 +48,8 @@ COPY packages/word-providers/package.json packages/word-providers/
 COPY games/adtaboo/shared/package.json games/adtaboo/shared/
 COPY games/adtaboo/server/package.json games/adtaboo/server/
 
-RUN pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod
 
 # Copy built artifacts
 COPY --from=build /app/games/adtaboo/shared/dist games/adtaboo/shared/dist
