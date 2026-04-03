@@ -152,6 +152,7 @@ def _deploy_loop(sha: str, result: DeployResult) -> None:
 
 class DeployHandler(BaseHTTPRequestHandler):
     def do_POST(self):
+        global _active_sha
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         ref_list = params.get('ref', [])
@@ -187,7 +188,6 @@ class DeployHandler(BaseHTTPRequestHandler):
             return
 
         # Set active SHA before starting thread to avoid race with concurrent requests
-        global _active_sha
         _active_sha = target_sha
 
         # Start deploy in background thread
