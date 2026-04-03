@@ -81,6 +81,8 @@ def get_deployed_sha() -> str | None:
             '{{index .Config.Labels "org.opencontainers.image.revision"}}',
             img,
         ])
+        if result.returncode != 0:
+            continue
         sha = result.stdout.strip()
         if sha and sha != '<no value>':
             return sha
