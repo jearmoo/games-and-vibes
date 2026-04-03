@@ -52,6 +52,19 @@ _active_sha: str | None = None
 _pending_lock = threading.Lock()
 
 
+def get_active_sha() -> str | None:
+    """Return the currently deploying SHA (thread-safe)."""
+    with _pending_lock:
+        return _active_sha
+
+
+def set_active_sha(sha: str | None) -> None:
+    """Set the currently deploying SHA (thread-safe)."""
+    global _active_sha
+    with _pending_lock:
+        _active_sha = sha
+
+
 def set_pending(sha: str) -> None:
     """Queue *sha* as the next deploy target, replacing any previous."""
     global _pending_sha
@@ -117,12 +130,11 @@ class DeployResult:
 
 def _deploy_loop(sha: str, result: DeployResult) -> None:
     """Run deploy cycles, storing output in *result*. Releases _deploy_active when done."""
-    global _active_sha
     try:
         current_sha = sha
         for cycle in range(1, MAX_DEPLOY_CYCLES + 1):
             logger.info('Deploy cycle %d starting for %s', cycle, current_sha)
-            _active_sha = current_sha
+            set_active_sha(current_sha)
             result.output_lines.append(f'--- cycle {cycle} ({current_sha[:12]}) ---')
             result.code = run_deploy(current_sha, result.output_lines)
 
@@ -143,7 +155,7 @@ def _deploy_loop(sha: str, result: DeployResult) -> None:
         result.code = -1
         result.output_lines.append(str(e))
     finally:
-        _active_sha = None
+        set_active_sha(None)
         _deploy_active.release()
         result.done.set()
 
@@ -152,7 +164,6 @@ def _deploy_loop(sha: str, result: DeployResult) -> None:
 
 class DeployHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        global _active_sha
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         ref_list = params.get('ref', [])
@@ -174,21 +185,23 @@ class DeployHandler(BaseHTTPRequestHandler):
         logger.info('Received deploy request for %s', target_sha)
 
         # Fetch latest so deploy.py has all commits for ancestry checks
-        subprocess.run(
+        fetch = subprocess.run(
             ['git', 'fetch', 'origin', 'main'],
-            cwd=REPO_DIR, capture_output=True,
+            cwd=REPO_DIR, capture_output=True, text=True,
         )
+        if fetch.returncode != 0:
+            logger.warning('git fetch failed (exit %d): %s', fetch.returncode, fetch.stderr.strip())
 
         if not _deploy_active.acquire(blocking=False):
             set_pending(target_sha)
-            active = _active_sha
+            active = get_active_sha()
             msg = f'Deploy of {active[:12]} in progress; queued {target_sha[:12]}' if active else f'Deploy in progress; queued {target_sha[:12]}'
             logger.info(msg)
             self._respond(202, {'code': 0, 'output': msg})
             return
 
         # Set active SHA before starting thread to avoid race with concurrent requests
-        _active_sha = target_sha
+        set_active_sha(target_sha)
 
         # Start deploy in background thread
         result = DeployResult()
