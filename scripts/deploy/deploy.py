@@ -61,7 +61,7 @@ def run_cmd(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     if result.stdout:
         for line in result.stdout.strip().splitlines():
             logger.info('  %s', line)
-            print(f'  {line}')
+            print(f'  {line}', flush=True)
     return result
 
 
@@ -113,7 +113,7 @@ def changed_services(old_sha: str, new_sha: str) -> list[str] | None:
 
 def log_and_print(msg: str) -> None:
     logger.info(msg)
-    print(msg)
+    print(msg, flush=True)
 
 
 # --- Main ---
