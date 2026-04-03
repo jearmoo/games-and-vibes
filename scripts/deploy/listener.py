@@ -138,6 +138,10 @@ def _deploy_loop(sha: str, result: DeployResult) -> None:
             current_sha = next_sha
 
         logger.warning('Hit max deploy cycles (%d); stopping', MAX_DEPLOY_CYCLES)
+    except Exception as e:
+        logger.exception('Deploy failed with exception')
+        result.code = -1
+        result.output_lines.append(str(e))
     finally:
         _active_sha = None
         _deploy_active.release()
