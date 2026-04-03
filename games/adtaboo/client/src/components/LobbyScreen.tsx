@@ -451,7 +451,6 @@ function TeamColumn({
             myId={myId}
             hostId={hostId}
             isHost={isHost}
-  
             highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
             actions={
               <span className="flex items-center gap-1.5 shrink-0">

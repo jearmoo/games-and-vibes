@@ -431,7 +431,7 @@ function TeamColumn({
             myId={myId}
             hostId={hostId}
             isHost={isHost}
-                        highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
+            highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
           />
         ))}
         {players.length === 0 && (
