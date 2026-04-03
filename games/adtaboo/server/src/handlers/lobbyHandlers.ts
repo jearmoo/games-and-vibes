@@ -29,6 +29,13 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     player.team = team;
     room.touch();
     if (team) socket.join(`${room.code}:team${team}`);
+
+    // Clear TM if player was TM of their old team
+    if (oldTeam && room.tabooMasters[oldTeam] === playerId) {
+      room.tabooMasters[oldTeam] = null;
+      io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
+    }
+
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
     logger.info('room', 'Player changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
 
@@ -61,6 +68,12 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     if (targetSocket) {
       if (oldTeam) targetSocket.leave(`${room.code}:team${oldTeam}`);
       if (team) targetSocket.join(`${room.code}:team${team}`);
+    }
+
+    // Clear TM if player was TM of their old team
+    if (oldTeam && room.tabooMasters[oldTeam] === targetPlayerId) {
+      room.tabooMasters[oldTeam] = null;
+      io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
     }
 
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
