@@ -55,11 +55,12 @@ def run_cmd(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     return result
 
 
-def is_ancestor(older: str, newer: str) -> bool:
-    """Return True if *older* is an ancestor of *newer* in git history."""
+def is_ancestor(older: str, newer: str) -> bool | None:
+    """Return True if *older* is an ancestor of *newer*, or None on error."""
     result = run_cmd(['git', 'merge-base', '--is-ancestor', older, newer])
     if result.returncode == 128:
         logger.warning('is_ancestor: unknown commit(s) — older=%s newer=%s', older, newer)
+        return None
     return result.returncode == 0
 
 
@@ -74,8 +75,12 @@ def get_deployed_sha() -> str | None:
         if result.returncode != 0:
             continue
         sha = result.stdout.strip()
-        if sha and sha != '<no value>':
+        if not sha or sha == '<no value>':
+            continue
+        # Sanity check: a valid SHA is 40 hex characters
+        if len(sha) == 40 and all(c in '0123456789abcdef' for c in sha):
             return sha
+        logger.warning('Unexpected docker inspect output for %s: %s', img, sha[:80])
     return None
 
 
@@ -99,7 +104,10 @@ def deploy(target_sha: str) -> int:
         if target_sha == deployed:
             log_and_print('Already deployed. Skipping.')
             return 0
-        if is_ancestor(target_sha, deployed):
+        ancestor = is_ancestor(target_sha, deployed)
+        if ancestor is None:
+            log_and_print('Cannot verify commit ancestry (unknown commits). Proceeding with deploy.')
+        elif ancestor:
             log_and_print(
                 f'Target {target_sha[:12]} is older than deployed {deployed[:12]}. Skipping.'
             )
