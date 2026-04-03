@@ -107,11 +107,15 @@ export async function setTabooMaster(page: Page, playerName: string) {
   await expect(page.getByText('TM').first()).toBeVisible({ timeout: 3_000 });
 }
 
-/** Configure game settings (host only) */
+/** Configure game settings (host only) — opens settings modal, changes values, closes */
 export async function configureSettings(
   page: Page,
   opts: { rounds?: number; timerSeconds?: number; wordsPerTurn?: number; maxTabooWords?: number },
 ) {
+  // Open settings modal
+  await page.getByTestId('lobby-settings-trigger').click();
+  await expect(page.getByTestId('lobby-settings')).toBeVisible({ timeout: 3_000 });
+
   if (opts.rounds !== undefined) {
     await page.getByTestId('lobby-rounds-select').selectOption(String(opts.rounds));
   }
@@ -126,6 +130,10 @@ export async function configureSettings(
   if (opts.maxTabooWords !== undefined) {
     await page.getByTestId('lobby-taboos-select').selectOption(String(opts.maxTabooWords));
   }
+
+  // Close settings modal
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByTestId('lobby-settings')).not.toBeVisible({ timeout: 3_000 });
   await page.waitForTimeout(300);
 }
 
