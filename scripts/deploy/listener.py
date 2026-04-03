@@ -27,6 +27,7 @@ LOG_FILE = SCRIPT_DIR / 'deploy.log'
 PORT = 9877
 MAX_DEPLOY_CYCLES = 5
 DEPLOY_TIMEOUT = 300  # seconds
+RESPONSE_TIMEOUT = 60  # max seconds before responding to HTTP request
 
 # --- Logging ---
 
@@ -72,27 +73,75 @@ def take_pending() -> str | None:
 
 # --- Deploy invocation ---
 
-def run_deploy(sha: str) -> tuple[int, str]:
-    """Invoke deploy.py as a subprocess. Returns (exit_code, output)."""
+def run_deploy(sha: str, output_lines: list[str]) -> int:
+    """Invoke deploy.py as a subprocess, streaming output into *output_lines*.
+
+    Returns the exit code.
+    """
     logger.info('Invoking deploy.py for %s', sha[:12])
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             [sys.executable, str(DEPLOY_SCRIPT), sha],
             cwd=REPO_DIR,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=DEPLOY_TIMEOUT,
         )
-        output = result.stdout.strip()
-        if output:
-            for line in output.splitlines():
-                logger.info('  %s', line)
-        return result.returncode, output
+        for line in proc.stdout:
+            stripped = line.rstrip('\n')
+            output_lines.append(stripped)
+            logger.info('  %s', stripped)
+        proc.wait(timeout=DEPLOY_TIMEOUT)
+        return proc.returncode
     except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
         msg = f'deploy.py timed out after {DEPLOY_TIMEOUT}s'
         logger.error(msg)
-        return -1, msg
+        output_lines.append(msg)
+        return -1
+
+
+# --- Deploy loop (runs in background thread) ---
+
+class DeployResult:
+    """Holds the result of a deploy loop, shared between thread and handler."""
+    def __init__(self):
+        self.code: int = 0
+        self.output_lines: list[str] = []
+        self.done = threading.Event()
+
+    def snapshot(self) -> str:
+        return '\n'.join(self.output_lines)
+
+
+def _deploy_loop(sha: str, result: DeployResult) -> None:
+    """Run deploy cycles, storing output in *result*. Releases _deploy_active when done."""
+    global _active_sha
+    try:
+        current_sha = sha
+        for cycle in range(1, MAX_DEPLOY_CYCLES + 1):
+            logger.info('Deploy cycle %d starting for %s', cycle, current_sha)
+            _active_sha = current_sha
+            result.output_lines.append(f'--- cycle {cycle} ({current_sha[:12]}) ---')
+            result.code = run_deploy(current_sha, result.output_lines)
+
+            if result.code != 0:
+                logger.error('Deploy cycle %d failed (exit %d); stopping', cycle, result.code)
+                return
+
+            next_sha = take_pending()
+            if next_sha is None or next_sha == current_sha:
+                return
+
+            logger.info('Pending %s queued; running another cycle', next_sha[:12])
+            current_sha = next_sha
+
+        logger.warning('Hit max deploy cycles (%d); stopping', MAX_DEPLOY_CYCLES)
+    finally:
+        _active_sha = None
+        _deploy_active.release()
+        result.done.set()
 
 
 # --- HTTP server ---
@@ -127,46 +176,28 @@ class DeployHandler(BaseHTTPRequestHandler):
 
         if not _deploy_active.acquire(blocking=False):
             set_pending(target_sha)
-            logger.info('Deploy in progress; queued %s', target_sha)
-            self._respond(202, {'code': 0, 'output': f'Deploy in progress; queued {target_sha}'})
+            active = _active_sha
+            msg = f'Deploy of {active[:12]} in progress; queued {target_sha[:12]}' if active else f'Deploy in progress; queued {target_sha[:12]}'
+            logger.info(msg)
+            self._respond(202, {'code': 0, 'output': msg})
             return
 
-        global _active_sha
-        try:
-            code, output = self._deploy_loop(target_sha)
-            self._respond(200 if code == 0 else 500, {'code': code, 'output': output})
-        except Exception as e:
-            logger.exception('Deploy failed with exception')
-            self._respond(500, {'code': -1, 'output': str(e)})
-        finally:
-            _active_sha = None
-            _deploy_active.release()
+        # Start deploy in background thread
+        result = DeployResult()
+        thread = threading.Thread(target=_deploy_loop, args=(target_sha, result), daemon=True)
+        thread.start()
 
-    def _deploy_loop(self, sha: str) -> tuple[int, str]:
-        global _active_sha
-        all_output: list[str] = []
-        current_sha = sha
+        # Wait up to RESPONSE_TIMEOUT for completion
+        result.done.wait(timeout=RESPONSE_TIMEOUT)
 
-        for cycle in range(1, MAX_DEPLOY_CYCLES + 1):
-            logger.info('Deploy cycle %d starting for %s', cycle, current_sha)
-            _active_sha = current_sha
-            code, output = run_deploy(current_sha)
-            all_output.append(f'--- cycle {cycle} ({current_sha[:12]}) ---')
-            all_output.append(output)
-
-            if code != 0:
-                logger.error('Deploy cycle %d failed (exit %d); stopping', cycle, code)
-                return code, '\n'.join(all_output)
-
-            next_sha = take_pending()
-            if next_sha is None or next_sha == current_sha:
-                return code, '\n'.join(all_output)
-
-            logger.info('Pending %s queued; running another cycle', next_sha[:12])
-            current_sha = next_sha
-
-        logger.warning('Hit max deploy cycles (%d); stopping', MAX_DEPLOY_CYCLES)
-        return code, '\n'.join(all_output)
+        if result.done.is_set():
+            # Deploy finished within timeout — return full result
+            status = 200 if result.code == 0 else 500
+            self._respond(status, {'code': result.code, 'output': result.snapshot()})
+        else:
+            # Still running — return partial output and let it continue
+            logger.info('Responding 202 after %ds; deploy continues in background', RESPONSE_TIMEOUT)
+            self._respond(202, {'code': 0, 'output': result.snapshot()})
 
     def _respond(self, status: int, body: dict) -> None:
         payload = json.dumps(body).encode()
