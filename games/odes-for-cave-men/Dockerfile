@@ -17,7 +17,8 @@ COPY games/odes-for-cave-men/shared/package.json games/odes-for-cave-men/shared/
 COPY games/odes-for-cave-men/server/package.json games/odes-for-cave-men/server/
 COPY games/odes-for-cave-men/client/package.json games/odes-for-cave-men/client/
 
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # Copy source
 COPY packages/ packages/
@@ -44,7 +45,8 @@ COPY packages/server-core/package.json packages/server-core/
 COPY games/odes-for-cave-men/shared/package.json games/odes-for-cave-men/shared/
 COPY games/odes-for-cave-men/server/package.json games/odes-for-cave-men/server/
 
-RUN pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod
 
 # Copy built artifacts
 COPY --from=build /app/packages/server-core/dist packages/server-core/dist
