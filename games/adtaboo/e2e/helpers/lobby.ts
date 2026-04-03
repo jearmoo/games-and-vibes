@@ -11,7 +11,7 @@ export async function createRoom(page: Page, name: string): Promise<string> {
   await goHome(page);
   await page.getByTestId('home-name-input').fill(name);
   await page.getByTestId('home-create-button').click();
-  await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Copy link')).toBeVisible({ timeout: 10_000 });
 
   const roomCode = await page.evaluate(() => {
     const session = localStorage.getItem('adtaboo_session');
@@ -28,7 +28,7 @@ export async function joinRoom(page: Page, name: string, roomCode: string) {
   await page.getByTestId('home-join-mode-button').click();
   await page.getByTestId('home-code-input').fill(roomCode);
   await page.getByTestId('home-join-button').click();
-  await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Copy link')).toBeVisible({ timeout: 10_000 });
 }
 
 /** Player self-joins a team (works for both host and non-host) */

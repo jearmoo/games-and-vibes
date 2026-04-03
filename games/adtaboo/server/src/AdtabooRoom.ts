@@ -37,7 +37,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
   private _refreshingWord: boolean = false;
 
   constructor(code: string, hostId: string) {
-    super(code, hostId, { rounds: 3, timerSeconds: 60, wordsPerTurn: 5, maxTabooWords: 20 });
+    super(code, hostId, { rounds: null, timerSeconds: 60, wordsPerTurn: 5, maxTabooWords: 20 });
   }
 
   // --- Player management (team-aware) ---
