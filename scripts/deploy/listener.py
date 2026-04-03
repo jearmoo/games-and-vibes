@@ -81,7 +81,7 @@ def run_deploy(sha: str, output_lines: list[str]) -> int:
     logger.info('Invoking deploy.py for %s', sha[:12])
     try:
         proc = subprocess.Popen(
-            [sys.executable, str(DEPLOY_SCRIPT), sha],
+            [sys.executable, '-u', str(DEPLOY_SCRIPT), sha],
             cwd=REPO_DIR,
             text=True,
             stdout=subprocess.PIPE,
