@@ -74,9 +74,9 @@ done
 
 # Start client
 cd "$ROOT/$CLIENT_DIR"
-VITE_PORT=$CLIENT_PORT \
-"$PORT_ENV_VAR"=$SERVER_PORT \
-  npx vite --port "$CLIENT_PORT" --strictPort &
+export VITE_PORT=$CLIENT_PORT
+export "$PORT_ENV_VAR=$SERVER_PORT"
+npx vite --port "$CLIENT_PORT" --strictPort &
 CLIENT_PID=$!
 
 echo ""

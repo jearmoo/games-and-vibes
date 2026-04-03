@@ -81,7 +81,7 @@ def run_deploy(sha: str, output_lines: list[str]) -> int:
     logger.info('Invoking deploy.py for %s', sha[:12])
     try:
         proc = subprocess.Popen(
-            [sys.executable, str(DEPLOY_SCRIPT), sha],
+            [sys.executable, '-u', str(DEPLOY_SCRIPT), sha],
             cwd=REPO_DIR,
             text=True,
             stdout=subprocess.PIPE,
@@ -185,6 +185,10 @@ class DeployHandler(BaseHTTPRequestHandler):
             logger.info(msg)
             self._respond(202, {'code': 0, 'output': msg})
             return
+
+        # Set active SHA before starting thread to avoid race with concurrent requests
+        global _active_sha
+        _active_sha = target_sha
 
         # Start deploy in background thread
         result = DeployResult()
