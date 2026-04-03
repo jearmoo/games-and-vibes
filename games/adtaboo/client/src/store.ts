@@ -65,7 +65,7 @@ export const initialState = {
   roomCode: null,
   players: [],
   hostId: null,
-  settings: { rounds: 3, timerSeconds: 60, wordsPerTurn: 5, maxTabooWords: 20 },
+  settings: { rounds: null, timerSeconds: 60, wordsPerTurn: 5, maxTabooWords: 20 },
   tabooMasters: { A: null, B: null },
   teamNames: { A: 'Team A', B: 'Team B' },
   phase: null,

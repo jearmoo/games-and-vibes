@@ -49,7 +49,7 @@ test.describe('Play Again', () => {
 
     // All should return to lobby
     for (const p of [alice, bob, carol, dave]) {
-      await expect(p.page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
+      await expect(p.page.getByText('Copy link')).toBeVisible({ timeout: 10_000 });
     }
 
     // Teams should be preserved

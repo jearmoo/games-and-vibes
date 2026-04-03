@@ -11,7 +11,7 @@ export async function createRoom(page: Page, name: string): Promise<string> {
   await goHome(page);
   await page.getByTestId('home-name-input').fill(name);
   await page.getByTestId('home-create-button').click();
-  await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Copy link')).toBeVisible({ timeout: 10_000 });
 
   const roomCode = await page.evaluate(() => {
     const session = localStorage.getItem('adtaboo_session');
@@ -28,7 +28,7 @@ export async function joinRoom(page: Page, name: string, roomCode: string) {
   await page.getByTestId('home-join-mode-button').click();
   await page.getByTestId('home-code-input').fill(roomCode);
   await page.getByTestId('home-join-button').click();
-  await expect(page.getByText('Room Code')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Copy link')).toBeVisible({ timeout: 10_000 });
 }
 
 /** Player self-joins a team (works for both host and non-host) */
@@ -107,11 +107,15 @@ export async function setTabooMaster(page: Page, playerName: string) {
   await expect(page.getByText('TM').first()).toBeVisible({ timeout: 3_000 });
 }
 
-/** Configure game settings (host only) */
+/** Configure game settings (host only) — opens settings modal, changes values, closes */
 export async function configureSettings(
   page: Page,
   opts: { rounds?: number; timerSeconds?: number; wordsPerTurn?: number; maxTabooWords?: number },
 ) {
+  // Open settings modal
+  await page.getByTestId('lobby-settings-trigger').click();
+  await expect(page.getByTestId('lobby-settings')).toBeVisible({ timeout: 3_000 });
+
   if (opts.rounds !== undefined) {
     await page.getByTestId('lobby-rounds-select').selectOption(String(opts.rounds));
   }
@@ -126,6 +130,10 @@ export async function configureSettings(
   if (opts.maxTabooWords !== undefined) {
     await page.getByTestId('lobby-taboos-select').selectOption(String(opts.maxTabooWords));
   }
+
+  // Close settings modal
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByTestId('lobby-settings')).not.toBeVisible({ timeout: 3_000 });
   await page.waitForTimeout(300);
 }
 

@@ -53,7 +53,7 @@ test.describe('Happy Path - Full Game', () => {
 
     // --- 1.6 Verify non-host view ---
     await expect(bob.page.getByText('Waiting for host to start the game')).toBeVisible();
-    await expect(bob.page.getByTestId('lobby-settings')).not.toBeVisible();
+    await expect(bob.page.getByTestId('lobby-settings-trigger')).not.toBeVisible();
 
     // --- 1.7 Start game ---
     await startGame(alice.page);
