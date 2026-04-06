@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/game';
 import { createRoom, joinRoom, assignToTeam, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
-import { beginCluing, markCorrect } from '../helpers/cluing';
+import { beginCluing, markCorrect, lockInReview } from '../helpers/cluing';
 
 test.describe('Timer Expiry', () => {
   test('turn auto-ends when timer expires', async ({ players }) => {
@@ -31,18 +31,20 @@ test.describe('Timer Expiry', () => {
     await addTabooWords(carol.page, ['u1', 'u2', 'u3', 'u4', 'u5']);
     await lockIn(carol.page);
 
-    // Cluing A — Bob marks 1 correct, then lets timer expire
+    // Cluing A — Bob marks 1 correct, then lets timer expire → REVIEW_A
     await expect(bob.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(bob.page);
     await markCorrect(bob.page);
 
-    // Don't end turn — wait for timer to expire (10s + buffer)
-    // After timer expires, should transition to Cluing B
-    await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 20_000 });
+    // Timer expires → enters REVIEW_A → Carol (opposing TM) locks in
+    await lockInReview(carol.page);
 
-    // Dave's turn now — timer expiry worked
+    // Cluing B — Dave's turn
+    await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 20_000 });
     await beginCluing(dave.page);
-    // Let timer expire again for game over
+
+    // Timer expires → REVIEW_B → Alice locks in → GAME_OVER
+    await lockInReview(alice.page);
     await expect(alice.page.getByText(/Complete|Wins!|Tie/)).toBeVisible({ timeout: 20_000 });
   });
 });

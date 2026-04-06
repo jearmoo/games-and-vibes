@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/game';
 import { createRoom, joinRoom, assignToTeam, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
-import { beginCluing, endTurn, waitForGameOver, playAgain } from '../helpers/cluing';
+import { beginCluing, endTurn, lockInReview, waitForGameOver, playAgain } from '../helpers/cluing';
 
 test.describe('Play Again', () => {
   test('play again returns to lobby with teams preserved', async ({ players }) => {
@@ -31,17 +31,19 @@ test.describe('Play Again', () => {
     await addTabooWords(carol.page, ['y1', 'y2', 'y3', 'y4', 'y5']);
     await lockIn(carol.page);
 
-    // Team A clues
+    // Team A clues → REVIEW_A
     await expect(bob.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(bob.page);
     await endTurn(bob.page);
+    await lockInReview(carol.page);
 
-    // Team B clues
+    // Team B clues → REVIEW_B
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(dave.page);
     await endTurn(dave.page);
+    await lockInReview(alice.page);
 
-    // Game over (1 round game) — may go through scoring screen first
+    // Game over (1 round game)
     await waitForGameOver(alice.page);
 
     // Alice clicks Play Again
