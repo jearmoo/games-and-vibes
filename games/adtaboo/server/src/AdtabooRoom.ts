@@ -357,12 +357,14 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
 
   beginCluingTimer(onExpired: () => void): number {
     if (!this.game) return 0;
-    const end = Date.now() + this.settings.timerSeconds * 1000;
+    const scale = parseFloat(process.env.TIMER_SCALE || '1');
+    const durationMs = this.settings.timerSeconds * 1000 * scale;
+    const end = Date.now() + durationMs;
     this.game.timerEnd = end;
     this.onTimerExpired = onExpired;
     this.timer = setTimeout(() => {
       this.onTimerExpired?.();
-    }, this.settings.timerSeconds * 1000);
+    }, durationMs);
     this.touch();
     return end;
   }

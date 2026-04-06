@@ -2,10 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : 2,
+  workers: 2,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : [['list']],
   globalSetup: './global-setup.ts',
   use: {
