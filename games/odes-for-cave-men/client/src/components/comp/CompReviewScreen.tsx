@@ -1,5 +1,4 @@
 import { useCompStore, type CompReviewCard } from '../../compStore';
-import CompHistoryButton from './CompHistoryButton';
 
 const POINT_OPTIONS = [-1, 0, 1, 3] as const;
 
@@ -50,10 +49,7 @@ export default function CompReviewScreen() {
   const totalPoints = roundCards.reduce((sum, c) => sum + c.points, 0);
 
   return (
-    <div className="h-full flex flex-col p-4 gap-3 animate-fade-in relative">
-      <div className="absolute top-4 right-4 z-10">
-        <CompHistoryButton />
-      </div>
+    <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
       {/* Header */}
       <div className="text-center">
         <div className="text-gray-500 text-xs tracking-wider uppercase mb-1">Turn Review</div>

@@ -1,5 +1,4 @@
 import { useCompStore } from '../../compStore';
-import CompHistoryButton from './CompHistoryButton';
 
 export default function CompCluerEntry() {
   const cluerName = useCompStore((s) => s.cluerName);
@@ -7,10 +6,7 @@ export default function CompCluerEntry() {
   const beginRound = useCompStore((s) => s.beginRound);
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in relative">
-      <div className="absolute top-4 right-4">
-        <CompHistoryButton />
-      </div>
+    <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
       <div className="text-gray-400 text-sm text-center">Who's clueing this round?</div>
 
       <input
