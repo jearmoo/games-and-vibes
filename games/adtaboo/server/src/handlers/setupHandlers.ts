@@ -166,32 +166,23 @@ export function prepareCluingPhase(room: AdtabooRoom, team: TeamId, io: Server) 
     phase: room.game.phase,
     team,
   };
-  const realCards = challenge.cards.map((c) => ({ word: c.word, result: c.result }));
-  const maskedCards = challenge.cards.map((c) => ({ word: '???', result: c.result }));
+  const cards = challenge.cards.map((c) => ({ word: c.word, result: c.result }));
 
-  const clueGiver = challenge.clueGiverId ? room.getPlayer(challenge.clueGiverId) : null;
-  if (clueGiver) {
-    io.to(clueGiver.socketId).emit('clue:start', {
-      ...basePayload,
-      cards: realCards,
-      tabooWords: [],
-      tabooBuzzes: {},
-    });
-  }
-
-  for (const p of room.getTeamPlayers(team).filter((p) => p.id !== challenge.clueGiverId)) {
+  // Cluing team members see cards but not taboo words
+  for (const p of room.getTeamPlayers(team)) {
     io.to(p.socketId).emit('clue:start', {
       ...basePayload,
-      cards: maskedCards,
+      cards,
       tabooWords: [],
       tabooBuzzes: {},
     });
   }
 
+  // Opposing team sees cards + taboo words (for buzzing)
   for (const p of room.getTeamPlayers(opposingTeam)) {
     io.to(p.socketId).emit('clue:start', {
       ...basePayload,
-      cards: realCards,
+      cards,
       tabooWords: challenge.tabooWords,
       tabooBuzzes: challenge.tabooBuzzes,
     });

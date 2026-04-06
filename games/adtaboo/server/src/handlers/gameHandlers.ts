@@ -6,30 +6,20 @@ import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
 import { prepareCluingPhase, emitSetupCards } from './setupHandlers.js';
 
-export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, metrics: MetricsCollector) {
+export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, _metrics: MetricsCollector) {
   const result = room.endCluing();
   if (!result || !room.game) return;
-  logger.info('game', 'Cluing ended', { room: room.code, team, turnScore: result.turnScore });
+  logger.info('game', 'Cluing ended, entering review', { room: room.code, team, turnScore: result.turnScore });
 
-  if (result.nextPhase === GamePhase.CLUING_B) {
-    io.to(room.code).emit('turn:transition', {
-      phase: GamePhase.CLUING_B,
-      turnScore: result.turnScore,
-      scores: room.game.scores,
-    });
-    prepareCluingPhase(room, 'B', io);
-  } else {
-    if (result.nextPhase === GamePhase.GAME_OVER) {
-      metrics.gameCompleted();
-    }
-    io.to(room.code).emit('round:ended', {
-      phase: result.nextPhase,
-      scores: room.game.scores,
-      round: room.game.round,
-      turnResults: room.game.turnResults,
-      roundHistory: room.getRoundHistory(),
-    });
-  }
+  io.to(room.code).emit('turn:review', {
+    phase: result.nextPhase,
+    team,
+    turnScore: result.turnScore,
+    scores: room.game.scores,
+    cards: room.game.challenges[team].cards,
+    tabooWords: room.game.challenges[team].tabooWords,
+    tabooBuzzes: room.game.challenges[team].tabooBuzzes,
+  });
 }
 
 export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
@@ -146,6 +136,89 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
     });
   });
 
+  /** Guard: verify caller is the opposing TM during a review phase. Returns room + team or null. */
+  function getReviewContext(): { room: AdtabooRoom; team: TeamId } | null {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return null;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return null;
+    if (room.game.phase !== GamePhase.REVIEW_A && room.game.phase !== GamePhase.REVIEW_B) return null;
+    const team: TeamId = room.game.phase === GamePhase.REVIEW_A ? 'A' : 'B';
+    if (playerId !== room.tabooMasters[room.getOpposingTeam(team)]) return null;
+    return { room, team };
+  }
+
+  function emitReviewUpdate(room: AdtabooRoom, team: TeamId): void {
+    io.to(room.code).emit('review:updated', {
+      tabooBuzzes: room.game!.challenges[team].tabooBuzzes,
+      turnScore: room.game!.turnResults[team],
+      scores: room.game!.scores,
+    });
+  }
+
+  socket.on('review:buzz', ({ tabooWord }: { tabooWord: string }) => {
+    const rc = getReviewContext();
+    if (!rc) return;
+    const count = rc.room.buzzTabooWord(tabooWord);
+    if (count === 0) return;
+    rc.room.recalcTurnScore(rc.team);
+    emitReviewUpdate(rc.room, rc.team);
+  });
+
+  socket.on('review:undo-buzz', ({ tabooWord }: { tabooWord: string }) => {
+    const rc = getReviewContext();
+    if (!rc) return;
+    const count = rc.room.undoBuzzTabooWord(tabooWord);
+    if (count === null) return;
+    rc.room.recalcTurnScore(rc.team);
+    emitReviewUpdate(rc.room, rc.team);
+  });
+
+  socket.on('review:toggle-card', ({ cardIndex }: { cardIndex: number }) => {
+    const rc = getReviewContext();
+    if (!rc) return;
+    const card = rc.room.game!.challenges[rc.team].cards[cardIndex];
+    if (!card) return;
+    card.result = card.result === 'correct' ? null : 'correct';
+    rc.room.recalcTurnScore(rc.team);
+    io.to(rc.room.code).emit('review:card-toggled', {
+      cardIndex,
+      result: card.result,
+      turnScore: rc.room.game!.turnResults[rc.team],
+      scores: rc.room.game!.scores,
+    });
+  });
+
+  socket.on('review:lock-in', () => {
+    const rc = getReviewContext();
+    if (!rc) return;
+    const result = rc.room.lockInReview();
+    if (!result) return;
+
+    logger.info('game', 'Review locked in', { room: rc.room.code, team: rc.team, nextPhase: result.nextPhase });
+
+    if (result.nextPhase === GamePhase.CLUING_B) {
+      io.to(rc.room.code).emit('turn:transition', {
+        phase: GamePhase.CLUING_B,
+        turnScore: rc.room.game!.turnResults.A,
+        scores: rc.room.game!.scores,
+        roundHistory: rc.room.getRoundHistory(),
+      });
+      prepareCluingPhase(rc.room, 'B', io);
+    } else {
+      if (result.nextPhase === GamePhase.GAME_OVER) {
+        metrics.gameCompleted();
+      }
+      io.to(rc.room.code).emit('round:ended', {
+        phase: result.nextPhase,
+        scores: rc.room.game!.scores,
+        round: rc.room.game!.round,
+        turnResults: rc.room.game!.turnResults,
+        roundHistory: rc.room.getRoundHistory(),
+      });
+    }
+  });
+
   socket.on('round:next', () => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
@@ -166,6 +239,12 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
       challengeCards: [],
       tabooMasters: room.tabooMasters,
     });
+
+    // Emit pre-picked clue-givers
+    for (const team of ['A', 'B'] as const) {
+      const cgId = room.game.challenges[team].clueGiverId;
+      if (cgId) io.to(room.code).emit('setup:clue-giver-set', { team, clueGiverId: cgId });
+    }
 
     room
       .fetchInitialWords()

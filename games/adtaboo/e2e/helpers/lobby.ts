@@ -140,7 +140,7 @@ export async function configureSettings(
 /** Click "Start Game" (host only) */
 export async function startGame(page: Page) {
   await page.getByTestId('lobby-start-button').click();
-  await expect(page.getByText('Team Setup')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
 }
 
 /** Wait for all players to see the lobby with a given player name */

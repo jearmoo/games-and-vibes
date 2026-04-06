@@ -210,11 +210,11 @@ describe('AdtabooRoom', () => {
       expect(room.allCardsResolved()).toBe(true);
     });
 
-    it('ends cluing and transitions', () => {
+    it('ends cluing and transitions to review', () => {
       room.resolveCard(0);
       const result = room.endCluing();
       expect(result).not.toBeNull();
-      expect(result!.nextPhase).toBe(GamePhase.CLUING_B);
+      expect(result!.nextPhase).toBe(GamePhase.REVIEW_A);
       expect(result!.turnScore.correct).toBe(1);
       expect(result!.turnScore.missed).toBe(1);
     });
@@ -234,10 +234,12 @@ describe('AdtabooRoom', () => {
 
       room.prepareCluingPhase('A');
       room.resolveCard(0);
-      room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
 
       room.resolveCard(0);
-      const result = room.endCluing();
+      room.endCluing(); // -> REVIEW_B
+      const result = room.lockInReview(); // -> ROUND_RESULT
 
       expect(result).not.toBeNull();
       expect(result!.nextPhase).toBe(GamePhase.ROUND_RESULT);
@@ -258,8 +260,10 @@ describe('AdtabooRoom', () => {
       room.setClueGiver('B', 'p4');
 
       room.prepareCluingPhase('A');
-      room.endCluing();
-      const result = room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+      room.endCluing(); // -> REVIEW_B
+      const result = room.lockInReview(); // -> GAME_OVER (round 1 of 1)
 
       expect(result).not.toBeNull();
       expect(result!.nextPhase).toBe(GamePhase.GAME_OVER);
@@ -278,8 +282,10 @@ describe('AdtabooRoom', () => {
       room.setClueGiver('B', 'p4');
 
       room.prepareCluingPhase('A');
-      room.endCluing();
-      const result = room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+      room.endCluing(); // -> REVIEW_B
+      const result = room.lockInReview(); // -> ROUND_RESULT (unlimited)
 
       expect(result).not.toBeNull();
       expect(result!.nextPhase).toBe(GamePhase.ROUND_RESULT);
@@ -297,8 +303,10 @@ describe('AdtabooRoom', () => {
       room.setClueGiver('B', 'p4');
 
       room.prepareCluingPhase('A');
-      room.endCluing();
-      room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+      room.endCluing(); // -> REVIEW_B
+      room.lockInReview(); // -> ROUND_RESULT
 
       room.advanceToNextRound();
       expect(room.game?.round).toBe(2);
@@ -421,6 +429,117 @@ describe('AdtabooRoom', () => {
       const restored = AdtabooRoom.fromJSON(json);
       expect(restored.getPlayer('p4')?.removed).toBe(true);
       expect(restored.getPlayerByName('Player4')?.removed).toBe(true);
+    });
+  });
+
+  describe('pickDefaultClueGiver', () => {
+    it('picks first connected non-TM player', () => {
+      room.startGame();
+      // TM for A is host1, so default clue-giver should be p2 (the other team A player)
+      expect(room.game!.challenges.A.clueGiverId).toBe('p2');
+    });
+
+    it('picks TM if they are the only player', () => {
+      // Remove p2 so Team A only has host1 (who is TM)
+      room.removePlayer('p2');
+      room.startGame();
+      expect(room.game!.challenges.A.clueGiverId).toBe('host1');
+    });
+
+    it('auto-picks on advanceToNextRound', () => {
+      room.startGame();
+      room.game!.challenges.A.cards = [{ word: 'cat', result: null }];
+      room.game!.challenges.A.tabooWords = [];
+      room.game!.challenges.A.tabooBuzzes = {};
+      room.game!.challenges.B.cards = [{ word: 'dog', result: null }];
+      room.game!.challenges.B.tabooWords = [];
+      room.game!.challenges.B.tabooBuzzes = {};
+      room.setClueGiver('A', 'p2');
+      room.setClueGiver('B', 'p4');
+
+      room.prepareCluingPhase('A');
+      room.endCluing();
+      room.lockInReview();
+      room.endCluing();
+      room.lockInReview();
+
+      room.advanceToNextRound();
+      expect(room.game!.challenges.A.clueGiverId).not.toBeNull();
+      expect(room.game!.challenges.B.clueGiverId).not.toBeNull();
+    });
+  });
+
+  describe('recalcTurnScore', () => {
+    it('recalculates after toggling a card result', () => {
+      room.startGame();
+      room.game!.challenges.A.cards = [
+        { word: 'cat', result: 'correct' },
+        { word: 'dog', result: null },
+      ];
+      room.game!.challenges.A.tabooWords = ['meow'];
+      room.game!.challenges.A.tabooBuzzes = {};
+      room.setClueGiver('A', 'p2');
+      room.prepareCluingPhase('A');
+      room.endCluing(); // -> REVIEW_A
+
+      room.recalcTurnScore('A');
+      expect(room.game!.turnResults.A).not.toBeNull();
+      expect(room.game!.turnResults.A!.correct).toBe(1);
+      expect(room.game!.turnResults.A!.points).toBe(3);
+
+      // Toggle card off
+      room.game!.challenges.A.cards[0].result = null;
+      room.recalcTurnScore('A');
+      expect(room.game!.turnResults.A!.correct).toBe(0);
+      expect(room.game!.turnResults.A!.points).toBe(0);
+    });
+  });
+
+  describe('archiveTeamData (via lockInReview)', () => {
+    it('creates partial entry after REVIEW_A lock-in', () => {
+      room.startGame();
+      room.game!.challenges.A.cards = [{ word: 'cat', result: null }];
+      room.game!.challenges.A.tabooWords = ['meow'];
+      room.game!.challenges.A.tabooBuzzes = {};
+      room.game!.challenges.B.cards = [{ word: 'dog', result: null }];
+      room.game!.challenges.B.tabooWords = [];
+      room.game!.challenges.B.tabooBuzzes = {};
+      room.setClueGiver('A', 'p2');
+      room.setClueGiver('B', 'p4');
+
+      room.prepareCluingPhase('A');
+      room.resolveCard(0);
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+
+      expect(room.roundHistory).toHaveLength(1);
+      expect(room.roundHistory[0].teams.A).not.toBeNull();
+      expect(room.roundHistory[0].teams.A!.clueGiverName).toBe('Player2');
+      expect(room.roundHistory[0].teams.A!.cards).toHaveLength(1);
+      expect(room.roundHistory[0].teams.B).toBeNull();
+    });
+
+    it('completes entry after REVIEW_B lock-in', () => {
+      room.startGame();
+      room.game!.challenges.A.cards = [{ word: 'cat', result: null }];
+      room.game!.challenges.A.tabooWords = [];
+      room.game!.challenges.A.tabooBuzzes = {};
+      room.game!.challenges.B.cards = [{ word: 'dog', result: null }];
+      room.game!.challenges.B.tabooWords = ['bark'];
+      room.game!.challenges.B.tabooBuzzes = {};
+      room.setClueGiver('A', 'p2');
+      room.setClueGiver('B', 'p4');
+
+      room.prepareCluingPhase('A');
+      room.endCluing();
+      room.lockInReview();
+      room.endCluing();
+      room.lockInReview();
+
+      expect(room.roundHistory).toHaveLength(1);
+      expect(room.roundHistory[0].teams.A).not.toBeNull();
+      expect(room.roundHistory[0].teams.B).not.toBeNull();
+      expect(room.roundHistory[0].teams.B!.tabooWords).toContain('bark');
     });
   });
 });

@@ -173,6 +173,14 @@ export default function CluerScreen() {
       <div className="pt-1">
         <ActionButtonBar rows={BUTTON_ROWS} onAction={handleAction} />
       </div>
+
+      {/* End turn early */}
+      <button
+        onClick={() => socket.emit('clue:end-turn')}
+        className="w-full py-2 rounded-xl text-gray-600 hover:text-gray-400 text-xs font-display tracking-wider transition-colors"
+      >
+        End Turn
+      </button>
     </div>
   );
 }

@@ -42,6 +42,13 @@ export async function undoBuzz(page: Page, word: string) {
   await page.waitForTimeout(300);
 }
 
+/** Lock in the review phase (opposing TM only — clicks "Lock In" on the review screen).
+ *  Uses a longer timeout to handle timer expiry before review appears. */
+export async function lockInReview(page: Page) {
+  await expect(page.getByText('Turn Review')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Lock In' }).click();
+}
+
 /** Wait for scoring/round result screen */
 export async function waitForScoring(page: Page) {
   await expect(

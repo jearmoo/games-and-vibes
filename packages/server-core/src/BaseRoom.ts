@@ -37,6 +37,21 @@ export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
     this.touch();
   }
 
+  /** Permanently remove a player (host kick). During active game, soft-removes and triggers onPlayerRemoved. */
+  kickPlayer(id: string): boolean {
+    const player = this.players.get(id);
+    if (!player) return false;
+    if (this.isGameActive()) {
+      player.connected = false;
+      player.removed = true;
+    } else {
+      this.players.delete(id);
+    }
+    this.onPlayerRemoved(id);
+    this.touch();
+    return true;
+  }
+
   getActivePlayers(): P[] {
     return Array.from(this.players.values()).filter((p) => !p.removed);
   }

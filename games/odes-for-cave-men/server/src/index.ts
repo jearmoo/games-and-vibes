@@ -3,6 +3,7 @@ import { CaveRoom } from './CaveRoom.js';
 import { registerCaveLobbyHandlers } from './handlers/lobbyHandlers.js';
 import { registerGameHandlers, handleTurnEnd } from './handlers/gameHandlers.js';
 import { GamePhase } from '@games/odes-for-cave-men-shared';
+import { getRandomWords } from './words/index.js';
 
 const ROOMS_PATH = process.env.ROOMS_PATH || '/data/rooms.json';
 const METRICS_PATH = process.env.METRICS_PATH || '/data/metrics.json';
@@ -25,12 +26,11 @@ function buildGameState(room: CaveRoom) {
     round: room.game.round,
     scores: room.game.scores,
     playingTeam: room.game.playingTeam,
-    turnIndex: room.game.turnIndex,
-    turnsPerRound: room.game.turnsPerRound,
     cluerId: room.game.cluerId,
     currentWordIndex: room.game.currentWordIndex,
     words: room.game.words,
     timerEnd: room.game.timerEnd,
+    roundHistory: room.getRoundHistory(),
   };
 }
 
@@ -40,7 +40,7 @@ createGameServer<CaveRoom>({
   metrics,
 
   registerGameHandlers: (ctx) => {
-    registerCaveLobbyHandlers(ctx);
+    registerCaveLobbyHandlers(ctx, buildGameState);
     registerGameHandlers(ctx);
   },
 
@@ -49,6 +49,18 @@ createGameServer<CaveRoom>({
     onPlayerSocketJoin: (room, playerId, socket) => {
       const player = room.getPlayer(playerId);
       if (player?.team) socket.join(`${room.code}:team${player.team}`);
+    },
+    onPlayerKicked: (room, kickedId) => {
+      if (!room.game) return;
+      if (room.game.cluerId === kickedId) {
+        room.game.cluerId = null;
+      }
+    },
+    onMidGameJoin: (room, playerId) => {
+      logger.info('game', 'Mid-game player awaiting team selection', {
+        room: room.code,
+        player: room.getPlayer(playerId)?.name,
+      });
     },
   },
 
@@ -71,6 +83,14 @@ createGameServer<CaveRoom>({
         });
       }
     },
+  },
+
+  customRoutes: (app) => {
+    app.get('/api/words', (req, res) => {
+      const count = Math.min(Math.max(parseInt(String(req.query.count)) || 5, 1), 20);
+      const words = getRandomWords(count, new Set());
+      res.json(words.map((w) => ({ word1: w.word1, word3: w.word3 })));
+    });
   },
 
   onRoomRestored: (room, io) => {

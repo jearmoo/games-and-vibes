@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '../store';
 import { socket } from '../socket';
+import { ConfirmModal } from '@games/client-core';
 import LeaveRoomButton from './LeaveRoomButton';
 import {
   DndContext,
@@ -283,7 +284,6 @@ function UnassignedChip({
       data-testid={`lobby-player-${player.name}`}
       className={`inline-flex items-center whitespace-nowrap transition-all
         ${player.id === myId ? 'text-white font-semibold' : 'text-gray-300'}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -324,7 +324,6 @@ function PlayerPill({
       data-testid={`lobby-player-${player.name}`}
       className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all
         ${highlight ?? (player.id === myId ? 'text-white font-semibold' : 'text-gray-200')}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -371,6 +370,7 @@ function TeamColumn({
   const teamName = useTeamName(team);
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(teamName);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
   const { isOver, setNodeRef } = useDroppable({ id: team });
 
   useEffect(() => {
@@ -464,6 +464,15 @@ function TeamColumn({
                     Set TM
                   </button>
                 )}
+                {isHost && p.id !== hostId && (
+                  <button
+                    onClick={() => setConfirmKickId(p.id)}
+                    className="text-[10px] text-gray-500 hover:text-red-400 transition-colors ml-1"
+                    title="Kick player"
+                  >
+                    &times;
+                  </button>
+                )}
               </span>
             }
           />
@@ -474,6 +483,21 @@ function TeamColumn({
           </div>
         )}
       </div>
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the room."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="btn-team-b"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
 
       {/* Join / Leave button */}
       {myId && (

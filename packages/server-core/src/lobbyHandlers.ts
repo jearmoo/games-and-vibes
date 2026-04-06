@@ -13,6 +13,8 @@ export interface LobbyCallbacks<T extends BaseRoom> {
   onPlayerSocketJoin?: (room: T, playerId: string, socket: Socket) => void;
   /** Called when a new player joins an active game. If not provided, mid-game joins are rejected. */
   onMidGameJoin?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
+  /** Called after a player is kicked by the host. Use for game-specific role reassignment. */
+  onPlayerKicked?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
 }
 
 function validatePlayerName(name: unknown): string | null {
@@ -142,4 +144,44 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
       logger.info('room', 'Player joined', { room: room.code, player: validName });
     },
   );
+
+  socket.on('player:kick', ({ targetId }: { targetId: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    if (room.hostId !== playerId) return;
+    if (targetId === playerId) return;
+
+    const target = room.getPlayer(targetId);
+    if (!target) return;
+
+    const targetName = target.name;
+    const targetSocketId = target.socketId;
+
+    room.kickPlayer(targetId);
+    const softRemoved = !!room.getPlayer(targetId);
+    if (!softRemoved) {
+      rooms.untrackPlayer(targetId);
+    }
+
+    // Notify the kicked player and disconnect their socket
+    if (targetSocketId) {
+      const targetSocket = io.sockets.sockets.get(targetSocketId);
+      if (targetSocket) {
+        targetSocket.emit('room:kicked');
+        targetSocket.leave(room.code);
+        targetSocket.disconnect(true);
+      }
+    }
+
+    callbacks.onPlayerKicked?.(room, targetId, io);
+
+    io.to(room.code).emit('room:player-left', {
+      playerId: targetId,
+      hostId: room.hostId,
+      players: room.playerDTOs(),
+    });
+    logger.info('room', 'Player kicked by host', { room: room.code, player: targetName });
+  });
 }

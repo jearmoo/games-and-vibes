@@ -51,6 +51,30 @@ createGameServer<AdtabooRoom>({
         player: room.getPlayer(playerId)?.name,
       });
     },
+    onPlayerKicked: (room, kickedId, io) => {
+      if (!room.game) return;
+      const phase = room.game.phase;
+
+      // Reassign taboo master if the kicked player was TM
+      for (const team of ['A', 'B'] as const) {
+        if (room.tabooMasters[team] === kickedId) {
+          room.ensureTabooMaster(team);
+          io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
+        }
+      }
+
+      // Clear clue-giver if kicked during setup
+      if (phase === GamePhase.PARALLEL_SETUP) {
+        for (const team of ['A', 'B'] as const) {
+          const challenge = room.game.challenges[team];
+          if (challenge.clueGiverId === kickedId) {
+            challenge.clueGiverId = null;
+            io.to(room.code).emit('setup:status', room.getSetupStatus());
+            io.to(room.code).emit('setup:clue-giver-set', { team, clueGiverId: null });
+          }
+        }
+      }
+    },
   },
 
   connectionCallbacks: {
@@ -64,22 +88,6 @@ createGameServer<AdtabooRoom>({
 
       const phase = room.game.phase;
 
-      // Clear clue-giver if disconnected during setup
-      if (phase === GamePhase.PARALLEL_SETUP) {
-        const challenge = room.game.challenges[player.team];
-        if (challenge.clueGiverId === playerId) {
-          challenge.clueGiverId = null;
-          logger.info('conn', 'Clue giver cleared (disconnected during setup)', {
-            room: room.code,
-            team: player.team,
-            player: player.name,
-          });
-          io.to(room.code).emit('setup:status', room.getSetupStatus());
-          io.to(room.code).emit('setup:clue-giver-set', { team: player.team, clueGiverId: null });
-        }
-      }
-
-      // Clue-giver disconnected during cluing — timer continues, they can rejoin
       if (phase === GamePhase.CLUING_A || phase === GamePhase.CLUING_B) {
         const cluingTeam = room.getCluingTeam();
         if (cluingTeam) {
@@ -93,19 +101,6 @@ createGameServer<AdtabooRoom>({
             });
           }
         }
-      }
-
-      // Taboo master reassignment
-      if (room.tabooMasters[player.team] === playerId) {
-        const newTM = room.ensureTabooMaster(player.team);
-        const newTMName = newTM ? room.getPlayer(newTM)?.name : null;
-        io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
-        logger.info('conn', 'Taboo master auto-reassigned', {
-          room: room.code,
-          team: player.team,
-          oldTM: player.name,
-          newTM: newTMName,
-        });
       }
     },
   },

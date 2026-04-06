@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import { useGameStore, useTeamPlayers, useMyPlayer, useMyRole, useTeamName } from '../store';
 import { socket } from '../socket';
 import HistoryPanel from './HistoryPanel';
@@ -78,11 +79,24 @@ export default function ScoreBoard() {
           )}
         </div>
 
-        <span className={`font-semibold ${teamColor}`}>{me?.name}</span>
-        {me?.team && <span className="text-gray-400">&middot;</span>}
-        {me?.team && <span className={`font-medium ${teamColor}`}>{me.team === 'A' ? teamAName : teamBName}</span>}
-        {myRole && <span className="text-gray-400">&middot;</span>}
-        {myRole && <span className="text-accent font-medium">{ROLE_LABELS[myRole] || myRole}</span>}
+        <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1">
+          <span className={`font-semibold ${teamColor}`}>{me?.name}</span>
+          {me?.team && <span className="text-gray-400">&middot;</span>}
+          {me?.team && <span className={`font-medium ${teamColor}`}>{me.team === 'A' ? teamAName : teamBName}</span>}
+          {myRole && <span className="text-gray-400">&middot;</span>}
+          {myRole && <span className="text-accent font-medium">{ROLE_LABELS[myRole] || myRole}</span>}
+          <svg
+            className={`w-2.5 h-2.5 text-gray-600 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
 
         {/* Right button group */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -91,7 +105,7 @@ export default function ScoreBoard() {
       </div>
 
       {/* Score bar */}
-      <button onClick={() => setExpanded(!expanded)} className="w-full grid grid-cols-3 items-center px-4 py-2.5">
+      <div className="w-full grid grid-cols-3 items-center px-4 py-2.5">
         <div className={`text-left ${cluingTeam && cluingTeam !== 'A' ? 'opacity-50' : ''}`}>
           <div className="text-team-a-glow font-display text-base tracking-wider">{teamAName}</div>
           <div className="text-team-a-glow font-display text-base tracking-wider">{scores.A}</div>
@@ -99,20 +113,19 @@ export default function ScoreBoard() {
         <div className="text-gray-300 text-xs tracking-[0.2em] uppercase font-medium text-center">
           {phase === 'PARALLEL_SETUP'
             ? 'Setup'
-            : phase === 'CLUING_A'
+            : phase === 'CLUING_A' || phase === 'REVIEW_A'
               ? teamAName
-              : phase === 'CLUING_B'
+              : phase === 'CLUING_B' || phase === 'REVIEW_B'
                 ? teamBName
                 : settings.rounds === null
                   ? `R${round}`
                   : `R${round}/${settings.rounds}`}
-          <span className="ml-1.5 text-gray-600">{expanded ? '\u25B2' : '\u25BC'}</span>
         </div>
         <div className={`text-right ${cluingTeam && cluingTeam !== 'B' ? 'opacity-50' : ''}`}>
           <div className="text-team-b-glow font-display text-base tracking-wider">{teamBName}</div>
           <div className="text-team-b-glow font-display text-base tracking-wider">{scores.B}</div>
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="flex gap-3 px-4 pb-3 animate-slide-up">
@@ -158,8 +171,9 @@ function RosterColumn({
 }) {
   const borderColor = team === 'A' ? 'border-team-a/20' : 'border-team-b/20';
   const textColor = team === 'A' ? 'text-team-a-glow' : 'text-team-b-glow';
-  const isOnTeam = players.some((p) => p.id === myId);
   const teamName = useTeamName(team);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+  const amHost = myId === hostId;
 
   return (
     <div className={`flex-1 rounded-xl border ${borderColor} bg-surface/50 p-2`}>
@@ -181,23 +195,52 @@ function RosterColumn({
               {isHost && <span className="text-indigo-400 text-[9px] ml-1">H</span>}
               {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
-            {myId === hostId &&
-              !isTM &&
-              p.connected &&
-              (!phase || phase === 'LOBBY' || phase === 'PARALLEL_SETUP' || phase === 'ROUND_RESULT') && (
+            <span className="flex items-center gap-1">
+              {amHost &&
+                !isTM &&
+                p.connected &&
+                (!phase || phase === 'LOBBY' || phase === 'PARALLEL_SETUP' || phase === 'ROUND_RESULT') && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      socket.emit('taboo-master:set', { team, masterId: p.id });
+                    }}
+                    className="text-[9px] text-gray-500 hover:text-accent transition-colors"
+                  >
+                    Set TM
+                  </button>
+                )}
+              {amHost && !isHost && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    socket.emit('taboo-master:set', { team, masterId: p.id });
+                    setConfirmKickId(p.id);
                   }}
-                  className="text-[9px] text-gray-500 hover:text-accent transition-colors"
+                  className="text-[9px] text-gray-500 hover:text-red-400 transition-colors"
+                  title="Kick"
                 >
-                  Set TM
+                  &times;
                 </button>
               )}
+            </span>
           </div>
         );
       })}
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the room."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="btn-team-b"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

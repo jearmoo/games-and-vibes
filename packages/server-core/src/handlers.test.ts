@@ -16,6 +16,7 @@ describe('lobbyHandlers', () => {
   let io: MockIO;
   let rooms: RoomManager<TestRoom>;
   let metrics: MetricsCollector;
+  let ctx: { setPlayerId: (id: string | null) => void };
 
   beforeEach(() => {
     const mock = createMockSocketContext<TestRoom>(socketOpts);
@@ -23,6 +24,7 @@ describe('lobbyHandlers', () => {
     io = mock.io;
     rooms = mock.rooms;
     metrics = mock.metrics;
+    ctx = mock.ctx;
 
     registerLobbyHandlers(mock.ctx, {
       buildGameState: (_room, _playerId) => null,
@@ -148,6 +150,66 @@ describe('lobbyHandlers', () => {
     expect(midGameEmit).toBeDefined();
     expect(midGameJoinCalled).toBe(true);
     mock.rooms.destroy();
+  });
+
+  describe('player:kick', () => {
+    it('host kicks player — player removed, room notified', () => {
+      socket.trigger('room:create', { playerName: 'Host' });
+      const { roomCode, playerId: hostId } = socket.getLastEmitted('room:created')![0] as any;
+
+      socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+      const room = rooms.getRoom(roomCode)!;
+      const bob = room.getPlayerByName('Bob')!;
+
+      // After join, playerId is Bob. Switch back to host for the kick.
+      ctx.setPlayerId(hostId);
+
+      socket.trigger('player:kick', { targetId: bob.id });
+      expect(room.getPlayer(bob.id)).toBeUndefined();
+      const leftEvent = io.getRoomEvent(roomCode, 'room:player-left');
+      expect(leftEvent.length).toBeGreaterThan(0);
+    });
+
+    it('non-host cannot kick', () => {
+      socket.trigger('room:create', { playerName: 'Host' });
+      const { roomCode } = socket.getLastEmitted('room:created')![0] as any;
+
+      socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+      const room = rooms.getRoom(roomCode)!;
+      // playerId is Bob after join — Bob tries to kick the host
+      socket.trigger('player:kick', { targetId: room.hostId });
+      expect(room.getPlayer(room.hostId)).toBeDefined();
+    });
+
+    it('host cannot kick self', () => {
+      socket.trigger('room:create', { playerName: 'Host' });
+      const { roomCode, playerId: hostId } = socket.getLastEmitted('room:created')![0] as any;
+
+      socket.trigger('player:kick', { targetId: hostId });
+      expect(rooms.getRoom(roomCode)!.getPlayer(hostId)).toBeDefined();
+    });
+
+    it('kick calls onPlayerKicked callback', () => {
+      let kickedId: string | null = null;
+      const mock = createMockSocketContext<TestRoom>(socketOpts);
+      registerLobbyHandlers(mock.ctx, {
+        buildGameState: () => null,
+        onPlayerKicked: (_room, id) => {
+          kickedId = id;
+        },
+      });
+
+      mock.socket.trigger('room:create', { playerName: 'Host' });
+      const { roomCode, playerId: hostId } = mock.socket.getLastEmitted('room:created')![0] as any;
+      mock.socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+      const room = mock.rooms.getRoom(roomCode)!;
+      const bob = room.getPlayerByName('Bob')!;
+
+      mock.ctx.setPlayerId(hostId);
+      mock.socket.trigger('player:kick', { targetId: bob.id });
+      expect(kickedId).toBe(bob.id);
+      mock.rooms.destroy();
+    });
   });
 
   it('room:join allows different names in the same room', () => {

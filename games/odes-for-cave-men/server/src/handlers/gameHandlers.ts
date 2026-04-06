@@ -42,6 +42,27 @@ export function handleTurnEnd(room: CaveRoom, io: Server, _metrics: MetricsColle
 export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
   const { io, socket, rooms, metrics } = ctx;
 
+  // Change cluer selection during READY phase
+  socket.on('turn:pick-cluer', ({ cluerId: newCluerId }: { cluerId: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.READY) return;
+
+    // Verify the new cluer is on the playing team
+    const newCluer = room.getPlayer(newCluerId);
+    if (!newCluer || newCluer.team !== room.game.playingTeam) return;
+
+    room.game.cluerId = newCluerId;
+    room.touch();
+
+    io.to(room.code).emit('turn:cluer-changed', {
+      cluerId: newCluerId,
+      cluerName: newCluer.name,
+    });
+  });
+
   // Cluer starts their turn (from the READY screen)
   socket.on('turn:start', () => {
     const playerId = ctx.getPlayerId();
@@ -131,6 +152,19 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
     }
   });
 
+  // Cluer ends turn early (gives up)
+  socket.on('clue:end-turn', () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.PLAYING) return;
+    if (playerId !== room.game.cluerId) return;
+    if (room.game.timerEnd === null) return;
+    logger.info('game', 'Cluer ended turn early', { room: room.code, player: room.getPlayer(playerId)?.name });
+    handleTurnEnd(room, io, metrics);
+  });
+
   // Bonk alert — any opponent can send this (visual only)
   socket.on('bonk:alert', () => {
     const playerId = ctx.getPlayerId();
@@ -183,6 +217,8 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
     const { nextPhase, nextCluerId } = room.lockInReview();
     logger.info('game', 'Review locked in', { room: room.code, nextPhase, nextCluerId });
 
+    const roundHistory = room.getRoundHistory();
+
     if (nextPhase === GamePhase.READY) {
       const nextCluer = nextCluerId ? room.getPlayer(nextCluerId) : null;
       io.to(room.code).emit('turn:ready', {
@@ -190,16 +226,16 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
         cluerId: nextCluerId,
         cluerName: nextCluer?.name ?? null,
         playingTeam: room.game.playingTeam,
-        turnIndex: room.game.turnIndex,
-        turnsPerRound: room.game.turnsPerRound,
         scores: room.game.scores,
         round: room.game.round,
+        roundHistory,
       });
     } else if (nextPhase === GamePhase.ROUND_RESULT) {
       io.to(room.code).emit('round:ended', {
         phase: GamePhase.ROUND_RESULT,
         scores: room.game.scores,
         round: room.game.round,
+        roundHistory,
       });
     } else if (nextPhase === GamePhase.GAME_OVER) {
       metrics.gameCompleted();
@@ -207,6 +243,7 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
         phase: GamePhase.GAME_OVER,
         scores: room.game.scores,
         round: room.game.round,
+        roundHistory,
       });
     }
   });
@@ -228,8 +265,27 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
       cluerId: room.game.cluerId,
       cluerName: nextCluer?.name ?? null,
       playingTeam: room.game.playingTeam,
-      turnIndex: room.game.turnIndex,
-      turnsPerRound: room.game.turnsPerRound,
+      scores: room.game.scores,
+      round: room.game.round,
+      roundHistory: room.getRoundHistory(),
+    });
+  });
+
+  // End game — host only (for unlimited rounds)
+  socket.on('game:end', () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (playerId !== room.hostId) return;
+    if (room.game.phase !== GamePhase.ROUND_RESULT) return;
+
+    room.endGame();
+    metrics.gameCompleted();
+    logger.info('game', 'Game ended by host', { room: room.code });
+
+    io.to(room.code).emit('round:ended', {
+      phase: GamePhase.GAME_OVER,
       scores: room.game.scores,
       round: room.game.round,
     });

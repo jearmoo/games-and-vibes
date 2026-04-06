@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { socket } from '../socket';
 import { useGameStore, getRoomCodeFromUrl } from '../store';
+import { useCompStore } from '../compStore';
 
 export default function HomeScreen() {
   const urlCode = getRoomCodeFromUrl();
@@ -72,6 +73,12 @@ export default function HomeScreen() {
               className="w-full py-4 bg-surface-raised hover:bg-surface-hover rounded-2xl text-white font-display text-lg tracking-wider disabled:opacity-30 transition-all active:scale-[0.97] border border-white/5"
             >
               Join Room
+            </button>
+            <button
+              onClick={() => useCompStore.setState({ active: true, phase: 'setup' })}
+              className="w-full py-4 bg-surface-raised hover:bg-surface-hover rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97] border border-white/5"
+            >
+              Pass the Phone
             </button>
           </div>
         ) : (

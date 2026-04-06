@@ -3,8 +3,6 @@ import { SocketContext } from './socketContext.js';
 import { BaseRoom } from './BaseRoom.js';
 import { logger } from './logger.js';
 
-const RECONNECT_GRACE_MS = 120_000;
-
 export interface ConnectionCallbacks<T extends BaseRoom> {
   /** Called when a player disconnects during an active game. Use for game-specific cleanup. */
   onPlayerDisconnect?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
@@ -59,15 +57,6 @@ export function registerConnectionHandlers<T extends BaseRoom>(
         });
       }
     }
-
-    // Grace period — remove if still disconnected
-    const disconnectSocketId = socket.id;
-    setTimeout(() => {
-      if (player.connected) return;
-      if (player.socketId !== disconnectSocketId) return; // reconnected since this timer was set
-      logger.info('conn', 'Player removed after grace period', { room: room.code, player: player.name });
-      handleLeave(ctx, callbacks);
-    }, RECONNECT_GRACE_MS);
   });
 }
 

@@ -8,6 +8,8 @@ import {
   type WordCard,
   type CaveSettings,
   type CaveRoomDTO,
+  type CaveRoundArchiveEntry,
+  type CaveTurnData,
 } from '@games/odes-for-cave-men-shared';
 import { getRandomWords, TOTAL_WORD_COUNT } from './words/index.js';
 
@@ -15,6 +17,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
   declare settings: CaveSettings;
   game: GameState | null = null;
   teamNames: { A: string; B: string } = { A: 'Team A', B: 'Team B' };
+  roundHistory: CaveRoundArchiveEntry[] = [];
   /** Indices of words already used in this room (persists across games) */
   usedWordIndices: Set<number> = new Set();
 
@@ -22,7 +25,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
   private onTimerExpired: (() => void) | null = null;
 
   constructor(code: string, hostId: string) {
-    super(code, hostId, { rounds: 4, timerSeconds: 90 });
+    super(code, hostId, { rounds: null, timerSeconds: 90 });
   }
 
   // --- Player management ---
@@ -97,7 +100,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
   }
 
   serializeGameState(): object {
-    return { game: this.game, usedWordIndices: [...this.usedWordIndices] };
+    return { game: this.game, roundHistory: this.roundHistory, usedWordIndices: [...this.usedWordIndices] };
   }
 
   override clearTimer(): void {
@@ -113,6 +116,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
       if (player.removed) this.players.delete(id);
     }
     this.game = null;
+    this.roundHistory = [];
     this.clearTimer();
     this.touch();
   }
@@ -153,17 +157,11 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
   }
 
   startGame(): void {
-    const teamA = this.getTeamPlayers('A');
-    const teamB = this.getTeamPlayers('B');
-    const turnsPerRound = Math.max(teamA.length, teamB.length);
-
     this.game = {
       phase: GamePhase.READY,
       round: 1,
       scores: { A: 0, B: 0 },
       playingTeam: 'A',
-      turnIndex: 0,
-      turnsPerRound,
       cluedA: [],
       cluedB: [],
       cluerId: null,
@@ -239,6 +237,15 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     if (!this.game) return;
     this.clearTimer();
     this.game.timerEnd = null;
+
+    // Include the word being clued when timer expired (default +0)
+    const currentWord = this.getCurrentWord();
+    if (currentWord && currentWord.result === null) {
+      currentWord.result = 'timeout';
+      currentWord.points = 0;
+      this.game.currentWordIndex += 1;
+    }
+
     this.game.phase = GamePhase.REVIEW;
     // Mark cluer as having clued
     const clued = this.game.playingTeam === 'A' ? this.game.cluedA : this.game.cluedB;
@@ -266,13 +273,15 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     return this.game.words.filter((w) => w.result !== null);
   }
 
-  /** Lock in review and advance to next turn/round/game over */
+  /** Lock in review and advance to next team or round result */
   lockInReview(): { nextPhase: GamePhase; nextCluerId: string | null } {
     if (!this.game || this.game.phase !== GamePhase.REVIEW) {
       return { nextPhase: GamePhase.LOBBY, nextCluerId: null };
     }
 
-    const { playingTeam, turnIndex, turnsPerRound, round } = this.game;
+    const { playingTeam, round } = this.game;
+
+    this.archiveTeamTurn(playingTeam);
 
     if (playingTeam === 'A') {
       // Team A just finished, Team B's turn
@@ -285,21 +294,8 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
       return { nextPhase: GamePhase.READY, nextCluerId: this.game.cluerId };
     }
 
-    // Team B just finished
-    if (turnIndex < turnsPerRound - 1) {
-      // More turns in this round
-      this.game.turnIndex = turnIndex + 1;
-      this.game.playingTeam = 'A';
-      this.game.cluerId = this.pickCluer('A');
-      this.game.phase = GamePhase.READY;
-      this.game.words = [];
-      this.game.currentWordIndex = 0;
-      this.touch();
-      return { nextPhase: GamePhase.READY, nextCluerId: this.game.cluerId };
-    }
-
-    // Round complete
-    if (round >= this.settings.rounds) {
+    // Team B just finished — round complete
+    if (this.settings.rounds !== null && round >= this.settings.rounds) {
       this.game.phase = GamePhase.GAME_OVER;
       this.touch();
       return { nextPhase: GamePhase.GAME_OVER, nextCluerId: null };
@@ -313,10 +309,6 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
   advanceToNextRound(): void {
     if (!this.game || this.game.phase !== GamePhase.ROUND_RESULT) return;
     this.game.round += 1;
-    this.game.turnIndex = 0;
-    const teamA = this.getTeamPlayers('A');
-    const teamB = this.getTeamPlayers('B');
-    this.game.turnsPerRound = Math.max(teamA.length, teamB.length);
     this.game.cluedA = [];
     this.game.cluedB = [];
     this.game.playingTeam = 'A';
@@ -328,6 +320,43 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     this.touch();
   }
 
+  /** Archive a team's turn data into round history. Called after each team finishes review. */
+  private archiveTeamTurn(team: TeamId): void {
+    if (!this.game) return;
+    const cluer = this.game.cluerId ? this.getPlayer(this.game.cluerId) : null;
+    const resolvedWords = this.game.words.filter((w) => w.result !== null);
+    const score = resolvedWords.reduce((sum, w) => sum + w.points, 0);
+
+    const turnData: CaveTurnData = {
+      words: resolvedWords.map((w) => ({ ...w })),
+      cluerName: cluer?.name ?? 'Unknown',
+      score,
+    };
+
+    if (team === 'A') {
+      this.roundHistory.push({ round: this.game.round, teams: { A: turnData, B: null } });
+    } else {
+      const current = this.roundHistory[this.roundHistory.length - 1];
+      if (current && current.round === this.game.round) {
+        current.teams.B = turnData;
+      } else {
+        this.roundHistory.push({ round: this.game.round, teams: { A: null, B: turnData } });
+      }
+    }
+  }
+
+  getRoundHistory(): CaveRoundArchiveEntry[] {
+    return this.roundHistory;
+  }
+
+  /** End the game manually (host action for unlimited rounds) */
+  endGame(): void {
+    if (!this.game) return;
+    this.game.phase = GamePhase.GAME_OVER;
+    this.clearTimer();
+    this.touch();
+  }
+
   // --- Serialization ---
 
   static fromJSON(data: any): CaveRoom {
@@ -336,6 +365,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     room.settings = { ...room.settings, ...data.settings };
     room.teamNames = data.teamNames ?? { A: 'Team A', B: 'Team B' };
     room.game = data.game ?? null;
+    room.roundHistory = data.roundHistory ?? [];
     room.usedWordIndices = new Set(data.usedWordIndices ?? []);
     room.restorePlayers(data);
     return room;

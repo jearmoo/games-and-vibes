@@ -1,7 +1,15 @@
 import { Component, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { KickedScreen } from '@games/client-core';
 import { useGameStore, useMyRole } from './store';
+import { useCompStore } from './compStore';
 import HomeScreen from './components/HomeScreen';
+import CompSetupScreen from './components/comp/CompSetupScreen';
+import CompCluerEntry from './components/comp/CompCluerEntry';
+import CompPlayScreen from './components/comp/CompPlayScreen';
+import CompRoundResult from './components/comp/CompRoundResult';
+import CompGameOver from './components/comp/CompGameOver';
+import TeamSelectScreen from './components/TeamSelectScreen';
 import LobbyScreen from './components/LobbyScreen';
 import ReadyScreen from './components/ReadyScreen';
 import CluerScreen from './components/CluerScreen';
@@ -11,12 +19,30 @@ import ReviewScreen from './components/ReviewScreen';
 import ScoringScreen from './components/ScoringScreen';
 import GameOverScreen from './components/GameOverScreen';
 import ScoreBoard from './components/ScoreBoard';
+import { HelpButton } from './components/HelpModal';
 
 export default function App() {
   const phase = useGameStore((s) => s.phase);
   const connected = useGameStore((s) => s.connected);
   const error = useGameStore((s) => s.error);
   const roomCode = useGameStore((s) => s.roomCode);
+  const kickReason = useGameStore((s) => s.kickReason);
+
+  const compActive = useCompStore((s) => s.active);
+  const compPhase = useCompStore((s) => s.phase);
+
+  // Comp (pass-the-phone) mode
+  if (compActive) {
+    return (
+      <div className="h-full">
+        <CompRouter phase={compPhase} />
+      </div>
+    );
+  }
+
+  if (kickReason) {
+    return <KickedScreen reason={kickReason} onReturn={() => useGameStore.setState({ kickReason: null })} />;
+  }
 
   if (!connected && !roomCode) {
     return (
@@ -30,6 +56,7 @@ export default function App() {
     return (
       <>
         <HomeScreen />
+        <FloatingHelpButton />
         {!connected && <ReconnectBanner />}
         {error && <ErrorToast message={error} />}
       </>
@@ -37,6 +64,7 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col">
+      {(phase === 'LOBBY' || (phase as string) === 'TEAM_SELECT') && <FloatingHelpButton />}
       {phase !== 'LOBBY' && <ScoreBoard />}
       <div className="flex-1 min-h-0 overflow-auto">
         <AnimatePresence mode="wait">
@@ -58,12 +86,31 @@ export default function App() {
   );
 }
 
+function CompRouter({ phase }: { phase: string }) {
+  switch (phase) {
+    case 'setup':
+      return <CompSetupScreen />;
+    case 'cluer-entry':
+      return <CompCluerEntry />;
+    case 'playing':
+      return <CompPlayScreen />;
+    case 'round-result':
+      return <CompRoundResult />;
+    case 'game-over':
+      return <CompGameOver />;
+    default:
+      return <CompSetupScreen />;
+  }
+}
+
 function ScreenRouter({ phase }: { phase: string }) {
   const role = useMyRole();
 
   switch (phase) {
     case 'LOBBY':
       return <LobbyScreen />;
+    case 'TEAM_SELECT':
+      return <TeamSelectScreen />;
     case 'READY':
       return <ReadyScreen />;
     case 'PLAYING': {
@@ -85,6 +132,14 @@ function ScreenRouter({ phase }: { phase: string }) {
     default:
       return <HomeScreen />;
   }
+}
+
+function FloatingHelpButton() {
+  return (
+    <div className="fixed top-3 right-3 z-40">
+      <HelpButton className="w-7 h-7 flex items-center justify-center rounded-full glass-card border border-white/10 text-xs text-gray-400 hover:text-amber-400 transition-colors font-semibold" />
+    </div>
+  );
 }
 
 function ReconnectBanner() {

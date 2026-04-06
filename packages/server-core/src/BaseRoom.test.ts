@@ -49,6 +49,31 @@ describe('BaseRoom', () => {
     });
   });
 
+  describe('kickPlayer', () => {
+    it('hard-deletes when game not active', () => {
+      expect(room.kickPlayer('p2')).toBe(true);
+      expect(room.players.size).toBe(1);
+      expect(room.getPlayer('p2')).toBeUndefined();
+    });
+
+    it('soft-removes when game active', () => {
+      room.gameActive = true;
+      expect(room.kickPlayer('p2')).toBe(true);
+      expect(room.players.size).toBe(2);
+      expect(room.getPlayer('p2')?.removed).toBe(true);
+      expect(room.getPlayer('p2')?.connected).toBe(false);
+    });
+
+    it('returns false for nonexistent player', () => {
+      expect(room.kickPlayer('nobody')).toBe(false);
+    });
+
+    it('calls onPlayerRemoved hook', () => {
+      room.kickPlayer('p2');
+      expect(room.removedPlayerIds).toContain('p2');
+    });
+  });
+
   describe('queries', () => {
     it('getActivePlayers excludes removed', () => {
       room.gameActive = true;

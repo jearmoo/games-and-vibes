@@ -212,7 +212,20 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       tabooMasters: { ...this.tabooMasters },
       turnResults: { A: null, B: null },
     };
+    this.pickDefaultClueGiver('A');
+    this.pickDefaultClueGiver('B');
     this.touch();
+  }
+
+  /** Auto-pick a default clue-giver for a team (first connected non-TM player) */
+  pickDefaultClueGiver(team: TeamId): void {
+    if (!this.game) return;
+    const players = this.getTeamPlayers(team);
+    const tm = this.tabooMasters[team];
+    const pick = players.find((p) => p.id !== tm) ?? players[0];
+    if (pick) {
+      this.game.challenges[team].clueGiverId = pick.id;
+    }
   }
 
   async fetchInitialWords(): Promise<void> {
@@ -434,16 +447,70 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     this.game.timerEnd = null;
 
     if (this.game.phase === GamePhase.CLUING_A) {
-      this.game.phase = GamePhase.CLUING_B;
-      return { nextPhase: GamePhase.CLUING_B, turnScore: score };
+      this.game.phase = GamePhase.REVIEW_A;
+      return { nextPhase: GamePhase.REVIEW_A, turnScore: score };
     } else {
-      this.archiveCurrentRound();
+      this.game.phase = GamePhase.REVIEW_B;
+      return { nextPhase: GamePhase.REVIEW_B, turnScore: score };
+    }
+  }
+
+  /** Lock in review and advance to next phase. Called by opposing team's TM. */
+  lockInReview(): { nextPhase: GamePhase } | null {
+    if (!this.game) return null;
+
+    if (this.game.phase === GamePhase.REVIEW_A) {
+      this.archiveTeamData('A');
+      this.game.phase = GamePhase.CLUING_B;
+      return { nextPhase: GamePhase.CLUING_B };
+    } else if (this.game.phase === GamePhase.REVIEW_B) {
+      this.archiveTeamData('B');
       if (this.settings.rounds !== null && this.game.round >= this.settings.rounds) {
         this.game.phase = GamePhase.GAME_OVER;
-        return { nextPhase: GamePhase.GAME_OVER, turnScore: score };
+        return { nextPhase: GamePhase.GAME_OVER };
       }
       this.game.phase = GamePhase.ROUND_RESULT;
-      return { nextPhase: GamePhase.ROUND_RESULT, turnScore: score };
+      return { nextPhase: GamePhase.ROUND_RESULT };
+    }
+    return null;
+  }
+
+  /** Recalculate turn score from current card/buzz state (for review adjustments) */
+  recalcTurnScore(team: TeamId): void {
+    if (!this.game) return;
+    this.game.turnResults[team] = this.turnScore(team);
+    const historyA = this.roundHistory.reduce((s, r) => s + (r.teams.A?.turnScore.points ?? 0), 0);
+    const historyB = this.roundHistory.reduce((s, r) => s + (r.teams.B?.turnScore.points ?? 0), 0);
+    this.game.scores = {
+      A: (this.game.turnResults.A?.points ?? 0) + historyA,
+      B: (this.game.turnResults.B?.points ?? 0) + historyB,
+    };
+  }
+
+  private archiveTeamData(team: TeamId): void {
+    if (!this.game) return;
+    const challenge = this.game.challenges[team];
+    const opposingTeam = this.getOpposingTeam(team);
+    const clueGiver = challenge.clueGiverId ? this.getPlayer(challenge.clueGiverId) : null;
+    const opposingTM = this.tabooMasters[opposingTeam] ? this.getPlayer(this.tabooMasters[opposingTeam]!) : null;
+    const data: import('@games/adtaboo-shared').TeamRoundData = {
+      cards: challenge.cards.map((c) => ({ ...c })),
+      tabooWords: [...challenge.tabooWords],
+      tabooBuzzes: { ...challenge.tabooBuzzes },
+      turnScore: this.game.turnResults[team] ?? { correct: 0, missed: 0, buzzes: 0, points: 0 },
+      clueGiverName: clueGiver?.name ?? 'Unknown',
+      tabooMasterName: opposingTM?.name ?? 'Unknown',
+    };
+
+    if (team === 'A') {
+      this.roundHistory.push({ round: this.game.round, teams: { A: data, B: null } });
+    } else {
+      const current = this.roundHistory[this.roundHistory.length - 1];
+      if (current && current.round === this.game.round) {
+        current.teams.B = data;
+      } else {
+        this.roundHistory.push({ round: this.game.round, teams: { A: null, B: data } });
+      }
     }
   }
 
@@ -454,29 +521,9 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     this.game.turnResults = { A: null, B: null };
     this.game.timerEnd = null;
     this.game.phase = GamePhase.PARALLEL_SETUP;
+    this.pickDefaultClueGiver('A');
+    this.pickDefaultClueGiver('B');
     this.touch();
-  }
-
-  private archiveCurrentRound(): void {
-    if (!this.game) return;
-    const archiveTeam = (team: TeamId): TeamRoundData => {
-      const challenge = this.game!.challenges[team];
-      const opposingTeam = this.getOpposingTeam(team);
-      const clueGiver = challenge.clueGiverId ? this.getPlayer(challenge.clueGiverId) : null;
-      const opposingTM = this.tabooMasters[opposingTeam] ? this.getPlayer(this.tabooMasters[opposingTeam]!) : null;
-      return {
-        cards: challenge.cards.map((c) => ({ ...c })),
-        tabooWords: [...challenge.tabooWords],
-        tabooBuzzes: { ...challenge.tabooBuzzes },
-        turnScore: this.game!.turnResults[team] ?? { correct: 0, missed: 0, buzzes: 0, points: 0 },
-        clueGiverName: clueGiver?.name ?? 'Unknown',
-        tabooMasterName: opposingTM?.name ?? 'Unknown',
-      };
-    };
-    this.roundHistory.push({
-      round: this.game.round,
-      teams: { A: archiveTeam('A'), B: archiveTeam('B') },
-    });
   }
 
   getRoundHistory(): RoundArchiveEntry[] {

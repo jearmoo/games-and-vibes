@@ -9,7 +9,15 @@ import {
   startGame,
 } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
-import { beginCluing, markCorrect, endTurn, waitForGameOver, nextRound, buzzTaboo } from '../helpers/cluing';
+import {
+  beginCluing,
+  markCorrect,
+  endTurn,
+  waitForGameOver,
+  nextRound,
+  buzzTaboo,
+  lockInReview,
+} from '../helpers/cluing';
 
 /**
  * Full 2-round happy-path game with 4 players:
@@ -60,7 +68,7 @@ test.describe('Happy Path - Full Game', () => {
 
     // All players should see setup screen
     for (const p of [alice, bob, carol, dave]) {
-      await expect(p.page.getByText('Round 1 of 2')).toBeVisible({ timeout: 10_000 });
+      await expect(p.page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
     }
 
     // --- 1.8 Parallel Setup ---
@@ -88,17 +96,23 @@ test.describe('Happy Path - Full Game', () => {
     await expect(carol.page.getByText('Taboo Words (tap to buzz)')).toBeVisible({ timeout: 5_000 });
     await buzzTaboo(carol.page, 'banned1');
 
-    // Bob ends turn early
+    // Bob ends turn early → enters REVIEW_A
     await endTurn(bob.page);
+
+    // --- 1.9b Review A (Carol, opposing TM, locks in) ---
+    await lockInReview(carol.page);
 
     // --- 1.10 Cluing B (Team B's turn - Dave clues) ---
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(dave.page);
 
-    // Dave marks all 3 correct
+    // Dave marks all 3 correct → auto-ends cluing → enters REVIEW_B
     await markCorrect(dave.page);
     await markCorrect(dave.page);
     await markCorrect(dave.page);
+
+    // --- 1.10b Review B (Alice, opposing TM, locks in) ---
+    await lockInReview(alice.page);
 
     // --- 1.11 Round Result ---
     for (const p of [alice, bob, carol, dave]) {
@@ -112,7 +126,7 @@ test.describe('Happy Path - Full Game', () => {
     await nextRound(alice.page);
 
     for (const p of [alice, bob, carol, dave]) {
-      await expect(p.page.getByText('Round 2 of 2')).toBeVisible({ timeout: 10_000 });
+      await expect(p.page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
     }
 
     // Setup round 2
@@ -124,19 +138,22 @@ test.describe('Happy Path - Full Game', () => {
     await addTabooWords(carol.page, ['nope1', 'nope2', 'nope3', 'nope4', 'nope5']);
     await lockIn(carol.page);
 
-    // Cluing A round 2 — Bob marks 1 correct, ends early
+    // Cluing A round 2 — Bob marks 1 correct, ends early → REVIEW_A
     await expect(bob.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(bob.page);
     await markCorrect(bob.page);
     await endTurn(bob.page);
+    await lockInReview(carol.page);
 
-    // Cluing B round 2 — Dave marks 2 correct, let timer expire (15s)
+    // Cluing B round 2 — Dave marks 2 correct, let timer expire (15s) → REVIEW_B
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(dave.page);
     await markCorrect(dave.page);
     await markCorrect(dave.page);
+    // Timer expires → REVIEW_B → Alice locks in → GAME_OVER
+    await lockInReview(alice.page);
 
-    // --- 1.13 Game Over (after timer expires) ---
+    // --- 1.13 Game Over ---
     for (const p of [alice, bob, carol, dave]) {
       await waitForGameOver(p.page);
     }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '@games/odes-for-cave-men-shared';
+import { ConfirmModal } from '@games/client-core';
 import { socket } from '../socket';
 import {
   DndContext,
@@ -27,7 +28,7 @@ export default function LobbyScreen() {
   const teamA = players.filter((p) => p.team === 'A');
   const teamB = players.filter((p) => p.team === 'B');
   const unassigned = players.filter((p) => !p.team);
-  const canStart = teamA.length >= 1 && teamB.length >= 1;
+  const canStart = teamA.length >= 2 && teamB.length >= 2;
   const [starting, setStarting] = useState(false);
 
   const [timerInput, setTimerInput] = useState(String(settings.timerSeconds));
@@ -68,7 +69,7 @@ export default function LobbyScreen() {
 
   const [showSettings, setShowSettings] = useState(false);
 
-  const settingsSummary = `${settings.rounds} rds · ${settings.timerSeconds}s`;
+  const settingsSummary = `${settings.rounds ?? '∞'} rds · ${settings.timerSeconds}s`;
 
   const content = (
     <div className="h-full flex flex-col p-4 gap-2 animate-fade-in overflow-y-auto">
@@ -158,7 +159,7 @@ export default function LobbyScreen() {
           className={`w-full py-4 rounded-2xl font-display text-lg tracking-wider transition-all active:scale-[0.97]
             ${canStart && !starting ? 'btn-success text-white' : 'bg-surface-raised text-gray-600 border border-white/5'}`}
         >
-          {!canStart ? 'Need 1+ per team' : starting ? 'Starting...' : 'Start Game'}
+          {!canStart ? 'Need 2+ per team' : starting ? 'Starting...' : 'Start Game'}
         </button>
       )}
       {!host && (
@@ -267,7 +268,6 @@ function UnassignedChip({
       data-testid={`lobby-player-${player.name}`}
       className={`inline-flex items-center whitespace-nowrap transition-all
         ${player.id === myId ? 'text-white font-semibold' : 'text-gray-300'}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -308,7 +308,6 @@ function PlayerPill({
       data-testid={`lobby-player-${player.name}`}
       className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all
         ${highlight ?? (player.id === myId ? 'text-white font-semibold' : 'text-gray-300')}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -351,6 +350,7 @@ function TeamColumn({
   const teamName = useTeamName(team);
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(teamName);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
   const { isOver, setNodeRef } = useDroppable({ id: team });
 
   useEffect(() => {
@@ -432,6 +432,17 @@ function TeamColumn({
             hostId={hostId}
             isHost={isHost}
             highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
+            actions={
+              isHost && p.id !== hostId ? (
+                <button
+                  onClick={() => setConfirmKickId(p.id)}
+                  className="text-[10px] text-gray-500 hover:text-red-400 transition-colors shrink-0"
+                  title="Kick player"
+                >
+                  &times;
+                </button>
+              ) : undefined
+            }
           />
         ))}
         {players.length === 0 && (
@@ -440,6 +451,21 @@ function TeamColumn({
           </div>
         )}
       </div>
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the room."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="btn-team-b"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
 
       {/* Join / Leave button */}
       {myId && (
@@ -473,7 +499,7 @@ function CaveSettingsModal({
   setTimerInput,
   onClose,
 }: {
-  settings: { rounds: number; timerSeconds: number };
+  settings: { rounds: number | null; timerSeconds: number };
   timerInput: string;
   setTimerInput: (v: string) => void;
   onClose: () => void;
@@ -509,10 +535,14 @@ function CaveSettingsModal({
           <label className="flex items-center justify-between text-gray-300">
             <span className="text-gray-400">Rounds</span>
             <select
-              value={settings.rounds}
-              onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
+              value={settings.rounds ?? 'unlimited'}
+              onChange={(e) => {
+                const val = e.target.value;
+                socket.emit('settings:update', { rounds: val === 'unlimited' ? null : parseInt(val) });
+              }}
               className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5"
             >
+              <option value="unlimited">∞</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <option key={n} value={n}>
                   {n}

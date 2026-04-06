@@ -25,11 +25,11 @@ export interface WordCard {
   word1: string;
   word3: string;
   points: number;
-  result: 'correct' | 'skipped' | 'bonked' | null;
+  result: 'correct' | 'skipped' | 'bonked' | 'timeout' | null;
 }
 
 export interface CaveSettings extends RoomSettings {
-  rounds: number;
+  rounds: number | null;
   timerSeconds: number;
 }
 
@@ -38,14 +38,23 @@ export interface GameState {
   round: number;
   scores: { A: number; B: number };
   playingTeam: TeamId;
-  turnIndex: number;
-  turnsPerRound: number;
   cluedA: string[];
   cluedB: string[];
   cluerId: string | null;
   currentWordIndex: number;
   words: WordCard[];
   timerEnd: number | null;
+}
+
+export interface CaveTurnData {
+  words: WordCard[];
+  cluerName: string;
+  score: number;
+}
+
+export interface CaveRoundArchiveEntry {
+  round: number;
+  teams: { A: CaveTurnData | null; B: CaveTurnData | null };
 }
 
 export interface CaveRoomDTO {

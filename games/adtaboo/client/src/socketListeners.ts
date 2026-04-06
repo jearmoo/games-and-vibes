@@ -35,6 +35,17 @@ socket.on('session:taken-over', () => {
   window.history.replaceState(null, '', '/');
 });
 
+// Kicked by host
+socket.on('room:kicked', () => {
+  socket.disconnect();
+  clearSession(SESSION_KEY);
+  useGameStore.setState({
+    ...initialState,
+    kickReason: 'You were kicked from the room by the host.',
+  });
+  window.history.replaceState(null, '', '/');
+});
+
 // Room lifecycle
 socket.on('room:created', ({ roomCode, playerId, room }) => {
   useGameStore.setState({
@@ -112,27 +123,21 @@ function hydrateGameState(room: any, game: any, playerId: string): Record<string
       };
     }
 
-    if (myTeam && (game.phase === 'CLUING_A' || game.phase === 'CLUING_B')) {
-      const cluingTeam = game.phase === 'CLUING_A' ? 'A' : 'B';
+    if (
+      myTeam &&
+      (game.phase === 'CLUING_A' || game.phase === 'CLUING_B' || game.phase === 'REVIEW_A' || game.phase === 'REVIEW_B')
+    ) {
+      const cluingTeam = game.phase === 'CLUING_A' || game.phase === 'REVIEW_A' ? 'A' : 'B';
       const challenge = game.challenges[cluingTeam];
       update.cluingTeam = cluingTeam;
       update.activeCluingClueGiverId = challenge.clueGiverId;
       update.tabooBuzzes = challenge.tabooBuzzes;
-
-      if (myTeam === cluingTeam) {
-        const isClueGiver = playerId === challenge.clueGiverId;
-        update.cards = challenge.cards.map((c: { word: string; result: string | null }) => ({
-          word: isClueGiver ? c.word : '???',
-          result: c.result,
-        }));
-        update.tabooWords = [];
-      } else {
-        update.cards = challenge.cards.map((c: { word: string; result: string | null }) => ({
-          word: c.word,
-          result: c.result,
-        }));
-        update.tabooWords = challenge.tabooWords;
-      }
+      update.cards = challenge.cards.map((c: { word: string; result: string | null }) => ({
+        word: c.word,
+        result: c.result,
+      }));
+      update.tabooWords = myTeam === cluingTeam ? [] : challenge.tabooWords;
+      if (game.turnResults) update.turnResults = game.turnResults;
     }
   }
   return update;
@@ -311,12 +316,47 @@ socket.on('taboo:unbuzzed', ({ scores, tabooBuzzes }) => {
   useGameStore.setState({ scores, tabooBuzzes });
 });
 
+// --- Review ---
+socket.on('turn:review', ({ phase, team, turnScore, scores, cards, tabooWords, tabooBuzzes }) => {
+  useGameStore.setState((s) => ({
+    phase,
+    scores,
+    cluingTeam: team,
+    cards,
+    tabooWords,
+    tabooBuzzes,
+    turnResults: { ...s.turnResults, [team]: turnScore },
+    timerEnd: null,
+  }));
+});
+
+socket.on('review:updated', ({ tabooBuzzes, turnScore, scores }) => {
+  useGameStore.setState((s) => ({
+    tabooBuzzes,
+    scores,
+    turnResults: { ...s.turnResults, [s.cluingTeam!]: turnScore },
+  }));
+});
+
+socket.on('review:card-toggled', ({ cardIndex, result, turnScore, scores }) => {
+  useGameStore.setState((s) => {
+    const newCards = [...s.cards];
+    if (newCards[cardIndex]) newCards[cardIndex] = { ...newCards[cardIndex], result };
+    return {
+      cards: newCards,
+      scores,
+      turnResults: { ...s.turnResults, [s.cluingTeam!]: turnScore },
+    };
+  });
+});
+
 // --- Transitions ---
-socket.on('turn:transition', ({ phase, turnScore, scores }) => {
+socket.on('turn:transition', ({ phase, turnScore, scores, roundHistory }) => {
   useGameStore.setState((s) => ({
     phase,
     scores,
     turnResults: { ...s.turnResults, A: turnScore },
+    roundHistory: roundHistory ?? [],
     cards: [],
     tabooWords: [],
     tabooBuzzes: {},
@@ -333,7 +373,7 @@ socket.on('round:ended', ({ phase, scores, round, turnResults, roundHistory }) =
     timerEnd: null,
     cluingTeam: null,
     activeCluingClueGiverId: null,
-    ...(roundHistory ? { roundHistory } : {}),
+    roundHistory: roundHistory ?? [],
   });
 });
 

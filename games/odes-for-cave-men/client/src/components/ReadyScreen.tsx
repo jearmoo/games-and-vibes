@@ -1,4 +1,4 @@
-import { useGameStore } from '../store';
+import { useGameStore, useTeamPlayers } from '../store';
 import { socket } from '../socket';
 
 export default function ReadyScreen() {
@@ -7,21 +7,43 @@ export default function ReadyScreen() {
   const cluerName = useGameStore((s) => s.cluerName);
   const playingTeam = useGameStore((s) => s.playingTeam);
   const round = useGameStore((s) => s.round);
-  const settings = useGameStore((s) => s.settings);
-  const turnIndex = useGameStore((s) => s.turnIndex);
-  const turnsPerRound = useGameStore((s) => s.turnsPerRound);
+  const teamPlayers = useTeamPlayers(playingTeam ?? 'A');
 
   const isCluer = playerId === cluerId;
+  const isOnPlayingTeam = teamPlayers.some((p) => p.id === playerId);
   const teamColor = playingTeam === 'A' ? 'text-amber-400' : 'text-emerald-400';
   const btnClass = playingTeam === 'A' ? 'btn-team-a' : 'btn-team-b';
+  const chipActive =
+    playingTeam === 'A'
+      ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+      : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
-      <div className="text-gray-500 text-xs tracking-[0.2em] uppercase">
-        Round {round}/{settings.rounds} &middot; Turn {turnIndex + 1}/{turnsPerRound}
-      </div>
+      <div className="text-gray-500 text-xs tracking-[0.2em] uppercase">Round {round}</div>
 
       <div className={`font-display text-lg tracking-wider ${teamColor}`}>Team {playingTeam}</div>
+
+      {/* Cluer picker — visible to playing team members */}
+      {isOnPlayingTeam && teamPlayers.length > 1 && (
+        <div className="w-full max-w-xs">
+          <div className="text-gray-500 text-[10px] uppercase tracking-wider text-center mb-2">Who's clueing?</div>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {teamPlayers.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => socket.emit('turn:pick-cluer', { cluerId: p.id })}
+                className={`px-3 py-1.5 rounded-lg text-xs font-display tracking-wider border transition-all ${
+                  p.id === cluerId ? chipActive : 'bg-surface-raised text-gray-500 border-white/5 hover:text-white'
+                }`}
+              >
+                {p.name}
+                {p.id === playerId && <span className="opacity-50 ml-0.5">(you)</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isCluer ? (
         <>
