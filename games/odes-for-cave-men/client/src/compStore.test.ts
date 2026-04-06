@@ -101,7 +101,10 @@ describe('compStore', () => {
     const state = useCompStore.getState();
     expect(state.phase).toBe('review');
     expect(state.timerEnd).toBeNull();
-    expect(state.roundCards).toHaveLength(3);
+    expect(state.roundCards).toHaveLength(4);
+    expect(state.roundCards[3].result).toBe('timeout');
+    expect(state.roundCards[3].points).toBe(0);
+    expect(state.currentWord).toBeNull();
   });
 
   it('adjustCardPoints updates a card in review', async () => {
@@ -134,10 +137,12 @@ describe('compStore', () => {
     expect(state.roundHistory).toHaveLength(1);
     expect(state.roundHistory[0].score).toBe(3); // 3 + 1 - 1
     expect(state.roundHistory[0].cluerName).toBe('Alice');
-    expect(state.roundHistory[0].cards).toHaveLength(3);
+    expect(state.roundHistory[0].cards).toHaveLength(4);
     expect(state.roundHistory[0].cards[0].result).toBe('correct');
     expect(state.roundHistory[0].cards[0].points).toBe(3);
     expect(state.roundHistory[0].cards[2].result).toBe('skipped');
+    expect(state.roundHistory[0].cards[3].result).toBe('timeout');
+    expect(state.roundHistory[0].cards[3].points).toBe(0);
     expect(state.players['Alice']).toBe(3);
   });
 

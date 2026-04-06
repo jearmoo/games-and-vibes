@@ -160,9 +160,22 @@ export const useCompStore = create<CompStore>()(
       },
 
       endRound: () => {
-        set({
-          phase: 'review',
-          timerEnd: null,
+        set((s) => {
+          const card: CompReviewCard | null = s.currentWord
+            ? {
+                word1: s.currentWord.word1,
+                word3: s.currentWord.word3,
+                result: 'timeout',
+                originalPoints: 0,
+                points: 0,
+              }
+            : null;
+          return {
+            phase: 'review',
+            timerEnd: null,
+            currentWord: null,
+            roundCards: card ? [...s.roundCards, card] : s.roundCards,
+          };
         });
       },
 
@@ -252,7 +265,21 @@ export const useCompStore = create<CompStore>()(
           if (!state) return;
           // If timer expired while page was closed, transition to review
           if (state.phase === 'playing' && state.timerEnd && Date.now() >= state.timerEnd) {
-            useCompStore.setState({ phase: 'review', timerEnd: null });
+            const card: CompReviewCard | null = state.currentWord
+              ? {
+                  word1: state.currentWord.word1,
+                  word3: state.currentWord.word3,
+                  result: 'timeout',
+                  originalPoints: 0,
+                  points: 0,
+                }
+              : null;
+            useCompStore.setState({
+              phase: 'review',
+              timerEnd: null,
+              currentWord: null,
+              roundCards: card ? [...state.roundCards, card] : state.roundCards,
+            });
           }
         };
       },
