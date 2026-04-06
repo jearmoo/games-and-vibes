@@ -7,4 +7,5 @@ export default createGameSetup({
   serverDir: path.join(ROOT, 'games/adtaboo/server'),
   clientDir: path.join(ROOT, 'games/adtaboo/client'),
   serverPortEnvVar: 'ADTABOO_SERVER_PORT',
+  serverEnv: { TIMER_SCALE: '0.2' },
 });
