@@ -64,6 +64,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 - **Testing**: Unit tests use `test-utils` (TestRoom, MockStore, MockSocket). Integration tests for JsonFileStore use real fs in tmpdir.
 - **Storage**: `RoomStore`/`MetricsStore` interfaces allow swapping JsonFileStore for Redis/Postgres later.
 - **Theming**: client-core exports a Tailwind preset. Games extend with own colors.
+- **Disconnect/Reconnect**: See [`docs/disconnect-reconnect.md`](docs/disconnect-reconnect.md) for principles and phase x role behavior matrix.
 
 ## Deployment
 

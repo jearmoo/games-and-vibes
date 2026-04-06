@@ -187,13 +187,12 @@ function RosterColumn({
             key={p.id}
             className={`flex items-center justify-between px-2 py-1 text-xs rounded-lg ${
               p.id === myId ? `${textColor} font-semibold` : 'text-gray-300'
-            } ${!p.connected ? 'opacity-30' : ''}`}
+            }`}
           >
             <span>
               {p.name}
               {isTM && <span className="text-accent text-[9px] ml-1">TM</span>}
               {isHost && <span className="text-indigo-400 text-[9px] ml-1">H</span>}
-              {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
             <span className="flex items-center gap-1">
               {amHost &&

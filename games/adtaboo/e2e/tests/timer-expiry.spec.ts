@@ -36,15 +36,15 @@ test.describe('Timer Expiry', () => {
     await beginCluing(bob.page);
     await markCorrect(bob.page);
 
-    // Timer expires → enters REVIEW_A → Carol (opposing TM) locks in
-    await lockInReview(carol.page);
+    // Timer expires → enters REVIEW_A → Bob (cluer) locks in
+    await lockInReview(bob.page);
 
     // Cluing B — Dave's turn
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 20_000 });
     await beginCluing(dave.page);
 
-    // Timer expires → REVIEW_B → Alice locks in → GAME_OVER
-    await lockInReview(alice.page);
+    // Timer expires → REVIEW_B → Dave (cluer) locks in → GAME_OVER
+    await lockInReview(dave.page);
     await expect(alice.page.getByText(/Complete|Wins!|Tie/)).toBeVisible({ timeout: 20_000 });
   });
 });

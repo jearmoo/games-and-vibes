@@ -99,8 +99,8 @@ test.describe('Happy Path - Full Game', () => {
     // Bob ends turn early → enters REVIEW_A
     await endTurn(bob.page);
 
-    // --- 1.9b Review A (Carol, opposing TM, locks in) ---
-    await lockInReview(carol.page);
+    // --- 1.9b Review A (Bob, cluer, locks in) ---
+    await lockInReview(bob.page);
 
     // --- 1.10 Cluing B (Team B's turn - Dave clues) ---
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
@@ -111,8 +111,8 @@ test.describe('Happy Path - Full Game', () => {
     await markCorrect(dave.page);
     await markCorrect(dave.page);
 
-    // --- 1.10b Review B (Alice, opposing TM, locks in) ---
-    await lockInReview(alice.page);
+    // --- 1.10b Review B (Dave, cluer, locks in) ---
+    await lockInReview(dave.page);
 
     // --- 1.11 Round Result ---
     for (const p of [alice, bob, carol, dave]) {
@@ -143,15 +143,15 @@ test.describe('Happy Path - Full Game', () => {
     await beginCluing(bob.page);
     await markCorrect(bob.page);
     await endTurn(bob.page);
-    await lockInReview(carol.page);
+    await lockInReview(bob.page);
 
     // Cluing B round 2 — Dave marks 2 correct, let timer expire (15s) → REVIEW_B
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(dave.page);
     await markCorrect(dave.page);
     await markCorrect(dave.page);
-    // Timer expires → REVIEW_B → Alice locks in → GAME_OVER
-    await lockInReview(alice.page);
+    // Timer expires → REVIEW_B → Dave locks in → GAME_OVER
+    await lockInReview(dave.page);
 
     // --- 1.13 Game Over ---
     for (const p of [alice, bob, carol, dave]) {

@@ -9,6 +9,7 @@ import CompCluerEntry from './components/comp/CompCluerEntry';
 import CompPlayScreen from './components/comp/CompPlayScreen';
 import CompRoundResult from './components/comp/CompRoundResult';
 import CompGameOver from './components/comp/CompGameOver';
+import CompReviewScreen from './components/comp/CompReviewScreen';
 import TeamSelectScreen from './components/TeamSelectScreen';
 import LobbyScreen from './components/LobbyScreen';
 import ReadyScreen from './components/ReadyScreen';
@@ -94,6 +95,8 @@ function CompRouter({ phase }: { phase: string }) {
       return <CompCluerEntry />;
     case 'playing':
       return <CompPlayScreen />;
+    case 'review':
+      return <CompReviewScreen />;
     case 'round-result':
       return <CompRoundResult />;
     case 'game-over':

@@ -35,13 +35,13 @@ test.describe('Play Again', () => {
     await expect(bob.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(bob.page);
     await endTurn(bob.page);
-    await lockInReview(carol.page);
+    await lockInReview(bob.page);
 
     // Team B clues → REVIEW_B
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 15_000 });
     await beginCluing(dave.page);
     await endTurn(dave.page);
-    await lockInReview(alice.page);
+    await lockInReview(dave.page);
 
     // Game over (1 round game)
     await waitForGameOver(alice.page);
