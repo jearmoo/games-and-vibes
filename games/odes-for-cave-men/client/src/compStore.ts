@@ -216,6 +216,8 @@ export const useCompStore = create<CompStore>()(
     }),
     {
       name: 'odes-comp-game',
+      version: 1,
+      migrate: () => ({}),
       partialize: (state) => ({
         active: state.active,
         phase: state.phase,
@@ -231,15 +233,11 @@ export const useCompStore = create<CompStore>()(
         players: state.players,
       }),
       onRehydrateStorage: () => {
-        // After rehydration, check if we were in a playing phase with an expired timer
-        return (rehydratedState) => {
-          if (!rehydratedState) return;
-          if (rehydratedState.phase === 'playing' && rehydratedState.timerEnd) {
-            if (Date.now() >= rehydratedState.timerEnd) {
-              // Timer expired while page was closed — transition to review
-              rehydratedState.phase = 'review';
-              rehydratedState.timerEnd = null;
-            }
+        return (state) => {
+          if (!state) return;
+          // If timer expired while page was closed, transition to review
+          if (state.phase === 'playing' && state.timerEnd && Date.now() >= state.timerEnd) {
+            useCompStore.setState({ phase: 'review', timerEnd: null });
           }
         };
       },
