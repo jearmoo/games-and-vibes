@@ -25,9 +25,9 @@ export default function CompGameOver() {
     <div className="h-full flex flex-col animate-fade-in">
       {/* Scrollable content */}
       <div className="flex-1 overflow-auto">
-        <div className="flex flex-col items-center p-6 gap-6">
+        <div className="flex flex-col items-center p-6 pt-12 gap-6">
           {/* Winner celebration */}
-          <div className="text-center pt-4">
+          <div className="text-center">
             <div className="text-gray-500 text-[10px] uppercase tracking-[0.3em] mb-3">Game Over</div>
             {winner && (
               <>

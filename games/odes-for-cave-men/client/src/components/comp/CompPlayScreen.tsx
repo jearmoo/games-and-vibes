@@ -42,7 +42,7 @@ export default function CompPlayScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col p-4 animate-fade-in">
+    <div className="h-full flex flex-col p-4 pt-12 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="font-display text-sm tracking-wider text-amber-400 truncate">{cluerName}</div>

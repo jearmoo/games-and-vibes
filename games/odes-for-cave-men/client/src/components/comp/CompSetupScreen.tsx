@@ -17,7 +17,7 @@ export default function CompSetupScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 gap-8 animate-fade-in">
+    <div className="h-full flex flex-col items-center justify-center p-6 pt-12 gap-8 animate-fade-in">
       <div className="text-center">
         <h1 className="font-display text-3xl text-white tracking-wider mb-1">Pass the Phone</h1>
         <p className="text-gray-500 text-xs tracking-wider">One device. Small words. Big fun.</p>

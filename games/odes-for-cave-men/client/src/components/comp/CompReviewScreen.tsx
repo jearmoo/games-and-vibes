@@ -49,7 +49,7 @@ export default function CompReviewScreen() {
   const totalPoints = roundCards.reduce((sum, c) => sum + c.points, 0);
 
   return (
-    <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
+    <div className="h-full flex flex-col p-4 pt-12 gap-3 animate-fade-in">
       {/* Header */}
       <div className="text-center">
         <div className="text-gray-500 text-xs tracking-wider uppercase mb-1">Turn Review</div>
