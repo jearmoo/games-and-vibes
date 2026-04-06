@@ -9,6 +9,7 @@ import CompCluerEntry from './components/comp/CompCluerEntry';
 import CompPlayScreen from './components/comp/CompPlayScreen';
 import CompRoundResult from './components/comp/CompRoundResult';
 import CompGameOver from './components/comp/CompGameOver';
+import TeamSelectScreen from './components/TeamSelectScreen';
 import LobbyScreen from './components/LobbyScreen';
 import ReadyScreen from './components/ReadyScreen';
 import CluerScreen from './components/CluerScreen';
@@ -105,6 +106,8 @@ function ScreenRouter({ phase }: { phase: string }) {
   switch (phase) {
     case 'LOBBY':
       return <LobbyScreen />;
+    case 'TEAM_SELECT':
+      return <TeamSelectScreen />;
     case 'READY':
       return <ReadyScreen />;
     case 'PLAYING': {

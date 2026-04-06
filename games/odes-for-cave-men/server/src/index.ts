@@ -40,7 +40,7 @@ createGameServer<CaveRoom>({
   metrics,
 
   registerGameHandlers: (ctx) => {
-    registerCaveLobbyHandlers(ctx);
+    registerCaveLobbyHandlers(ctx, buildGameState);
     registerGameHandlers(ctx);
   },
 
@@ -55,6 +55,12 @@ createGameServer<CaveRoom>({
       if (room.game.cluerId === kickedId) {
         room.game.cluerId = null;
       }
+    },
+    onMidGameJoin: (room, playerId) => {
+      logger.info('game', 'Mid-game player awaiting team selection', {
+        room: room.code,
+        player: room.getPlayer(playerId)?.name,
+      });
     },
   },
 

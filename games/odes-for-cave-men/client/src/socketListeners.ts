@@ -78,6 +78,63 @@ socket.on('room:joined', ({ roomCode, playerId, room }) => {
   window.history.replaceState(null, '', `/${roomCode}`);
 });
 
+// Mid-game join — player needs to pick a team
+socket.on('room:mid-game-joined', ({ roomCode, playerId, room }) => {
+  useGameStore.setState({
+    roomCode,
+    playerId,
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
+    phase: 'TEAM_SELECT' as any,
+  });
+  saveSession();
+  window.history.replaceState(null, '', `/${roomCode}`);
+});
+
+// Mid-game joiner picked a team — receive full game state
+socket.on('room:mid-game-ready', ({ game, room }) => {
+  const { playerId } = useGameStore.getState();
+  if (!playerId || !game) return;
+  const update: Record<string, unknown> = {
+    hostId: room.hostId,
+    players: room.players,
+    settings: room.settings,
+    teamNames: room.teamNames ?? { A: 'Team A', B: 'Team B' },
+    phase: game.phase,
+    round: game.round,
+    scores: game.scores,
+    playingTeam: game.playingTeam,
+    cluerId: game.cluerId,
+    timerEnd: game.timerEnd,
+    roundHistory: game.roundHistory ?? [],
+  };
+
+  const me = room.players.find((p: { id: string }) => p.id === playerId);
+  const myTeam = me?.team as TeamId | null;
+
+  if (game.phase === 'READY' && game.cluerId) {
+    const cluer = room.players.find((p: { id: string }) => p.id === game.cluerId);
+    update.cluerName = cluer?.name ?? null;
+  }
+
+  if (game.phase === 'PLAYING' && myTeam) {
+    if (myTeam === game.playingTeam) {
+      update.role = playerId === game.cluerId ? 'cluer' : 'guesser';
+    } else {
+      update.role = 'opponent';
+    }
+    if (playerId === game.cluerId || myTeam !== game.playingTeam) {
+      const currentWord = game.words?.[game.currentWordIndex];
+      update.currentWord = currentWord ? { word1: currentWord.word1, word3: currentWord.word3 } : null;
+    }
+    update.wordsResolved = game.currentWordIndex;
+  }
+
+  useGameStore.setState(update);
+});
+
 socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
   clearAutoReconnecting();
   const update: Record<string, unknown> = {

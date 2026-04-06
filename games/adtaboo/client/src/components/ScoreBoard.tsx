@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import { useGameStore, useTeamPlayers, useMyPlayer, useMyRole, useTeamName } from '../store';
 import { socket } from '../socket';
 import HistoryPanel from './HistoryPanel';
@@ -170,8 +171,9 @@ function RosterColumn({
 }) {
   const borderColor = team === 'A' ? 'border-team-a/20' : 'border-team-b/20';
   const textColor = team === 'A' ? 'text-team-a-glow' : 'text-team-b-glow';
-  const isOnTeam = players.some((p) => p.id === myId);
   const teamName = useTeamName(team);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+  const amHost = myId === hostId;
 
   return (
     <div className={`flex-1 rounded-xl border ${borderColor} bg-surface/50 p-2`}>
@@ -193,23 +195,52 @@ function RosterColumn({
               {isHost && <span className="text-indigo-400 text-[9px] ml-1">H</span>}
               {!p.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
             </span>
-            {myId === hostId &&
-              !isTM &&
-              p.connected &&
-              (!phase || phase === 'LOBBY' || phase === 'PARALLEL_SETUP' || phase === 'ROUND_RESULT') && (
+            <span className="flex items-center gap-1">
+              {amHost &&
+                !isTM &&
+                p.connected &&
+                (!phase || phase === 'LOBBY' || phase === 'PARALLEL_SETUP' || phase === 'ROUND_RESULT') && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      socket.emit('taboo-master:set', { team, masterId: p.id });
+                    }}
+                    className="text-[9px] text-gray-500 hover:text-accent transition-colors"
+                  >
+                    Set TM
+                  </button>
+                )}
+              {amHost && !isHost && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    socket.emit('taboo-master:set', { team, masterId: p.id });
+                    setConfirmKickId(p.id);
                   }}
-                  className="text-[9px] text-gray-500 hover:text-accent transition-colors"
+                  className="text-[9px] text-gray-500 hover:text-red-400 transition-colors"
+                  title="Kick"
                 >
-                  Set TM
+                  &times;
                 </button>
               )}
+            </span>
           </div>
         );
       })}
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the room."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="btn-team-b"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '@games/odes-for-cave-men-shared';
+import { ConfirmModal } from '@games/client-core';
 import { socket } from '../socket';
 import {
   DndContext,
@@ -349,6 +350,7 @@ function TeamColumn({
   const teamName = useTeamName(team);
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(teamName);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
   const { isOver, setNodeRef } = useDroppable({ id: team });
 
   useEffect(() => {
@@ -433,7 +435,7 @@ function TeamColumn({
             actions={
               isHost && p.id !== hostId ? (
                 <button
-                  onClick={() => socket.emit('player:kick', { targetId: p.id })}
+                  onClick={() => setConfirmKickId(p.id)}
                   className="text-[10px] text-gray-500 hover:text-red-400 transition-colors shrink-0"
                   title="Kick player"
                 >
@@ -449,6 +451,21 @@ function TeamColumn({
           </div>
         )}
       </div>
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the room."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="btn-team-b"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
 
       {/* Join / Leave button */}
       {myId && (

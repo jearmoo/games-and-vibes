@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import { useGameStore, useMyPlayer, useTeamPlayers, useTeamName } from '../store';
+import { socket } from '../socket';
 import { HelpButton } from './HelpModal';
 import HistoryPanel from './HistoryPanel';
 
@@ -90,10 +92,12 @@ function TeamRoster() {
   const nameB = useTeamName('B');
   const hostId = useGameStore((s) => s.hostId);
 
+  const myId = useGameStore((s) => s.playerId);
+
   return (
     <div className="flex border-b border-white/5 divide-x divide-white/5">
-      <RosterColumn name={nameA} glow="text-amber-400" players={teamA} hostId={hostId} />
-      <RosterColumn name={nameB} glow="text-emerald-400" players={teamB} hostId={hostId} />
+      <RosterColumn name={nameA} glow="text-amber-400" players={teamA} hostId={hostId} myId={myId} />
+      <RosterColumn name={nameB} glow="text-emerald-400" players={teamB} hostId={hostId} myId={myId} />
     </div>
   );
 }
@@ -103,23 +107,54 @@ function RosterColumn({
   glow,
   players,
   hostId,
+  myId,
 }: {
   name: string;
   glow: string;
   players: Array<{ id: string; name: string; connected: boolean }>;
   hostId: string | null;
+  myId: string | null;
 }) {
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+  const amHost = myId === hostId;
+
   return (
     <div className="flex-1 px-3 py-2 space-y-0.5">
       <div className={`text-[9px] uppercase tracking-widest font-bold ${glow}`}>{name}</div>
       {players.map((p) => (
-        <div key={p.id} className="flex items-center gap-1 text-[11px]">
-          <span className={p.connected ? 'text-gray-300' : 'text-gray-600'}>{p.name}</span>
-          {p.id === hostId && <span className="text-amber-400/60 text-[8px]">H</span>}
-          {!p.connected && <span className="text-[8px] text-gray-600 italic">offline</span>}
+        <div key={p.id} className="flex items-center justify-between text-[11px]">
+          <span className="flex items-center gap-1">
+            <span className={p.connected ? 'text-gray-300' : 'text-gray-600'}>{p.name}</span>
+            {p.id === hostId && <span className="text-amber-400/60 text-[8px]">H</span>}
+            {!p.connected && <span className="text-[8px] text-gray-600 italic">offline</span>}
+          </span>
+          {amHost && p.id !== hostId && (
+            <button
+              onClick={() => setConfirmKickId(p.id)}
+              className="text-[9px] text-gray-600 hover:text-red-400 transition-colors"
+              title="Kick"
+            >
+              &times;
+            </button>
+          )}
         </div>
       ))}
       {players.length === 0 && <div className="text-[10px] text-gray-600 italic">Empty</div>}
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the room."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="btn-team-b"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

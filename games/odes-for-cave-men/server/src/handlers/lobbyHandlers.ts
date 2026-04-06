@@ -3,7 +3,10 @@ import { logger } from '@games/server-core';
 import type { CaveRoom } from '../CaveRoom.js';
 import type { TeamId } from '@games/odes-for-cave-men-shared';
 
-export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
+export function registerCaveLobbyHandlers(
+  ctx: SocketContext<CaveRoom>,
+  buildGameState?: (room: CaveRoom) => object | null,
+) {
   const { io, socket, rooms } = ctx;
 
   // Any player joins/switches/leaves a team
@@ -12,21 +15,31 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (room.isGameActive()) return;
 
     const player = room.getPlayer(playerId);
     if (!player) return;
 
     const oldTeam = player.team;
     if (oldTeam === team) return;
-    player.team = team;
-    room.touch();
+
+    // During active games, only allow unassigned mid-game joiners to pick a team
+    if (room.isGameActive() && oldTeam) return;
 
     if (oldTeam) socket.leave(`${room.code}:team${oldTeam}`);
+    player.team = team;
+    room.touch();
     if (team) socket.join(`${room.code}:team${team}`);
 
     logger.info('room', 'Player changed team', { room: room.code, player: player.name, from: oldTeam, to: team });
     io.to(room.code).emit('team:updated', { players: room.playerDTOs() });
+
+    // Mid-game joiner picked a team — send them full game state
+    if (room.isGameActive() && team) {
+      socket.emit('room:mid-game-ready', {
+        game: buildGameState?.(room) ?? null,
+        room: room.toDTO(),
+      });
+    }
   });
 
   // Host assigns/unassigns a player to a team
