@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/game';
-import { createRoom, joinRoom, dragToTeam, dragToUnassigned, expectInLobby } from '../helpers/lobby';
+import { createRoom, joinRoom, assignToTeam, dragToTeam, dragToUnassigned, expectInLobby } from '../helpers/lobby';
 
 /**
  * Tests real drag-and-drop team assignment via dnd-kit.
@@ -79,11 +79,11 @@ test.describe('Drag and Drop — Team Assignment', () => {
       await expectInLobby(alice.page, p.name);
     }
 
-    // Host assigns everyone via drag
-    await dragToTeam(alice.page, alice.name, 'A');
-    await dragToTeam(alice.page, bob.name, 'A');
-    await dragToTeam(alice.page, carol.name, 'B');
-    await dragToTeam(alice.page, dave.name, 'B');
+    // Host assigns everyone via socket (drag mechanics already tested above)
+    await assignToTeam(alice.page, alice.name, 'A');
+    await assignToTeam(alice.page, bob.name, 'A');
+    await assignToTeam(alice.page, carol.name, 'B');
+    await assignToTeam(alice.page, dave.name, 'B');
 
     // Verify on a non-host screen (Dave) — allow extra time for socket propagation in CI
     await expect(dave.page.getByTestId('lobby-team-a').getByText(alice.name)).toBeVisible({ timeout: 10_000 });
