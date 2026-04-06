@@ -55,6 +55,7 @@ export default function ReviewScreen() {
             {isTM && (
               <button
                 onClick={() => socket.emit('review:toggle-card', { cardIndex: i })}
+                aria-label={`Toggle ${card.word} — ${card.result === 'correct' ? 'mark incorrect' : 'mark correct'}`}
                 className={`shrink-0 px-2 py-1 rounded-lg text-xs font-display tracking-wider border transition-all ${
                   card.result === 'correct'
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'

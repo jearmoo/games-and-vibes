@@ -88,7 +88,6 @@ createGameServer<AdtabooRoom>({
 
       const phase = room.game.phase;
 
-      // Log clue-giver disconnect during cluing (timer continues, they can rejoin)
       if (phase === GamePhase.CLUING_A || phase === GamePhase.CLUING_B) {
         const cluingTeam = room.getCluingTeam();
         if (cluingTeam) {

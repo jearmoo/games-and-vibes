@@ -137,6 +137,147 @@ describe('CaveRoom', () => {
     });
   });
 
+  describe('endTurn', () => {
+    it('sets phase to REVIEW and marks cluer as having clued', () => {
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      expect(room.game!.phase).toBe(GamePhase.REVIEW);
+      expect(room.game!.cluedA).toContain(room.game!.cluerId);
+    });
+
+    it('includes timeout word for unresolved current word', () => {
+      room.startGame();
+      room.startTurn();
+      // Don't resolve anything — endTurn should capture current word as timeout
+      const wordBefore = room.getCurrentWord();
+      expect(wordBefore).not.toBeNull();
+      room.endTurn();
+      const resolved = room.getResolvedCards();
+      expect(resolved).toHaveLength(1);
+      expect(resolved[0].result).toBe('timeout');
+      expect(resolved[0].points).toBe(0);
+    });
+  });
+
+  describe('lockInReview', () => {
+    it('transitions from Team A to Team B READY', () => {
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      const { nextPhase, nextCluerId } = room.lockInReview();
+      expect(nextPhase).toBe(GamePhase.READY);
+      expect(room.game!.playingTeam).toBe('B');
+      expect(nextCluerId).not.toBeNull();
+    });
+
+    it('transitions Team B to ROUND_RESULT with unlimited rounds', () => {
+      room.startGame();
+      // Team A turn
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+      // Team B turn
+      room.startTurn();
+      room.endTurn();
+      const { nextPhase } = room.lockInReview();
+      expect(nextPhase).toBe(GamePhase.ROUND_RESULT);
+    });
+
+    it('transitions Team B to GAME_OVER when at round limit', () => {
+      room.settings.rounds = 1;
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+      room.startTurn();
+      room.endTurn();
+      const { nextPhase } = room.lockInReview();
+      expect(nextPhase).toBe(GamePhase.GAME_OVER);
+    });
+  });
+
+  describe('endGame', () => {
+    it('sets phase to GAME_OVER', () => {
+      room.startGame();
+      room.endGame();
+      expect(room.game!.phase).toBe(GamePhase.GAME_OVER);
+    });
+  });
+
+  describe('advanceToNextRound', () => {
+    it('increments round and resets state', () => {
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+
+      room.advanceToNextRound();
+      expect(room.game!.round).toBe(2);
+      expect(room.game!.phase).toBe(GamePhase.READY);
+      expect(room.game!.playingTeam).toBe('A');
+      expect(room.game!.cluedA).toHaveLength(0);
+      expect(room.game!.cluedB).toHaveLength(0);
+    });
+  });
+
+  describe('round history', () => {
+    it('archives Team A data after their review', () => {
+      room.startGame();
+      room.startTurn();
+      room.resolveCurrentWord({ result: 'correct', points: 1 });
+      room.endTurn();
+      room.lockInReview();
+
+      expect(room.getRoundHistory()).toHaveLength(1);
+      const entry = room.getRoundHistory()[0];
+      expect(entry.round).toBe(1);
+      expect(entry.teams.A).not.toBeNull();
+      expect(entry.teams.A!.words.length).toBeGreaterThan(0);
+      expect(entry.teams.B).toBeNull();
+    });
+
+    it('completes entry with Team B data', () => {
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+
+      const history = room.getRoundHistory();
+      expect(history).toHaveLength(1);
+      expect(history[0].teams.A).not.toBeNull();
+      expect(history[0].teams.B).not.toBeNull();
+    });
+
+    it('resets on resetToLobby', () => {
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+      expect(room.getRoundHistory()).toHaveLength(1);
+
+      room.resetToLobby();
+      expect(room.getRoundHistory()).toHaveLength(0);
+    });
+
+    it('serializes and restores round history', () => {
+      room.startGame();
+      room.startTurn();
+      room.endTurn();
+      room.lockInReview();
+
+      const json = room.toJSON();
+      const restored = CaveRoom.fromJSON(json);
+      expect(restored.getRoundHistory()).toHaveLength(1);
+    });
+  });
+
   describe('resetToLobby', () => {
     it('clears game state', () => {
       room.startGame();

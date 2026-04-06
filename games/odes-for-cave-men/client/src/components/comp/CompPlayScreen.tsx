@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useCompStore } from '../../compStore';
 
 export default function CompPlayScreen() {
@@ -17,13 +17,16 @@ export default function CompPlayScreen() {
   const teamColor = currentTeamIndex === 0 ? 'text-amber-400' : 'text-emerald-400';
   const score = roundCorrect - roundSkips - roundBonks;
 
-  // Timer countdown
-  const remaining = timerEnd ? Math.max(0, Math.ceil((timerEnd - Date.now()) / 1000)) : 0;
+  const [now, setNow] = useState(Date.now);
+  const remaining = timerEnd ? Math.max(0, Math.ceil((timerEnd - now) / 1000)) : 0;
 
   useEffect(() => {
     if (!timerEnd) return;
     const id = setInterval(() => {
-      if (Date.now() >= timerEnd) {
+      const t = Date.now();
+      setNow(t);
+      if (t >= timerEnd) {
+        clearInterval(id);
         endRound();
       }
     }, 200);

@@ -254,6 +254,7 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
       playingTeam: room.game.playingTeam,
       scores: room.game.scores,
       round: room.game.round,
+      roundHistory: room.getRoundHistory(),
     });
   });
 

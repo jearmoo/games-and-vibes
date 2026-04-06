@@ -52,7 +52,6 @@ createGameServer<CaveRoom>({
     },
     onPlayerKicked: (room, kickedId) => {
       if (!room.game) return;
-      // Clear cluer if kicked player was the active cluer
       if (room.game.cluerId === kickedId) {
         room.game.cluerId = null;
       }

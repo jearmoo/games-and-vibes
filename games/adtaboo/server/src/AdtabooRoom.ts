@@ -212,7 +212,6 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
       tabooMasters: { ...this.tabooMasters },
       turnResults: { A: null, B: null },
     };
-    // Auto-pick default clue-givers (first non-TM connected player on each team)
     this.pickDefaultClueGiver('A');
     this.pickDefaultClueGiver('B');
     this.touch();
@@ -447,7 +446,6 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     this.game.turnResults[team] = score;
     this.game.timerEnd = null;
 
-    // Transition to review phase instead of directly to next cluing/round
     if (this.game.phase === GamePhase.CLUING_A) {
       this.game.phase = GamePhase.REVIEW_A;
       return { nextPhase: GamePhase.REVIEW_A, turnScore: score };
@@ -462,12 +460,10 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
     if (!this.game) return null;
 
     if (this.game.phase === GamePhase.REVIEW_A) {
-      // Archive Team A's data (partial round entry)
       this.archiveTeamData('A');
       this.game.phase = GamePhase.CLUING_B;
       return { nextPhase: GamePhase.CLUING_B };
     } else if (this.game.phase === GamePhase.REVIEW_B) {
-      // Complete the round entry with Team B's data
       this.archiveTeamData('B');
       if (this.settings.rounds !== null && this.game.round >= this.settings.rounds) {
         this.game.phase = GamePhase.GAME_OVER;
@@ -482,18 +478,12 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
   /** Recalculate turn score from current card/buzz state (for review adjustments) */
   recalcTurnScore(team: TeamId): void {
     if (!this.game) return;
-    const score = this.turnScore(team);
-    this.game.turnResults[team] = score;
-    // Update cumulative scores
-    const otherTeam = team === 'A' ? 'B' : 'A';
-    const otherScore = this.game.turnResults[otherTeam];
+    this.game.turnResults[team] = this.turnScore(team);
+    const historyA = this.roundHistory.reduce((s, r) => s + (r.teams.A?.turnScore.points ?? 0), 0);
+    const historyB = this.roundHistory.reduce((s, r) => s + (r.teams.B?.turnScore.points ?? 0), 0);
     this.game.scores = {
-      A:
-        (this.game.turnResults.A?.points ?? 0) +
-        this.roundHistory.reduce((s, r) => s + (r.teams.A?.turnScore.points ?? 0), 0),
-      B:
-        (this.game.turnResults.B?.points ?? 0) +
-        this.roundHistory.reduce((s, r) => s + (r.teams.B?.turnScore.points ?? 0), 0),
+      A: (this.game.turnResults.A?.points ?? 0) + historyA,
+      B: (this.game.turnResults.B?.points ?? 0) + historyB,
     };
   }
 

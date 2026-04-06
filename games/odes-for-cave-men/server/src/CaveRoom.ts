@@ -334,10 +334,8 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
     };
 
     if (team === 'A') {
-      // Start a new round entry with Team A's data
       this.roundHistory.push({ round: this.game.round, teams: { A: turnData, B: null } });
     } else {
-      // Complete the current round entry with Team B's data
       const current = this.roundHistory[this.roundHistory.length - 1];
       if (current && current.round === this.game.round) {
         current.teams.B = turnData;

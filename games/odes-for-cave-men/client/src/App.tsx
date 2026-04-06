@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { KickedScreen } from '@games/client-core';
 import { useGameStore, useMyRole } from './store';
 import { useCompStore } from './compStore';
 import HomeScreen from './components/HomeScreen';
@@ -38,21 +39,7 @@ export default function App() {
   }
 
   if (kickReason) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
-        <div className="font-display text-xl text-white tracking-wider text-center">Disconnected</div>
-        <p className="text-gray-400 text-sm text-center max-w-xs">{kickReason}</p>
-        <button
-          onClick={() => {
-            useGameStore.setState({ kickReason: null });
-            window.location.href = '/';
-          }}
-          className="btn-primary px-8 py-3 rounded-2xl text-white font-display tracking-wider"
-        >
-          Return Home
-        </button>
-      </div>
-    );
+    return <KickedScreen reason={kickReason} onReturn={() => useGameStore.setState({ kickReason: null })} />;
   }
 
   if (!connected && !roomCode) {

@@ -356,7 +356,7 @@ socket.on('turn:transition', ({ phase, turnScore, scores, roundHistory }) => {
     phase,
     scores,
     turnResults: { ...s.turnResults, A: turnScore },
-    ...(roundHistory ? { roundHistory } : {}),
+    roundHistory: roundHistory ?? [],
     cards: [],
     tabooWords: [],
     tabooBuzzes: {},
@@ -373,7 +373,7 @@ socket.on('round:ended', ({ phase, scores, round, turnResults, roundHistory }) =
     timerEnd: null,
     cluingTeam: null,
     activeCluingClueGiverId: null,
-    ...(roundHistory ? { roundHistory } : {}),
+    roundHistory: roundHistory ?? [],
   });
 });
 
