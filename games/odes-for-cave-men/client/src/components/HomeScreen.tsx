@@ -76,7 +76,7 @@ export default function HomeScreen() {
             </button>
             <button
               onClick={() => useCompStore.setState({ active: true, phase: 'setup' })}
-              className="w-full py-3 text-gray-400 hover:text-white transition-colors text-sm tracking-wider"
+              className="w-full py-4 bg-surface-raised hover:bg-surface-hover rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97] border border-white/5"
             >
               Pass the Phone
             </button>

@@ -7,15 +7,11 @@ export default function CompPlayScreen() {
   const roundCorrect = useCompStore((s) => s.roundCorrect);
   const roundSkips = useCompStore((s) => s.roundSkips);
   const roundBonks = useCompStore((s) => s.roundBonks);
-  const teams = useCompStore((s) => s.teams);
-  const currentTeamIndex = useCompStore((s) => s.currentTeamIndex);
+  const cluerName = useCompStore((s) => s.cluerName);
   const markCorrect = useCompStore((s) => s.markCorrect);
   const markSkip = useCompStore((s) => s.markSkip);
   const markBonk = useCompStore((s) => s.markBonk);
   const endRound = useCompStore((s) => s.endRound);
-
-  const teamColor = currentTeamIndex === 0 ? 'text-amber-400' : 'text-emerald-400';
-  const score = roundCorrect - roundSkips - roundBonks;
 
   const [now, setNow] = useState(Date.now);
   const remaining = timerEnd ? Math.max(0, Math.ceil((timerEnd - now) / 1000)) : 0;
@@ -37,7 +33,7 @@ export default function CompPlayScreen() {
     <div className="h-full flex flex-col p-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className={`font-display text-sm tracking-wider ${teamColor}`}>{teams[currentTeamIndex].name}</div>
+        <div className="font-display text-sm tracking-wider text-amber-400 truncate">{cluerName}</div>
         <div className="flex items-center gap-3 text-xs">
           <span className="text-emerald-400">{roundCorrect} pts</span>
           <span className="text-gray-500">{roundSkips} skip</span>
@@ -89,12 +85,20 @@ export default function CompPlayScreen() {
           +3
         </button>
       </div>
-      <button
-        onClick={markBonk}
-        className="mt-2 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-display text-sm tracking-wider transition-all active:scale-[0.95]"
-      >
-        Bonk!
-      </button>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <button
+          onClick={markBonk}
+          className="py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-display text-sm tracking-wider transition-all active:scale-[0.95]"
+        >
+          Bonk!
+        </button>
+        <button
+          onClick={endRound}
+          className="py-3 rounded-2xl bg-surface-raised border border-white/5 text-gray-500 font-display text-sm tracking-wider transition-all active:scale-[0.95]"
+        >
+          End Turn
+        </button>
+      </div>
     </div>
   );
 }

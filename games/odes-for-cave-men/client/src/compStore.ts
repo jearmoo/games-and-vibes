@@ -1,13 +1,7 @@
 import { create } from 'zustand';
 import { WordBuffer, type CaveWord } from './wordService';
 
-export interface Team {
-  name: string;
-  score: number;
-}
-
 export interface RoundEntry {
-  teamName: string;
   cluerName: string;
   correct: number;
   skips: number;
@@ -20,8 +14,6 @@ export type CompPhase = 'setup' | 'cluer-entry' | 'playing' | 'round-result' | '
 export interface CompStore {
   active: boolean;
   phase: CompPhase;
-  teams: [Team, Team];
-  currentTeamIndex: number;
   timerDuration: number;
   timerEnd: number | null;
   currentWord: CaveWord | null;
@@ -30,18 +22,19 @@ export interface CompStore {
   roundSkips: number;
   roundBonks: number;
   roundHistory: RoundEntry[];
+  /** Cumulative scores per player name */
+  players: Record<string, number>;
   wordBuffer: WordBuffer;
 
-  setTeamName: (index: number, name: string) => void;
   setTimerDuration: (seconds: number) => void;
-  startGame: (startingTeam: number) => Promise<void>;
+  startGame: () => Promise<void>;
   setCluerName: (name: string) => void;
   beginRound: () => void;
   markCorrect: (points: number) => void;
   markSkip: () => void;
   markBonk: () => void;
   endRound: () => void;
-  nextRound: (teamIndex: number) => void;
+  nextRound: () => void;
   endGame: () => void;
   resetToSetup: () => void;
 }
@@ -53,11 +46,6 @@ function calcScore(correct: number, skips: number, bonks: number): number {
 export const useCompStore = create<CompStore>((set, get) => ({
   active: false,
   phase: 'setup',
-  teams: [
-    { name: 'Team A', score: 0 },
-    { name: 'Team B', score: 0 },
-  ],
-  currentTeamIndex: 0,
   timerDuration: 90,
   timerEnd: null,
   currentWord: null,
@@ -66,29 +54,19 @@ export const useCompStore = create<CompStore>((set, get) => ({
   roundSkips: 0,
   roundBonks: 0,
   roundHistory: [],
+  players: {},
   wordBuffer: new WordBuffer(),
-
-  setTeamName: (index, name) =>
-    set((s) => {
-      const teams = [...s.teams] as [Team, Team];
-      teams[index] = { ...teams[index], name };
-      return { teams };
-    }),
 
   setTimerDuration: (seconds) => set({ timerDuration: seconds }),
 
-  startGame: async (startingTeam) => {
+  startGame: async () => {
     const { wordBuffer } = get();
     wordBuffer.reset();
     await wordBuffer.prefetch(20);
     set({
       phase: 'cluer-entry',
-      currentTeamIndex: startingTeam,
-      teams: [
-        { ...get().teams[0], score: 0 },
-        { ...get().teams[1], score: 0 },
-      ],
       roundHistory: [],
+      players: {},
       cluerName: '',
     });
   },
@@ -132,38 +110,23 @@ export const useCompStore = create<CompStore>((set, get) => ({
   },
 
   endRound: () => {
-    const { roundCorrect, roundSkips, roundBonks, currentTeamIndex, teams, cluerName } = get();
+    const { roundCorrect, roundSkips, roundBonks, cluerName, players } = get();
     const score = calcScore(roundCorrect, roundSkips, roundBonks);
-    const updatedTeams = [...teams] as [Team, Team];
-    updatedTeams[currentTeamIndex] = {
-      ...updatedTeams[currentTeamIndex],
-      score: updatedTeams[currentTeamIndex].score + score,
-    };
+    const updatedPlayers = { ...players };
+    updatedPlayers[cluerName] = (updatedPlayers[cluerName] ?? 0) + score;
 
     set((s) => ({
       phase: 'round-result',
       timerEnd: null,
-      teams: updatedTeams,
+      players: updatedPlayers,
       roundHistory: [
         ...s.roundHistory,
-        {
-          teamName: teams[currentTeamIndex].name,
-          cluerName,
-          correct: roundCorrect,
-          skips: roundSkips,
-          bonks: roundBonks,
-          score,
-        },
+        { cluerName, correct: roundCorrect, skips: roundSkips, bonks: roundBonks, score },
       ],
     }));
   },
 
-  nextRound: (teamIndex) =>
-    set({
-      phase: 'cluer-entry',
-      currentTeamIndex: teamIndex,
-      cluerName: '',
-    }),
+  nextRound: () => set({ phase: 'cluer-entry', cluerName: '' }),
 
   endGame: () => set({ phase: 'game-over', timerEnd: null }),
 
@@ -171,11 +134,6 @@ export const useCompStore = create<CompStore>((set, get) => ({
     set({
       active: false,
       phase: 'setup',
-      teams: [
-        { name: 'Team A', score: 0 },
-        { name: 'Team B', score: 0 },
-      ],
-      currentTeamIndex: 0,
       timerEnd: null,
       currentWord: null,
       cluerName: '',
@@ -183,5 +141,14 @@ export const useCompStore = create<CompStore>((set, get) => ({
       roundSkips: 0,
       roundBonks: 0,
       roundHistory: [],
+      players: {},
     }),
 }));
+
+/** Get players sorted by score descending */
+export function useLeaderboard(): Array<{ name: string; score: number }> {
+  const players = useCompStore((s) => s.players);
+  return Object.entries(players)
+    .map(([name, score]) => ({ name, score }))
+    .sort((a, b) => b.score - a.score);
+}

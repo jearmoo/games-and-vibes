@@ -126,4 +126,31 @@ describe('cave game handlers', () => {
       expect(room.game!.phase).toBe(GamePhase.READY);
     });
   });
+
+  describe('clue:end-turn', () => {
+    it('cluer can end turn early during PLAYING', () => {
+      const room = setupRoom(rooms, ctx);
+      room.startGame();
+      room.startTurn();
+      room.beginTimer(() => {});
+      const cluerId = room.game!.cluerId!;
+      ctx.setPlayerId(cluerId);
+
+      socket.trigger('clue:end-turn');
+      expect(room.game!.phase).toBe(GamePhase.REVIEW);
+    });
+
+    it('non-cluer cannot end turn', () => {
+      const room = setupRoom(rooms, ctx);
+      room.startGame();
+      room.startTurn();
+      room.beginTimer(() => {});
+      // ctx is still host1, who may or may not be cluer
+      const nonCluer = room.game!.cluerId === 'host1' ? 'p2' : 'host1';
+      ctx.setPlayerId(nonCluer);
+
+      socket.trigger('clue:end-turn');
+      expect(room.game!.phase).toBe(GamePhase.PLAYING);
+    });
+  });
 });

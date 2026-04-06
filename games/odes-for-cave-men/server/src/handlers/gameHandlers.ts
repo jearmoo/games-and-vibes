@@ -152,6 +152,19 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
     }
   });
 
+  // Cluer ends turn early (gives up)
+  socket.on('clue:end-turn', () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.PLAYING) return;
+    if (playerId !== room.game.cluerId) return;
+    if (room.game.timerEnd === null) return;
+    logger.info('game', 'Cluer ended turn early', { room: room.code, player: room.getPlayer(playerId)?.name });
+    handleTurnEnd(room, io, metrics);
+  });
+
   // Bonk alert — any opponent can send this (visual only)
   socket.on('bonk:alert', () => {
     const playerId = ctx.getPlayerId();

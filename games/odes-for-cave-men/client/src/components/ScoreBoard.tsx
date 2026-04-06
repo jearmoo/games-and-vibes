@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ConfirmModal } from '@games/client-core';
 import { useGameStore, useMyPlayer, useTeamPlayers, useTeamName } from '../store';
 import { socket } from '../socket';
-import { HelpButton } from './HelpModal';
 import HistoryPanel from './HistoryPanel';
 
 export default function ScoreBoard() {
@@ -72,7 +71,6 @@ export default function ScoreBoard() {
             </button>
           )}
           <div className="text-gray-600 text-[10px] tracking-[0.2em] uppercase font-medium">{centerText}</div>
-          <HelpButton />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-emerald-400 font-display text-sm tracking-wider">B: {scores.B}</span>

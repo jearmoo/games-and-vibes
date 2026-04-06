@@ -1,21 +1,20 @@
-import { useCompStore } from '../../compStore';
+import { useCompStore, useLeaderboard } from '../../compStore';
 
 export default function CompRoundResult() {
-  const teams = useCompStore((s) => s.teams);
   const roundHistory = useCompStore((s) => s.roundHistory);
-  const currentTeamIndex = useCompStore((s) => s.currentTeamIndex);
   const nextRound = useCompStore((s) => s.nextRound);
   const endGame = useCompStore((s) => s.endGame);
+  const leaderboard = useLeaderboard();
 
   const lastRound = roundHistory[roundHistory.length - 1];
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
+      {/* Last round result */}
       {lastRound && (
         <div className="glass-card rounded-2xl p-6 border border-white/5 w-full max-w-xs text-center">
-          <div className="text-gray-500 text-xs tracking-wider uppercase mb-2">{lastRound.teamName}</div>
-          <div className="text-gray-400 text-sm mb-3">{lastRound.cluerName} clueing</div>
-          <div className="flex justify-center gap-4 text-sm mb-2">
+          <div className="text-amber-400 font-display text-sm tracking-wider mb-1">{lastRound.cluerName}</div>
+          <div className="flex justify-center gap-4 text-xs mb-2">
             <span className="text-emerald-400">{lastRound.correct} pts</span>
             <span className="text-gray-500">{lastRound.skips} skip</span>
             <span className="text-red-400">{lastRound.bonks} bonk</span>
@@ -27,44 +26,41 @@ export default function CompRoundResult() {
         </div>
       )}
 
-      {/* Total scores */}
-      <div className="flex gap-10 text-center">
-        <div>
-          <div className="text-amber-400 font-display text-sm tracking-wider">{teams[0].name}</div>
-          <div className="font-display text-3xl text-white mt-1" style={{ textShadow: '0 0 20px rgba(217,119,6,0.3)' }}>
-            {teams[0].score}
+      {/* Leaderboard */}
+      {leaderboard.length > 0 && (
+        <div className="w-full max-w-xs">
+          <div className="text-gray-500 text-[10px] uppercase tracking-wider text-center mb-2">Leaderboard</div>
+          <div className="space-y-1">
+            {leaderboard.map((p, i) => (
+              <div
+                key={p.name}
+                className="flex items-center justify-between glass-card rounded-lg px-3 py-2 border border-white/5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 text-xs w-4">{i + 1}.</span>
+                  <span className="text-white text-sm">{p.name}</span>
+                </div>
+                <span className={`font-display text-sm ${p.score >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {p.score}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="text-gray-700 font-display text-xl self-end mb-1">vs</div>
-        <div>
-          <div className="text-emerald-400 font-display text-sm tracking-wider">{teams[1].name}</div>
-          <div className="font-display text-3xl text-white mt-1" style={{ textShadow: '0 0 20px rgba(5,150,105,0.3)' }}>
-            {teams[1].score}
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="text-gray-500 text-xs text-center">Pass the phone to the next team</div>
+      <div className="text-gray-500 text-xs text-center">Pass the phone to the next cluer</div>
 
-      {/* Next round team picker */}
       <div className="w-full max-w-xs space-y-2">
-        <div className="text-gray-500 text-[10px] uppercase tracking-wider text-center">Next team</div>
-        <div className="flex gap-2">
-          {[0, 1].map((i) => (
-            <button
-              key={i}
-              onClick={() => nextRound(i)}
-              className={`flex-1 py-3 rounded-xl font-display tracking-wider transition-all active:scale-[0.97] ${
-                i === 0 ? 'btn-team-a text-white' : 'btn-team-b text-white'
-              }`}
-            >
-              {teams[i].name}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={nextRound}
+          className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
+        >
+          Next Round
+        </button>
         <button
           onClick={endGame}
-          className="w-full py-2.5 rounded-xl text-gray-400 border border-white/10 hover:text-white hover:border-white/20 font-display text-sm tracking-wider transition-all"
+          className="w-full py-2.5 rounded-2xl text-gray-400 border border-white/10 hover:text-white hover:border-white/20 font-display text-sm tracking-wider transition-all"
         >
           End Game
         </button>

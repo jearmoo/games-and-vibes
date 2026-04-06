@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useCompStore } from './compStore';
 
-// Mock fetch for WordBuffer
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
@@ -28,19 +27,18 @@ describe('compStore', () => {
     expect(state.active).toBe(false);
   });
 
-  it('startGame transitions to cluer-entry and resets scores', async () => {
+  it('startGame transitions to cluer-entry and resets state', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
     const state = useCompStore.getState();
     expect(state.phase).toBe('cluer-entry');
-    expect(state.currentTeamIndex).toBe(0);
-    expect(state.teams[0].score).toBe(0);
-    expect(state.teams[1].score).toBe(0);
+    expect(state.players).toEqual({});
+    expect(state.roundHistory).toHaveLength(0);
   });
 
   it('beginRound sets phase to playing with timer', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
     useCompStore.getState().setCluerName('Alice');
     useCompStore.getState().beginRound();
     const state = useCompStore.getState();
@@ -51,7 +49,8 @@ describe('compStore', () => {
 
   it('markCorrect increments score and advances word', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
+    useCompStore.getState().setCluerName('Alice');
     useCompStore.getState().beginRound();
     const firstWord = useCompStore.getState().currentWord;
 
@@ -63,7 +62,8 @@ describe('compStore', () => {
 
   it('markSkip increments skips', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
+    useCompStore.getState().setCluerName('Alice');
     useCompStore.getState().beginRound();
     useCompStore.getState().markSkip();
     expect(useCompStore.getState().roundSkips).toBe(1);
@@ -71,15 +71,16 @@ describe('compStore', () => {
 
   it('markBonk increments bonks', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
+    useCompStore.getState().setCluerName('Alice');
     useCompStore.getState().beginRound();
     useCompStore.getState().markBonk();
     expect(useCompStore.getState().roundBonks).toBe(1);
   });
 
-  it('endRound calculates score and archives', async () => {
+  it('endRound calculates score and adds to player leaderboard', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
     useCompStore.getState().setCluerName('Alice');
     useCompStore.getState().beginRound();
     useCompStore.getState().markCorrect(3);
@@ -90,39 +91,64 @@ describe('compStore', () => {
     const state = useCompStore.getState();
     expect(state.phase).toBe('round-result');
     expect(state.roundHistory).toHaveLength(1);
-    expect(state.roundHistory[0].correct).toBe(4); // 3 + 1
+    expect(state.roundHistory[0].correct).toBe(4);
     expect(state.roundHistory[0].skips).toBe(1);
     expect(state.roundHistory[0].score).toBe(3); // 4 - 1
     expect(state.roundHistory[0].cluerName).toBe('Alice');
-    expect(state.teams[0].score).toBe(3);
+    expect(state.players['Alice']).toBe(3);
   });
 
-  it('nextRound transitions to cluer-entry for chosen team', async () => {
+  it('accumulates scores across multiple rounds for same player', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
+
+    useCompStore.getState().setCluerName('Alice');
+    useCompStore.getState().beginRound();
+    useCompStore.getState().markCorrect(1);
+    useCompStore.getState().endRound();
+
+    useCompStore.getState().nextRound();
+    useCompStore.getState().setCluerName('Alice');
+    useCompStore.getState().beginRound();
+    useCompStore.getState().markCorrect(3);
+    useCompStore.getState().endRound();
+
+    expect(useCompStore.getState().players['Alice']).toBe(4); // 1 + 3
+  });
+
+  it('nextRound transitions to cluer-entry', async () => {
+    mockWords(20);
+    await useCompStore.getState().startGame();
+    useCompStore.getState().setCluerName('Alice');
     useCompStore.getState().beginRound();
     useCompStore.getState().endRound();
 
-    useCompStore.getState().nextRound(1);
+    useCompStore.getState().nextRound();
     const state = useCompStore.getState();
     expect(state.phase).toBe('cluer-entry');
-    expect(state.currentTeamIndex).toBe(1);
+    expect(state.cluerName).toBe('');
   });
 
   it('endGame sets phase to game-over', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
     useCompStore.getState().endGame();
     expect(useCompStore.getState().phase).toBe('game-over');
   });
 
   it('resetToSetup clears all state and sets active false', async () => {
     mockWords(20);
-    await useCompStore.getState().startGame(0);
+    await useCompStore.getState().startGame();
+    useCompStore.getState().setCluerName('Bob');
+    useCompStore.getState().beginRound();
+    useCompStore.getState().markCorrect(1);
+    useCompStore.getState().endRound();
+
     useCompStore.getState().resetToSetup();
     const state = useCompStore.getState();
     expect(state.active).toBe(false);
     expect(state.phase).toBe('setup');
     expect(state.roundHistory).toHaveLength(0);
+    expect(state.players).toEqual({});
   });
 });

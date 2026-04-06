@@ -19,6 +19,7 @@ import ReviewScreen from './components/ReviewScreen';
 import ScoringScreen from './components/ScoringScreen';
 import GameOverScreen from './components/GameOverScreen';
 import ScoreBoard from './components/ScoreBoard';
+import { HelpButton } from './components/HelpModal';
 
 export default function App() {
   const phase = useGameStore((s) => s.phase);
@@ -63,6 +64,7 @@ export default function App() {
   return (
     <div className="h-full flex flex-col">
       {phase !== 'LOBBY' && <ScoreBoard />}
+      <FloatingHelpButton />
       <div className="flex-1 min-h-0 overflow-auto">
         <AnimatePresence mode="wait">
           <motion.div
@@ -129,6 +131,14 @@ function ScreenRouter({ phase }: { phase: string }) {
     default:
       return <HomeScreen />;
   }
+}
+
+function FloatingHelpButton() {
+  return (
+    <div className="fixed top-3 right-3 z-40">
+      <HelpButton className="w-7 h-7 flex items-center justify-center rounded-full glass-card border border-white/10 text-xs text-gray-400 hover:text-amber-400 transition-colors font-semibold" />
+    </div>
+  );
 }
 
 function ReconnectBanner() {
