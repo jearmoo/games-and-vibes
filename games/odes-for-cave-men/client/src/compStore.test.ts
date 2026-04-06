@@ -134,6 +134,10 @@ describe('compStore', () => {
     expect(state.roundHistory).toHaveLength(1);
     expect(state.roundHistory[0].score).toBe(3); // 3 + 1 - 1
     expect(state.roundHistory[0].cluerName).toBe('Alice');
+    expect(state.roundHistory[0].cards).toHaveLength(3);
+    expect(state.roundHistory[0].cards[0].result).toBe('correct');
+    expect(state.roundHistory[0].cards[0].points).toBe(3);
+    expect(state.roundHistory[0].cards[2].result).toBe('skipped');
     expect(state.players['Alice']).toBe(3);
   });
 
@@ -152,6 +156,8 @@ describe('compStore', () => {
 
     const state = useCompStore.getState();
     expect(state.roundHistory[0].score).toBe(4); // 3 + 1
+    expect(state.roundHistory[0].cards[1].points).toBe(1); // adjusted from -1 to +1
+    expect(state.roundHistory[0].cards[1].originalPoints).toBe(-1);
     expect(state.players['Alice']).toBe(4);
   });
 

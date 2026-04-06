@@ -16,6 +16,7 @@ export interface RoundEntry {
   skips: number;
   bonks: number;
   score: number;
+  cards: CompReviewCard[];
 }
 
 export type CompPhase = 'setup' | 'cluer-entry' | 'playing' | 'review' | 'round-result' | 'game-over';
@@ -190,7 +191,7 @@ export const useCompStore = create<CompStore>()(
           roundCorrect: correct,
           roundSkips: skips,
           roundBonks: bonks,
-          roundHistory: [...s.roundHistory, { cluerName, correct, skips, bonks, score }],
+          roundHistory: [...s.roundHistory, { cluerName, correct, skips, bonks, score, cards: roundCards }],
         }));
       },
 

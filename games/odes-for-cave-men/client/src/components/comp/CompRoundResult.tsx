@@ -1,4 +1,5 @@
 import { useCompStore, useLeaderboard } from '../../compStore';
+import CompHistoryButton from './CompHistoryButton';
 
 export default function CompRoundResult() {
   const roundHistory = useCompStore((s) => s.roundHistory);
@@ -9,7 +10,10 @@ export default function CompRoundResult() {
   const lastRound = roundHistory[roundHistory.length - 1];
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
+    <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in relative">
+      <div className="absolute top-4 right-4">
+        <CompHistoryButton />
+      </div>
       {/* Last round result */}
       {lastRound && (
         <div className="glass-card rounded-2xl p-6 border border-white/5 w-full max-w-xs text-center">
