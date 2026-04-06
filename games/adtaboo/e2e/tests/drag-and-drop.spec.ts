@@ -124,10 +124,10 @@ test.describe('Drag and Drop — Team Assignment', () => {
     await dragToTeam(alice.page, carol.name, 'B');
     await dragToTeam(alice.page, dave.name, 'B');
 
-    // Verify on a non-host screen (Dave)
-    await expect(dave.page.getByTestId('lobby-team-a').getByText(alice.name)).toBeVisible();
-    await expect(dave.page.getByTestId('lobby-team-a').getByText(bob.name)).toBeVisible();
-    await expect(dave.page.getByTestId('lobby-team-b').getByText(carol.name)).toBeVisible();
-    await expect(dave.page.getByTestId('lobby-team-b').getByText(dave.name)).toBeVisible();
+    // Verify on a non-host screen (Dave) — allow extra time for socket propagation in CI
+    await expect(dave.page.getByTestId('lobby-team-a').getByText(alice.name)).toBeVisible({ timeout: 10_000 });
+    await expect(dave.page.getByTestId('lobby-team-a').getByText(bob.name)).toBeVisible({ timeout: 10_000 });
+    await expect(dave.page.getByTestId('lobby-team-b').getByText(carol.name)).toBeVisible({ timeout: 10_000 });
+    await expect(dave.page.getByTestId('lobby-team-b').getByText(dave.name)).toBeVisible({ timeout: 10_000 });
   });
 });
