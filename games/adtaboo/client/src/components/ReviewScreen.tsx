@@ -59,10 +59,7 @@ export default function ReviewScreen() {
             <div
               className={`font-display text-xl tabular-nums ${turnScore.points >= 0 ? 'text-white' : 'text-red-400'}`}
               style={{
-                textShadow:
-                  turnScore.points >= 0
-                    ? '0 0 20px rgba(255,255,255,0.15)'
-                    : '0 0 20px rgba(239,68,68,0.3)',
+                textShadow: turnScore.points >= 0 ? '0 0 20px rgba(255,255,255,0.15)' : '0 0 20px rgba(239,68,68,0.3)',
               }}
             >
               {turnScore.points >= 0 ? '+' : ''}
@@ -93,17 +90,13 @@ export default function ReviewScreen() {
             <div
               key={i}
               className={`rounded-xl p-3 flex items-center justify-between transition-all duration-200 border ${
-                isCorrect
-                  ? 'glass-card border-emerald-500/20 bg-emerald-500/[0.04]'
-                  : 'glass-card border-white/5'
+                isCorrect ? 'glass-card border-emerald-500/20 bg-emerald-500/[0.04]' : 'glass-card border-white/5'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 transition-all ${
-                    isCorrect
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-white/[0.03] text-gray-700'
+                    isCorrect ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/[0.03] text-gray-700'
                   }`}
                 >
                   {isCorrect ? '\u2713' : '\u2022'}
@@ -116,9 +109,7 @@ export default function ReviewScreen() {
                   >
                     {card.word}
                   </span>
-                  {isCorrect && (
-                    <span className="text-emerald-400/50 text-[10px] tracking-wider">+3 pts</span>
-                  )}
+                  {isCorrect && <span className="text-emerald-400/50 text-[10px] tracking-wider">+3 pts</span>}
                 </div>
               </div>
               {canReview && (
@@ -145,9 +136,7 @@ export default function ReviewScreen() {
           <div className="flex items-center gap-2 mb-2">
             <div className="text-red-400/60 text-[10px] uppercase tracking-[0.2em] font-medium">Taboo Words</div>
             {totalBuzzes > 0 && (
-              <div className="text-red-400 text-[10px] font-display ml-auto">
-                &minus;{totalBuzzes} pts
-              </div>
+              <div className="text-red-400 text-[10px] font-display ml-auto">&minus;{totalBuzzes} pts</div>
             )}
           </div>
           <div className="flex flex-wrap gap-1.5">

@@ -229,7 +229,7 @@ export const useCompStore = create<CompStore>()(
         roundHistory: state.roundHistory,
         players: state.players,
       }),
-      onRehydrate: (_state, options) => {
+      onRehydrateStorage: () => {
         // After rehydration, check if we were in a playing phase with an expired timer
         return (rehydratedState) => {
           if (!rehydratedState) return;
