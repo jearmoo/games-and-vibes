@@ -210,11 +210,11 @@ describe('AdtabooRoom', () => {
       expect(room.allCardsResolved()).toBe(true);
     });
 
-    it('ends cluing and transitions', () => {
+    it('ends cluing and transitions to review', () => {
       room.resolveCard(0);
       const result = room.endCluing();
       expect(result).not.toBeNull();
-      expect(result!.nextPhase).toBe(GamePhase.CLUING_B);
+      expect(result!.nextPhase).toBe(GamePhase.REVIEW_A);
       expect(result!.turnScore.correct).toBe(1);
       expect(result!.turnScore.missed).toBe(1);
     });
@@ -234,10 +234,12 @@ describe('AdtabooRoom', () => {
 
       room.prepareCluingPhase('A');
       room.resolveCard(0);
-      room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
 
       room.resolveCard(0);
-      const result = room.endCluing();
+      room.endCluing(); // -> REVIEW_B
+      const result = room.lockInReview(); // -> ROUND_RESULT
 
       expect(result).not.toBeNull();
       expect(result!.nextPhase).toBe(GamePhase.ROUND_RESULT);
@@ -258,8 +260,10 @@ describe('AdtabooRoom', () => {
       room.setClueGiver('B', 'p4');
 
       room.prepareCluingPhase('A');
-      room.endCluing();
-      const result = room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+      room.endCluing(); // -> REVIEW_B
+      const result = room.lockInReview(); // -> GAME_OVER (round 1 of 1)
 
       expect(result).not.toBeNull();
       expect(result!.nextPhase).toBe(GamePhase.GAME_OVER);
@@ -278,8 +282,10 @@ describe('AdtabooRoom', () => {
       room.setClueGiver('B', 'p4');
 
       room.prepareCluingPhase('A');
-      room.endCluing();
-      const result = room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+      room.endCluing(); // -> REVIEW_B
+      const result = room.lockInReview(); // -> ROUND_RESULT (unlimited)
 
       expect(result).not.toBeNull();
       expect(result!.nextPhase).toBe(GamePhase.ROUND_RESULT);
@@ -297,8 +303,10 @@ describe('AdtabooRoom', () => {
       room.setClueGiver('B', 'p4');
 
       room.prepareCluingPhase('A');
-      room.endCluing();
-      room.endCluing();
+      room.endCluing(); // -> REVIEW_A
+      room.lockInReview(); // -> CLUING_B
+      room.endCluing(); // -> REVIEW_B
+      room.lockInReview(); // -> ROUND_RESULT
 
       room.advanceToNextRound();
       expect(room.game?.round).toBe(2);

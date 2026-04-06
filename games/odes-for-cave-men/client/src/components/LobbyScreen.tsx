@@ -68,7 +68,7 @@ export default function LobbyScreen() {
 
   const [showSettings, setShowSettings] = useState(false);
 
-  const settingsSummary = `${settings.rounds} rds · ${settings.timerSeconds}s`;
+  const settingsSummary = `${settings.rounds ?? '∞'} rds · ${settings.timerSeconds}s`;
 
   const content = (
     <div className="h-full flex flex-col p-4 gap-2 animate-fade-in overflow-y-auto">
@@ -267,7 +267,6 @@ function UnassignedChip({
       data-testid={`lobby-player-${player.name}`}
       className={`inline-flex items-center whitespace-nowrap transition-all
         ${player.id === myId ? 'text-white font-semibold' : 'text-gray-300'}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -308,7 +307,6 @@ function PlayerPill({
       data-testid={`lobby-player-${player.name}`}
       className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all
         ${highlight ?? (player.id === myId ? 'text-white font-semibold' : 'text-gray-300')}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -432,6 +430,17 @@ function TeamColumn({
             hostId={hostId}
             isHost={isHost}
             highlight={p.id === myId ? `${colors.badge} font-semibold` : undefined}
+            actions={
+              isHost && p.id !== hostId ? (
+                <button
+                  onClick={() => socket.emit('player:kick', { targetId: p.id })}
+                  className="text-[10px] text-gray-500 hover:text-red-400 transition-colors shrink-0"
+                  title="Kick player"
+                >
+                  &times;
+                </button>
+              ) : undefined
+            }
           />
         ))}
         {players.length === 0 && (
@@ -473,7 +482,7 @@ function CaveSettingsModal({
   setTimerInput,
   onClose,
 }: {
-  settings: { rounds: number; timerSeconds: number };
+  settings: { rounds: number | null; timerSeconds: number };
   timerInput: string;
   setTimerInput: (v: string) => void;
   onClose: () => void;
@@ -509,10 +518,14 @@ function CaveSettingsModal({
           <label className="flex items-center justify-between text-gray-300">
             <span className="text-gray-400">Rounds</span>
             <select
-              value={settings.rounds}
-              onChange={(e) => socket.emit('settings:update', { rounds: parseInt(e.target.value) })}
+              value={settings.rounds ?? 'unlimited'}
+              onChange={(e) => {
+                const val = e.target.value;
+                socket.emit('settings:update', { rounds: val === 'unlimited' ? null : parseInt(val) });
+              }}
               className="bg-surface-raised text-white rounded-lg px-2 py-1.5 border border-white/5"
             >
+              <option value="unlimited">∞</option>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <option key={n} value={n}>
                   {n}

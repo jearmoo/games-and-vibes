@@ -78,11 +78,24 @@ export default function ScoreBoard() {
           )}
         </div>
 
-        <span className={`font-semibold ${teamColor}`}>{me?.name}</span>
-        {me?.team && <span className="text-gray-400">&middot;</span>}
-        {me?.team && <span className={`font-medium ${teamColor}`}>{me.team === 'A' ? teamAName : teamBName}</span>}
-        {myRole && <span className="text-gray-400">&middot;</span>}
-        {myRole && <span className="text-accent font-medium">{ROLE_LABELS[myRole] || myRole}</span>}
+        <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1">
+          <span className={`font-semibold ${teamColor}`}>{me?.name}</span>
+          {me?.team && <span className="text-gray-400">&middot;</span>}
+          {me?.team && <span className={`font-medium ${teamColor}`}>{me.team === 'A' ? teamAName : teamBName}</span>}
+          {myRole && <span className="text-gray-400">&middot;</span>}
+          {myRole && <span className="text-accent font-medium">{ROLE_LABELS[myRole] || myRole}</span>}
+          <svg
+            className={`w-2.5 h-2.5 text-gray-600 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
 
         {/* Right button group */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -91,7 +104,7 @@ export default function ScoreBoard() {
       </div>
 
       {/* Score bar */}
-      <button onClick={() => setExpanded(!expanded)} className="w-full grid grid-cols-3 items-center px-4 py-2.5">
+      <div className="w-full grid grid-cols-3 items-center px-4 py-2.5">
         <div className={`text-left ${cluingTeam && cluingTeam !== 'A' ? 'opacity-50' : ''}`}>
           <div className="text-team-a-glow font-display text-base tracking-wider">{teamAName}</div>
           <div className="text-team-a-glow font-display text-base tracking-wider">{scores.A}</div>
@@ -99,20 +112,19 @@ export default function ScoreBoard() {
         <div className="text-gray-300 text-xs tracking-[0.2em] uppercase font-medium text-center">
           {phase === 'PARALLEL_SETUP'
             ? 'Setup'
-            : phase === 'CLUING_A'
+            : phase === 'CLUING_A' || phase === 'REVIEW_A'
               ? teamAName
-              : phase === 'CLUING_B'
+              : phase === 'CLUING_B' || phase === 'REVIEW_B'
                 ? teamBName
                 : settings.rounds === null
                   ? `R${round}`
                   : `R${round}/${settings.rounds}`}
-          <span className="ml-1.5 text-gray-600">{expanded ? '\u25B2' : '\u25BC'}</span>
         </div>
         <div className={`text-right ${cluingTeam && cluingTeam !== 'B' ? 'opacity-50' : ''}`}>
           <div className="text-team-b-glow font-display text-base tracking-wider">{teamBName}</div>
           <div className="text-team-b-glow font-display text-base tracking-wider">{scores.B}</div>
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="flex gap-3 px-4 pb-3 animate-slide-up">

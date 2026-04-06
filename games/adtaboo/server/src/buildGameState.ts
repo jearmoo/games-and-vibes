@@ -1,17 +1,6 @@
 import type { AdtabooRoom } from './AdtabooRoom.js';
 import { GamePhase, type ChallengeSetup, type TeamId } from '@games/adtaboo-shared';
 
-function redactChallenge(challenge: ChallengeSetup): ChallengeSetup {
-  return {
-    cards: challenge.cards.map((c) => ({ word: '???', result: c.result })),
-    tabooWords: [],
-    tabooSuggestions: [],
-    tabooBuzzes: challenge.tabooBuzzes,
-    ready: challenge.ready,
-    clueGiverId: challenge.clueGiverId,
-  };
-}
-
 export function buildGameState(room: AdtabooRoom, playerId: string) {
   if (!room.game) return null;
 
@@ -22,24 +11,19 @@ export function buildGameState(room: AdtabooRoom, playerId: string) {
   const challenges: Record<string, ChallengeSetup> = {};
   for (const team of ['A', 'B'] as TeamId[]) {
     const challenge = room.game.challenges[team];
-    let shouldRedact = false;
 
-    if (phase === GamePhase.PARALLEL_SETUP) {
-      // Each team sees the opposing team's challenge (they're setting up taboo words for it)
-      // but not their own (they'll clue those words later)
-      shouldRedact = playerTeam === team;
-    } else if (phase === GamePhase.CLUING_A || phase === GamePhase.CLUING_B) {
-      const cluingTeam = phase === GamePhase.CLUING_A ? 'A' : 'B';
-      if (team === cluingTeam) {
-        // Cluing team's cards: redact for everyone except clue giver's own team
-        // (clue giver sees words, teammates see '???' — client handles that distinction)
-        shouldRedact = playerTeam !== cluingTeam;
-      }
-      // Non-cluing team's challenge is visible (taboo words for the taboo master)
+    if (phase === GamePhase.PARALLEL_SETUP && playerTeam === team) {
+      // During setup, each team sees the opposing team's challenge (they set taboo words)
+      // but not their own words (they'll clue those later)
+      challenges[team] = {
+        ...challenge,
+        cards: challenge.cards.map((c) => ({ word: '???', result: c.result })),
+        tabooWords: [],
+        tabooSuggestions: [],
+      };
+    } else {
+      challenges[team] = { ...challenge };
     }
-    // ROUND_RESULT / GAME_OVER: everything visible
-
-    challenges[team] = shouldRedact ? redactChallenge(challenge) : { ...challenge };
   }
 
   return {

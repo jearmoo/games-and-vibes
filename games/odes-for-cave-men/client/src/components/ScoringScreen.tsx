@@ -35,16 +35,24 @@ export default function ScoringScreen() {
       </div>
 
       <div className="text-gray-500 text-xs tracking-wider uppercase">
-        {round < settings.rounds ? `Round ${round + 1} next` : 'Final round'}
+        {settings.rounds !== null && round >= settings.rounds ? 'Final round' : `Round ${round + 1} next`}
       </div>
 
       {host ? (
-        <button
-          onClick={() => socket.emit('game:next-round')}
-          className="btn-primary w-full max-w-xs py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
-        >
-          {round < settings.rounds ? 'Next Round' : 'See Final Results'}
-        </button>
+        <div className="w-full max-w-xs space-y-3">
+          <button
+            onClick={() => socket.emit('game:next-round')}
+            className="btn-primary w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97]"
+          >
+            Next Round
+          </button>
+          <button
+            onClick={() => socket.emit('game:end')}
+            className="w-full py-3 rounded-2xl text-gray-400 border border-white/10 hover:text-white hover:border-white/20 font-display text-sm tracking-wider transition-all active:scale-[0.97]"
+          >
+            End Game
+          </button>
+        </div>
       ) : (
         <div className="text-gray-600 text-xs tracking-wider animate-pulse-slow">Waiting for host to continue...</div>
       )}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { GamePhase } from '@games/odes-for-cave-men-shared';
-import type { WordCard, TeamId } from '@games/odes-for-cave-men-shared';
+import type { WordCard, TeamId, CaveRoundArchiveEntry } from '@games/odes-for-cave-men-shared';
 export { SESSION_KEY } from './constants';
 export { GamePhase };
 export type { WordCard };
@@ -24,7 +24,7 @@ export interface GameStore {
   roomCode: string | null;
   players: Player[];
   hostId: string | null;
-  settings: { rounds: number; timerSeconds: number };
+  settings: { rounds: number | null; timerSeconds: number };
   teamNames: { A: string; B: string };
 
   phase: GamePhase | null;
@@ -33,8 +33,6 @@ export interface GameStore {
 
   // Round structure
   playingTeam: TeamId | null;
-  turnIndex: number;
-  turnsPerRound: number;
 
   // Turn state
   role: 'cluer' | 'guesser' | 'opponent' | null;
@@ -47,8 +45,10 @@ export interface GameStore {
 
   // Review state
   reviewCards: ReviewCard[];
+  roundHistory: CaveRoundArchiveEntry[];
 
   error: string | null;
+  kickReason: string | null;
 
   setPlayerName: (name: string) => void;
   setError: (msg: string | null) => void;
@@ -62,14 +62,12 @@ export const initialState = {
   roomCode: null,
   players: [],
   hostId: null,
-  settings: { rounds: 4, timerSeconds: 90 },
+  settings: { rounds: null, timerSeconds: 90 },
   teamNames: { A: 'Team A', B: 'Team B' },
   phase: null,
   round: 1,
   scores: { A: 0, B: 0 },
   playingTeam: null,
-  turnIndex: 0,
-  turnsPerRound: 0,
   role: null,
   cluerId: null,
   cluerName: null,
@@ -78,7 +76,9 @@ export const initialState = {
   wordsResolved: 0,
   bonkFlash: false,
   reviewCards: [],
+  roundHistory: [],
   error: null,
+  kickReason: null,
 };
 
 export const useGameStore = create<GameStore>((set) => ({

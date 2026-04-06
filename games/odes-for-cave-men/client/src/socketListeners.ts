@@ -23,6 +23,32 @@ socket.on('disconnect', () => {
   useGameStore.setState({ connected: false });
 });
 
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+// Session takeover
+socket.on('session:taken-over', () => {
+  socket.disconnect();
+  clearSession();
+  useGameStore.setState({
+    ...initialState,
+    kickReason: "Someone else joined with your name. You've been disconnected from the room.",
+  });
+  window.history.replaceState(null, '', '/');
+});
+
+// Kicked by host
+socket.on('room:kicked', () => {
+  socket.disconnect();
+  clearSession();
+  useGameStore.setState({
+    ...initialState,
+    kickReason: 'You were kicked from the room by the host.',
+  });
+  window.history.replaceState(null, '', '/');
+});
+
 // Room lifecycle
 socket.on('room:created', ({ roomCode, playerId, room }) => {
   useGameStore.setState({
@@ -70,8 +96,7 @@ socket.on('room:rejoined', ({ roomCode, playerId, room, game }) => {
     update.timerEnd = game.timerEnd;
     update.cluerId = game.cluerId;
     update.playingTeam = game.playingTeam;
-    update.turnIndex = game.turnIndex;
-    update.turnsPerRound = game.turnsPerRound;
+    if (game.roundHistory) update.roundHistory = game.roundHistory;
 
     const me = room.players.find((p: { id: string }) => p.id === playerId);
     const myTeam = me?.team as TeamId | null;
@@ -150,15 +175,14 @@ socket.on('room:error', ({ message }) => {
 });
 
 // Turn ready — cluer chosen, waiting for them to start
-socket.on('turn:ready', ({ cluerId, cluerName, playingTeam, turnIndex, turnsPerRound, scores, round }) => {
+socket.on('turn:ready', ({ cluerId, cluerName, playingTeam, scores, round, roundHistory }) => {
   useGameStore.setState({
     phase: 'READY',
     cluerId,
     cluerName,
     playingTeam,
-    turnIndex,
-    turnsPerRound,
     scores,
+    ...(roundHistory ? { roundHistory } : {}),
     round,
     role: null,
     currentWord: null,
@@ -167,6 +191,11 @@ socket.on('turn:ready', ({ cluerId, cluerName, playingTeam, turnIndex, turnsPerR
     reviewCards: [],
     bonkFlash: false,
   });
+});
+
+// Cluer changed during READY phase
+socket.on('turn:cluer-changed', ({ cluerId, cluerName }) => {
+  useGameStore.setState({ cluerId, cluerName });
 });
 
 // Turn started — role-specific payload
@@ -231,11 +260,12 @@ socket.on('review:updated', ({ index, points, scores }) => {
 });
 
 // Round ended / game over
-socket.on('round:ended', ({ phase, scores, round }) => {
+socket.on('round:ended', ({ phase, scores, round, roundHistory }) => {
   useGameStore.setState({
     phase,
     scores,
     round,
+    ...(roundHistory ? { roundHistory } : {}),
     timerEnd: null,
     role: null,
     currentWord: null,

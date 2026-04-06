@@ -68,7 +68,7 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
   });
 
   // Settings update
-  socket.on('settings:update', (settings: { rounds?: number; timerSeconds?: number }) => {
+  socket.on('settings:update', (settings: { rounds?: number | null; timerSeconds?: number }) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
@@ -76,7 +76,7 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
     if (room.isGameActive()) return;
 
     if (settings.rounds !== undefined) {
-      room.settings.rounds = Math.max(1, Math.min(10, settings.rounds));
+      room.settings.rounds = settings.rounds === null ? null : Math.max(1, Math.min(10, settings.rounds));
     }
     if (settings.timerSeconds !== undefined) {
       room.settings.timerSeconds = Math.max(30, Math.min(180, settings.timerSeconds));
@@ -108,8 +108,6 @@ export function registerCaveLobbyHandlers(ctx: SocketContext<CaveRoom>) {
       cluerId: room.game!.cluerId,
       cluerName: nextCluer?.name ?? null,
       playingTeam: room.game!.playingTeam,
-      turnIndex: room.game!.turnIndex,
-      turnsPerRound: room.game!.turnsPerRound,
       scores: room.game!.scores,
       round: room.game!.round,
     });

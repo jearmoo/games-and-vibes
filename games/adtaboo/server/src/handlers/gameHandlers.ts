@@ -6,30 +6,21 @@ import { GamePhase } from '@games/adtaboo-shared';
 import { AdtabooRoom } from '../AdtabooRoom.js';
 import { prepareCluingPhase, emitSetupCards } from './setupHandlers.js';
 
-export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, metrics: MetricsCollector) {
+export function handleTurnEnd(room: AdtabooRoom, team: TeamId, io: Server, _metrics: MetricsCollector) {
   const result = room.endCluing();
   if (!result || !room.game) return;
-  logger.info('game', 'Cluing ended', { room: room.code, team, turnScore: result.turnScore });
+  logger.info('game', 'Cluing ended, entering review', { room: room.code, team, turnScore: result.turnScore });
 
-  if (result.nextPhase === GamePhase.CLUING_B) {
-    io.to(room.code).emit('turn:transition', {
-      phase: GamePhase.CLUING_B,
-      turnScore: result.turnScore,
-      scores: room.game.scores,
-    });
-    prepareCluingPhase(room, 'B', io);
-  } else {
-    if (result.nextPhase === GamePhase.GAME_OVER) {
-      metrics.gameCompleted();
-    }
-    io.to(room.code).emit('round:ended', {
-      phase: result.nextPhase,
-      scores: room.game.scores,
-      round: room.game.round,
-      turnResults: room.game.turnResults,
-      roundHistory: room.getRoundHistory(),
-    });
-  }
+  // Always transition to review phase (REVIEW_A or REVIEW_B)
+  io.to(room.code).emit('turn:review', {
+    phase: result.nextPhase,
+    team,
+    turnScore: result.turnScore,
+    scores: room.game.scores,
+    cards: room.game.challenges[team].cards,
+    tabooWords: room.game.challenges[team].tabooWords,
+    tabooBuzzes: room.game.challenges[team].tabooBuzzes,
+  });
 }
 
 export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
@@ -144,6 +135,118 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
       scores: room.game.scores,
       tabooBuzzes: room.game.challenges[cluingTeam].tabooBuzzes,
     });
+  });
+
+  // Review: TM can buzz taboo during review
+  socket.on('review:buzz', ({ tabooWord }: { tabooWord: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.REVIEW_A && room.game.phase !== GamePhase.REVIEW_B) return;
+
+    const team = room.game.phase === GamePhase.REVIEW_A ? 'A' : 'B';
+    const opposingTeam = room.getOpposingTeam(team);
+    if (playerId !== room.tabooMasters[opposingTeam]) return;
+
+    const count = room.buzzTabooWord(tabooWord);
+    if (count === 0) return;
+    room.recalcTurnScore(team);
+
+    io.to(room.code).emit('review:updated', {
+      tabooBuzzes: room.game.challenges[team].tabooBuzzes,
+      turnScore: room.game.turnResults[team],
+      scores: room.game.scores,
+    });
+  });
+
+  // Review: TM can undo buzz during review
+  socket.on('review:undo-buzz', ({ tabooWord }: { tabooWord: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.REVIEW_A && room.game.phase !== GamePhase.REVIEW_B) return;
+
+    const team = room.game.phase === GamePhase.REVIEW_A ? 'A' : 'B';
+    const opposingTeam = room.getOpposingTeam(team);
+    if (playerId !== room.tabooMasters[opposingTeam]) return;
+
+    const count = room.undoBuzzTabooWord(tabooWord);
+    if (count === null) return;
+    room.recalcTurnScore(team);
+
+    io.to(room.code).emit('review:updated', {
+      tabooBuzzes: room.game.challenges[team].tabooBuzzes,
+      turnScore: room.game.turnResults[team],
+      scores: room.game.scores,
+    });
+  });
+
+  // Review: TM can toggle card result during review
+  socket.on('review:toggle-card', ({ cardIndex }: { cardIndex: number }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.REVIEW_A && room.game.phase !== GamePhase.REVIEW_B) return;
+
+    const team = room.game.phase === GamePhase.REVIEW_A ? 'A' : 'B';
+    const opposingTeam = room.getOpposingTeam(team);
+    if (playerId !== room.tabooMasters[opposingTeam]) return;
+
+    const card = room.game.challenges[team].cards[cardIndex];
+    if (!card) return;
+
+    // Toggle between correct and null
+    card.result = card.result === 'correct' ? null : 'correct';
+    room.recalcTurnScore(team);
+
+    io.to(room.code).emit('review:card-toggled', {
+      cardIndex,
+      result: card.result,
+      turnScore: room.game.turnResults[team],
+      scores: room.game.scores,
+    });
+  });
+
+  // Review: lock in — opposing team's TM advances to next phase
+  socket.on('review:lock-in', () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game) return;
+    if (room.game.phase !== GamePhase.REVIEW_A && room.game.phase !== GamePhase.REVIEW_B) return;
+
+    const team = room.game.phase === GamePhase.REVIEW_A ? 'A' : 'B';
+    const opposingTeam = room.getOpposingTeam(team);
+    if (playerId !== room.tabooMasters[opposingTeam]) return;
+
+    const result = room.lockInReview();
+    if (!result) return;
+
+    logger.info('game', 'Review locked in', { room: room.code, team, nextPhase: result.nextPhase });
+
+    if (result.nextPhase === GamePhase.CLUING_B) {
+      io.to(room.code).emit('turn:transition', {
+        phase: GamePhase.CLUING_B,
+        turnScore: room.game.turnResults.A,
+        scores: room.game.scores,
+        roundHistory: room.getRoundHistory(),
+      });
+      prepareCluingPhase(room, 'B', io);
+    } else {
+      if (result.nextPhase === GamePhase.GAME_OVER) {
+        metrics.gameCompleted();
+      }
+      io.to(room.code).emit('round:ended', {
+        phase: result.nextPhase,
+        scores: room.game.scores,
+        round: room.game.round,
+        turnResults: room.game.turnResults,
+        roundHistory: room.getRoundHistory(),
+      });
+    }
   });
 
   socket.on('round:next', () => {

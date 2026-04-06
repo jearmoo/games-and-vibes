@@ -3,6 +3,7 @@ import { CaveRoom } from './CaveRoom.js';
 import { registerCaveLobbyHandlers } from './handlers/lobbyHandlers.js';
 import { registerGameHandlers, handleTurnEnd } from './handlers/gameHandlers.js';
 import { GamePhase } from '@games/odes-for-cave-men-shared';
+import { getRandomWords } from './words/index.js';
 
 const ROOMS_PATH = process.env.ROOMS_PATH || '/data/rooms.json';
 const METRICS_PATH = process.env.METRICS_PATH || '/data/metrics.json';
@@ -25,12 +26,11 @@ function buildGameState(room: CaveRoom) {
     round: room.game.round,
     scores: room.game.scores,
     playingTeam: room.game.playingTeam,
-    turnIndex: room.game.turnIndex,
-    turnsPerRound: room.game.turnsPerRound,
     cluerId: room.game.cluerId,
     currentWordIndex: room.game.currentWordIndex,
     words: room.game.words,
     timerEnd: room.game.timerEnd,
+    roundHistory: room.getRoundHistory(),
   };
 }
 
@@ -49,6 +49,13 @@ createGameServer<CaveRoom>({
     onPlayerSocketJoin: (room, playerId, socket) => {
       const player = room.getPlayer(playerId);
       if (player?.team) socket.join(`${room.code}:team${player.team}`);
+    },
+    onPlayerKicked: (room, kickedId) => {
+      if (!room.game) return;
+      // Clear cluer if kicked player was the active cluer
+      if (room.game.cluerId === kickedId) {
+        room.game.cluerId = null;
+      }
     },
   },
 
@@ -71,6 +78,14 @@ createGameServer<CaveRoom>({
         });
       }
     },
+  },
+
+  customRoutes: (app) => {
+    app.get('/api/words', (req, res) => {
+      const count = Math.min(Math.max(parseInt(String(req.query.count)) || 5, 1), 20);
+      const words = getRandomWords(count, new Set());
+      res.json(words.map((w) => ({ word1: w.word1, word3: w.word3 })));
+    });
   },
 
   onRoomRestored: (room, io) => {

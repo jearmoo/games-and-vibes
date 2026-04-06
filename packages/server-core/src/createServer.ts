@@ -30,6 +30,9 @@ export interface GameServerOptions<T extends BaseRoom> {
 
   /** Absolute path to static client files for production serving. */
   clientPath?: string;
+
+  /** Register custom Express routes before the catch-all static handler. */
+  customRoutes?: (app: express.Express) => void;
 }
 
 export function createGameServer<T extends BaseRoom>(opts: GameServerOptions<T>): void {
@@ -43,6 +46,7 @@ export function createGameServer<T extends BaseRoom>(opts: GameServerOptions<T>)
     lobbyCallbacks,
     onRoomRestored,
     clientPath: clientPathOpt,
+    customRoutes,
   } = opts;
 
   const metricsToken = process.env.METRICS_TOKEN;
@@ -85,6 +89,9 @@ export function createGameServer<T extends BaseRoom>(opts: GameServerOptions<T>)
       }),
     );
   });
+
+  // Custom routes (before static files)
+  customRoutes?.(app);
 
   // Static files in production
   if (process.env.NODE_ENV === 'production') {

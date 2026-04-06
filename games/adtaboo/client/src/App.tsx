@@ -11,6 +11,7 @@ import TabooWatcherScreen from './components/TabooWatcherScreen';
 import ScoringScreen from './components/ScoringScreen';
 import GameOverScreen from './components/GameOverScreen';
 import TeamSelectScreen from './components/TeamSelectScreen';
+import ReviewScreen from './components/ReviewScreen';
 import ScoreBoard from './components/ScoreBoard';
 import { HelpButton } from './components/HelpModal';
 
@@ -84,6 +85,9 @@ function ScreenRouter({ phase }: { phase: string }) {
       if (role === 'guesser') return <GuesserScreen />;
       if (role === 'taboo-master') return <TabooWatcherScreen isMaster />;
       return <TabooWatcherScreen isMaster={false} />;
+    case 'REVIEW_A':
+    case 'REVIEW_B':
+      return <ReviewScreen />;
     case 'ROUND_RESULT':
       return <ScoringScreen />;
     case 'GAME_OVER':

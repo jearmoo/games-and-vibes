@@ -1,7 +1,13 @@
 import { Component, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useGameStore, useMyRole } from './store';
+import { useCompStore } from './compStore';
 import HomeScreen from './components/HomeScreen';
+import CompSetupScreen from './components/comp/CompSetupScreen';
+import CompCluerEntry from './components/comp/CompCluerEntry';
+import CompPlayScreen from './components/comp/CompPlayScreen';
+import CompRoundResult from './components/comp/CompRoundResult';
+import CompGameOver from './components/comp/CompGameOver';
 import LobbyScreen from './components/LobbyScreen';
 import ReadyScreen from './components/ReadyScreen';
 import CluerScreen from './components/CluerScreen';
@@ -17,6 +23,37 @@ export default function App() {
   const connected = useGameStore((s) => s.connected);
   const error = useGameStore((s) => s.error);
   const roomCode = useGameStore((s) => s.roomCode);
+  const kickReason = useGameStore((s) => s.kickReason);
+
+  const compActive = useCompStore((s) => s.active);
+  const compPhase = useCompStore((s) => s.phase);
+
+  // Comp (pass-the-phone) mode
+  if (compActive) {
+    return (
+      <div className="h-full">
+        <CompRouter phase={compPhase} />
+      </div>
+    );
+  }
+
+  if (kickReason) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
+        <div className="font-display text-xl text-white tracking-wider text-center">Disconnected</div>
+        <p className="text-gray-400 text-sm text-center max-w-xs">{kickReason}</p>
+        <button
+          onClick={() => {
+            useGameStore.setState({ kickReason: null });
+            window.location.href = '/';
+          }}
+          className="btn-primary px-8 py-3 rounded-2xl text-white font-display tracking-wider"
+        >
+          Return Home
+        </button>
+      </div>
+    );
+  }
 
   if (!connected && !roomCode) {
     return (
@@ -56,6 +93,23 @@ export default function App() {
       {error && <ErrorToast message={error} />}
     </div>
   );
+}
+
+function CompRouter({ phase }: { phase: string }) {
+  switch (phase) {
+    case 'setup':
+      return <CompSetupScreen />;
+    case 'cluer-entry':
+      return <CompCluerEntry />;
+    case 'playing':
+      return <CompPlayScreen />;
+    case 'round-result':
+      return <CompRoundResult />;
+    case 'game-over':
+      return <CompGameOver />;
+    default:
+      return <CompSetupScreen />;
+  }
 }
 
 function ScreenRouter({ phase }: { phase: string }) {

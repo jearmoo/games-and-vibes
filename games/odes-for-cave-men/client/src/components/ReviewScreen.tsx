@@ -39,6 +39,7 @@ function statusColor(points: number): string {
 function originalStatusLabel(card: ReviewCard): string {
   if (card.result === 'correct') return card.originalPoints === 3 ? 'Got It (+3)' : 'Got It (+1)';
   if (card.result === 'bonked') return 'Bonked';
+  if (card.result === 'timeout') return 'Time Up';
   return 'Skipped';
 }
 

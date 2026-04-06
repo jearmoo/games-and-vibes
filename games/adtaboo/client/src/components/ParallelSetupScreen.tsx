@@ -49,14 +49,14 @@ export default function ParallelSetupScreen() {
   const isLocked = challengeIAmCreating?.ready ?? false;
 
   return (
-    <div className="h-full flex flex-col p-4 gap-3 animate-fade-in">
+    <div className="h-full flex flex-col p-3 gap-2 animate-fade-in overflow-y-auto">
       {/* Header */}
-      <div className="text-center">
+      <div className="text-center shrink-0">
         <div className="text-[10px] uppercase tracking-[0.3em] text-gray-300">
           Round {round}
           {settings.rounds !== null ? ` of ${settings.rounds}` : ''}
         </div>
-        <div className="font-display text-lg text-white tracking-wider mt-1">Team Setup</div>
+        <div className="font-display text-base text-white tracking-wider mt-0.5">Team Setup</div>
       </div>
 
       {/* Other team's status (collapsible) */}
@@ -67,8 +67,8 @@ export default function ParallelSetupScreen() {
       />
 
       {/* Pick clue-giver for own team */}
-      <div className="glass-card rounded-xl p-3 border border-white/5">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-300 mb-2">Your team's clue-giver</div>
+      <div className="glass-card rounded-xl p-2.5 border border-white/5 shrink-0">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-300 mb-1.5">Your team's clue-giver</div>
         {clueGiverName ? (
           <div className="flex items-center justify-between">
             <span className="text-emerald-400 font-semibold text-sm">{clueGiverName}</span>
@@ -110,8 +110,8 @@ export default function ParallelSetupScreen() {
       </div>
 
       {/* Words for opposing team */}
-      <div className="glass-card rounded-xl p-3 border border-white/5">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-300 mb-2">
+      <div className="glass-card rounded-xl p-2.5 border border-white/5 shrink-0">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-300 mb-1.5">
           Words for {opposingTeamName} to clue
         </div>
         {wordsLoading ? (
@@ -143,7 +143,7 @@ export default function ParallelSetupScreen() {
       </div>
 
       {/* Taboo word input */}
-      <div className="text-center text-xs">
+      <div className="text-center text-[10px] shrink-0">
         {isTM ? (
           <span className="text-accent font-semibold">Set taboo words {opposingTeamName} can't say</span>
         ) : (
@@ -151,23 +151,23 @@ export default function ParallelSetupScreen() {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 shrink-0">
         <input
           data-testid="setup-taboo-input"
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder={isLocked ? 'Locked in' : 'Type a taboo word...'}
+          placeholder={isLocked ? 'Locked in' : 'Taboo word...'}
           maxLength={30}
           disabled={wordsLoading || isLocked}
-          className="game-input flex-1 px-4 py-3 rounded-xl text-white placeholder-gray-500 disabled:opacity-50"
+          className="game-input flex-1 px-3 py-2.5 rounded-xl text-white text-sm placeholder-gray-500 disabled:opacity-50"
         />
         <button
           data-testid="setup-taboo-add-button"
           onClick={handleAdd}
           disabled={!input.trim() || wordsLoading || isLocked}
-          className="btn-team-b px-5 py-3 rounded-xl text-white font-display tracking-wider
+          className="btn-team-b px-4 py-2.5 rounded-xl text-white font-display text-sm tracking-wider
                      disabled:opacity-30 disabled:shadow-none transition-all active:scale-[0.97]"
         >
           Add

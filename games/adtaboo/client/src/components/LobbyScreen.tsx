@@ -283,7 +283,6 @@ function UnassignedChip({
       data-testid={`lobby-player-${player.name}`}
       className={`inline-flex items-center whitespace-nowrap transition-all
         ${player.id === myId ? 'text-white font-semibold' : 'text-gray-300'}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -324,7 +323,6 @@ function PlayerPill({
       data-testid={`lobby-player-${player.name}`}
       className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all
         ${highlight ?? (player.id === myId ? 'text-white font-semibold' : 'text-gray-200')}
-        ${!player.connected ? 'opacity-30' : ''}
         ${isDragging ? 'opacity-30' : ''}
         ${isDraggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''}`}
     >
@@ -462,6 +460,15 @@ function TeamColumn({
                     className="text-[10px] text-gray-400 hover:text-white transition-colors"
                   >
                     Set TM
+                  </button>
+                )}
+                {isHost && p.id !== hostId && (
+                  <button
+                    onClick={() => socket.emit('player:kick', { targetId: p.id })}
+                    className="text-[10px] text-gray-500 hover:text-red-400 transition-colors ml-1"
+                    title="Kick player"
+                  >
+                    &times;
                   </button>
                 )}
               </span>

@@ -15,6 +15,8 @@ export const GamePhase = {
   PARALLEL_SETUP: 'PARALLEL_SETUP',
   CLUING_A: 'CLUING_A',
   CLUING_B: 'CLUING_B',
+  REVIEW_A: 'REVIEW_A',
+  REVIEW_B: 'REVIEW_B',
   ROUND_RESULT: 'ROUND_RESULT',
   GAME_OVER: 'GAME_OVER',
 } as const;
@@ -74,7 +76,7 @@ export interface TeamRoundData {
 
 export interface RoundArchiveEntry {
   round: number;
-  teams: { A: TeamRoundData; B: TeamRoundData };
+  teams: { A: TeamRoundData | null; B: TeamRoundData | null };
 }
 
 export interface AdtabooRoomDTO {

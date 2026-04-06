@@ -47,8 +47,8 @@ export default function HistoryPanel({ onClose }: { onClose: () => void }) {
 }
 
 function RoundCard({ entry }: { entry: RoundArchiveEntry }) {
-  const ptsA = entry.teams.A.turnScore.points;
-  const ptsB = entry.teams.B.turnScore.points;
+  const ptsA = entry.teams.A?.turnScore.points ?? 0;
+  const ptsB = entry.teams.B?.turnScore.points ?? 0;
   const winA = ptsA > ptsB;
   const winB = ptsB > ptsA;
 
@@ -72,8 +72,8 @@ function RoundCard({ entry }: { entry: RoundArchiveEntry }) {
 
       {/* Two team columns */}
       <div className="flex divide-x divide-white/5">
-        <TeamColumn team="A" data={entry.teams.A} />
-        <TeamColumn team="B" data={entry.teams.B} />
+        {entry.teams.A ? <TeamColumn team="A" data={entry.teams.A} /> : <EmptyColumn team="A" />}
+        {entry.teams.B ? <TeamColumn team="B" data={entry.teams.B} /> : <EmptyColumn team="B" />}
       </div>
     </div>
   );
@@ -155,6 +155,18 @@ function TeamColumn({ team, data }: { team: 'A' | 'B'; data: TeamRoundData }) {
           {data.turnScore.points}
         </span>
       </div>
+    </div>
+  );
+}
+
+function EmptyColumn({ team }: { team: 'A' | 'B' }) {
+  const teamName = useTeamName(team);
+  const glow = team === 'A' ? 'text-team-a-glow' : 'text-team-b-glow';
+
+  return (
+    <div className="flex-1 p-3 min-w-0">
+      <div className={`text-[9px] uppercase tracking-widest font-bold ${glow}`}>{teamName}</div>
+      <div className="text-[10px] text-gray-500 mt-2 italic">In progress...</div>
     </div>
   );
 }
