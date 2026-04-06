@@ -1,8 +1,18 @@
-import { Component, type ReactNode } from 'react';
+import { Component, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { KickedScreen } from '@games/client-core';
 import { useGameStore, useMyRole } from './store';
 import { useCompStore } from './compStore';
+
+function usePathname(): string {
+  return useSyncExternalStore(
+    (cb) => {
+      window.addEventListener('popstate', cb);
+      return () => window.removeEventListener('popstate', cb);
+    },
+    () => window.location.pathname,
+  );
+}
 import HomeScreen from './components/HomeScreen';
 import CompSetupScreen from './components/comp/CompSetupScreen';
 import CompCluerEntry from './components/comp/CompCluerEntry';
@@ -30,11 +40,21 @@ export default function App() {
   const roomCode = useGameStore((s) => s.roomCode);
   const kickReason = useGameStore((s) => s.kickReason);
 
-  const compActive = useCompStore((s) => s.active);
+  const pathname = usePathname();
+  const isPass = pathname === '/pass';
   const compPhase = useCompStore((s) => s.phase);
 
+  // Sync URL → store active flag
+  useEffect(() => {
+    if (isPass && !useCompStore.getState().active) {
+      useCompStore.setState({ active: true });
+    } else if (!isPass && useCompStore.getState().active) {
+      useCompStore.getState().resetToSetup();
+    }
+  }, [isPass]);
+
   // Comp (pass-the-phone) mode
-  if (compActive) {
+  if (isPass) {
     return (
       <div className="h-full">
         <CompToolbar />
