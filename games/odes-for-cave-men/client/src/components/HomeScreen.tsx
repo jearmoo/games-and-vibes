@@ -75,7 +75,11 @@ export default function HomeScreen() {
               Join Room
             </button>
             <button
-              onClick={() => useCompStore.setState({ active: true, phase: 'setup' })}
+              onClick={() => {
+                useCompStore.setState({ active: true, phase: 'setup' });
+                window.history.pushState(null, '', '/pass');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
               className="w-full py-4 bg-surface-raised hover:bg-surface-hover rounded-2xl text-white font-display text-lg tracking-wider transition-all active:scale-[0.97] border border-white/5"
             >
               Pass the Phone

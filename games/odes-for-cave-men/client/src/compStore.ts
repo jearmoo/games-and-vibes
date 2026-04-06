@@ -49,6 +49,7 @@ export interface CompStore {
   lockInReview: () => void;
   nextRound: () => void;
   endGame: () => void;
+  resetGame: () => void;
   resetToSetup: () => void;
 }
 
@@ -198,6 +199,20 @@ export const useCompStore = create<CompStore>()(
       nextRound: () => set({ phase: 'cluer-entry', cluerName: '' }),
 
       endGame: () => set({ phase: 'game-over', timerEnd: null }),
+
+      resetGame: () =>
+        set({
+          phase: 'setup',
+          timerEnd: null,
+          currentWord: null,
+          cluerName: '',
+          roundCorrect: 0,
+          roundSkips: 0,
+          roundBonks: 0,
+          roundCards: [],
+          roundHistory: [],
+          players: {},
+        }),
 
       resetToSetup: () =>
         set({

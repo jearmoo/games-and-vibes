@@ -115,6 +115,7 @@ export function useTeamName(team: TeamId): string {
 
 export function getRoomCodeFromUrl(): string | null {
   const path = window.location.pathname.replace(/^\//, '').toUpperCase();
+  if (path === 'PASS') return null;
   if (/^[A-Z0-9]{4}$/.test(path)) return path;
   return null;
 }

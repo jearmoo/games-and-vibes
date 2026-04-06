@@ -16,7 +16,7 @@ function cardPointColor(pts: number): string {
 
 export default function CompGameOver() {
   const roundHistory = useCompStore((s) => s.roundHistory);
-  const resetToSetup = useCompStore((s) => s.resetToSetup);
+  const resetGame = useCompStore((s) => s.resetGame);
   const leaderboard = useLeaderboard();
 
   const winner = leaderboard.length > 0 ? leaderboard[0] : null;
@@ -95,7 +95,7 @@ export default function CompGameOver() {
       <div className="shrink-0 p-4 pt-0">
         <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#080c18] to-transparent pointer-events-none" />
         <button
-          onClick={resetToSetup}
+          onClick={resetGame}
           className="relative w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider btn-primary transition-all active:scale-[0.97]"
         >
           Play Again
