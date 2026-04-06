@@ -337,8 +337,8 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
 
   getCluingTeam(): TeamId | null {
     if (!this.game) return null;
-    if (this.game.phase === GamePhase.CLUING_A) return 'A';
-    if (this.game.phase === GamePhase.CLUING_B) return 'B';
+    if (this.game.phase === GamePhase.CLUING_A || this.game.phase === GamePhase.REVIEW_A) return 'A';
+    if (this.game.phase === GamePhase.CLUING_B || this.game.phase === GamePhase.REVIEW_B) return 'B';
     return null;
   }
 
