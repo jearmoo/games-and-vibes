@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/game';
 import { createRoom, joinRoom, assignToTeam, joinTeam, setTabooMaster, configureSettings, startGame } from '../helpers/lobby';
 import { pickClueGiver, addTabooWords, lockIn } from '../helpers/setup';
-import { beginCluing } from '../helpers/cluing';
+import { beginCluing, lockInReview } from '../helpers/cluing';
 
 test.describe('Clue-Giver Disconnect Resilience', () => {
   test('timer continues when clue-giver disconnects during cluing', async ({ players }) => {
@@ -41,8 +41,10 @@ test.describe('Clue-Giver Disconnect Resilience', () => {
     // Alice (guesser) should see disconnect banner — turn does NOT auto-end
     await expect(alice.page.getByText('Clue-giver disconnected')).toBeVisible({ timeout: 10_000 });
 
-    // Timer expires naturally → transitions to Team B's turn (not immediate turn-end)
-    // Dave should see "Begin Cluing" for Team B after the 10s timer
+    // Timer expires → REVIEW_A → Carol (opposing TM) locks in → CLUING_B
+    await lockInReview(carol.page);
+
+    // Dave should see "Begin Cluing" for Team B
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 20_000 });
   });
 });

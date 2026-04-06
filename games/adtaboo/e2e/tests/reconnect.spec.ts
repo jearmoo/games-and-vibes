@@ -22,7 +22,7 @@ test.describe('Reconnection', () => {
     await startGame(alice.page);
 
     // Carol starts setup but then disconnects
-    await expect(carol.page.getByText('Team Setup')).toBeVisible({ timeout: 10_000 });
+    await expect(carol.page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
 
     // Save Carol's session before disconnecting
     const carolSession = await carol.page.evaluate(() => localStorage.getItem('adtaboo_session'));
@@ -39,7 +39,7 @@ test.describe('Reconnection', () => {
     await newPage.goto(`/${roomCode}`);
 
     // Should auto-reconnect and see the setup screen
-    await expect(newPage.getByText('Team Setup')).toBeVisible({ timeout: 15_000 });
-    await expect(newPage.getByText(/Round 1/)).toBeVisible();
+    await expect(newPage.getByText('Setup').first()).toBeVisible({ timeout: 15_000 });
+    await expect(newPage.getByText(/R1|Round 1/)).toBeVisible();
   });
 });

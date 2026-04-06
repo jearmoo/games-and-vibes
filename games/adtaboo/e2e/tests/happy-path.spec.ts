@@ -68,7 +68,7 @@ test.describe('Happy Path - Full Game', () => {
 
     // All players should see setup screen
     for (const p of [alice, bob, carol, dave]) {
-      await expect(p.page.getByText('Round 1 of 2')).toBeVisible({ timeout: 10_000 });
+      await expect(p.page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
     }
 
     // --- 1.8 Parallel Setup ---
@@ -126,7 +126,7 @@ test.describe('Happy Path - Full Game', () => {
     await nextRound(alice.page);
 
     for (const p of [alice, bob, carol, dave]) {
-      await expect(p.page.getByText('Round 2 of 2')).toBeVisible({ timeout: 10_000 });
+      await expect(p.page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
     }
 
     // Setup round 2

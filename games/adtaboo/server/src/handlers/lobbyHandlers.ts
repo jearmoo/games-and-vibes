@@ -182,6 +182,12 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
       tabooMasters: room.tabooMasters,
     });
 
+    // Emit pre-picked clue-givers
+    for (const team of ['A', 'B'] as const) {
+      const cgId = room.game!.challenges[team].clueGiverId;
+      if (cgId) io.to(room.code).emit('setup:clue-giver-set', { team, clueGiverId: cgId });
+    }
+
     try {
       await room.fetchInitialWords();
     } catch (e) {

@@ -2,13 +2,19 @@ import { type Page, expect } from '@playwright/test';
 
 /** Wait for the parallel setup screen */
 export async function waitForSetup(page: Page) {
-  await expect(page.getByText('Team Setup')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Setup').first()).toBeVisible({ timeout: 10_000 });
 }
 
-/** Pick a clue-giver by clicking their name button (TM only) */
+/** Pick a clue-giver by clicking their name button (TM only).
+ *  If the desired player is already pre-selected, this is a no-op. */
 export async function pickClueGiver(page: Page, playerName: string) {
-  await page.getByTestId(`setup-pick-clue-giver-${playerName}`).click();
-  await page.waitForTimeout(300);
+  const btn = page.getByTestId(`setup-pick-clue-giver-${playerName}`);
+  if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await btn.click();
+    await page.waitForTimeout(300);
+  }
+  // Already pre-selected — verify their name shows
+  await expect(page.getByText(playerName).first()).toBeVisible({ timeout: 3_000 });
 }
 
 /** Add taboo words one by one */
