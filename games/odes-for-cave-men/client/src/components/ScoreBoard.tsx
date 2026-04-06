@@ -134,9 +134,8 @@ function RosterColumn({
       {players.map((p) => (
         <div key={p.id} className="flex items-center justify-between text-[11px]">
           <span className="flex items-center gap-1">
-            <span className={p.connected ? 'text-gray-300' : 'text-gray-600'}>{p.name}</span>
+            <span className="text-gray-300">{p.name}</span>
             {p.id === hostId && <span className="text-amber-400/60 text-[8px]">H</span>}
-            {!p.connected && <span className="text-[8px] text-gray-600 italic">offline</span>}
           </span>
           {amHost && p.id !== hostId && (
             <button

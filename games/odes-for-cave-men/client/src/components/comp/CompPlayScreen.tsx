@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useCompStore } from '../../compStore';
+import { SwipeCard, ActionButtonBar } from '@games/client-core';
+import OdesCardContent from '../OdesCardContent';
+import { ODES_ZONES, ODES_HINTS, BUTTON_ROWS, OUTCOME_MAP } from '../../odesCardConfig';
 
 export default function CompPlayScreen() {
   const currentWord = useCompStore((s) => s.currentWord);
@@ -7,6 +10,7 @@ export default function CompPlayScreen() {
   const roundCorrect = useCompStore((s) => s.roundCorrect);
   const roundSkips = useCompStore((s) => s.roundSkips);
   const roundBonks = useCompStore((s) => s.roundBonks);
+  const roundCards = useCompStore((s) => s.roundCards);
   const cluerName = useCompStore((s) => s.cluerName);
   const markCorrect = useCompStore((s) => s.markCorrect);
   const markSkip = useCompStore((s) => s.markSkip);
@@ -29,10 +33,18 @@ export default function CompPlayScreen() {
     return () => clearInterval(id);
   }, [timerEnd, endRound]);
 
+  const handleAction = (id: string) => {
+    const outcome = OUTCOME_MAP[id];
+    if (!outcome) return;
+    if (outcome.result === 'correct') markCorrect(outcome.points);
+    else if (outcome.result === 'skipped') markSkip();
+    else if (outcome.result === 'bonked') markBonk();
+  };
+
   return (
-    <div className="h-full flex flex-col p-4 animate-fade-in">
+    <div className="h-full flex flex-col p-4 pt-12 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <div className="font-display text-sm tracking-wider text-amber-400 truncate">{cluerName}</div>
         <div className="flex items-center gap-3 text-xs">
           <span className="text-emerald-400">{roundCorrect} pts</span>
@@ -46,59 +58,42 @@ export default function CompPlayScreen() {
         </div>
       </div>
 
-      {/* Word card */}
-      <div className="flex-1 flex items-center justify-center">
+      {/* Swipeable card area */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center relative">
         {currentWord ? (
-          <div className="glass-card rounded-3xl p-8 border border-white/10 w-full max-w-sm text-center">
-            <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Describe with small words</div>
-            <div
-              className="font-display text-3xl text-white tracking-wider mb-1"
-              style={{ textShadow: '0 0 30px rgba(255,255,255,0.1)' }}
-            >
-              {currentWord.word1}
-            </div>
-            <div className="text-gray-600 text-sm">{currentWord.word3}</div>
-          </div>
+          <SwipeCard
+            key={`${currentWord.word1}-${currentWord.word3}-${roundCards.length}`}
+            zones={ODES_ZONES}
+            hints={ODES_HINTS}
+            onSwipe={(action) => handleAction(action.zoneId)}
+            exitStyle="flyout"
+          >
+            <OdesCardContent word1={currentWord.word1} word3={currentWord.word3} />
+          </SwipeCard>
         ) : (
-          <div className="text-gray-500 animate-pulse">Loading word...</div>
+          <div
+            className="w-52 rounded-2xl border-2 border-white/[0.08] overflow-hidden"
+            style={{ aspectRatio: '2.5 / 4', background: 'linear-gradient(to bottom, #161c32, #0f1424)' }}
+          >
+            <div className="h-full flex items-center justify-center">
+              <div className="font-display text-3xl text-gray-600 tracking-wider animate-pulse-slow">...</div>
+            </div>
+          </div>
         )}
       </div>
 
       {/* Action buttons */}
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        <button
-          onClick={markSkip}
-          className="py-4 rounded-2xl bg-surface-raised border border-white/5 text-gray-400 font-display text-sm tracking-wider transition-all active:scale-[0.95]"
-        >
-          Skip
-        </button>
-        <button
-          onClick={() => markCorrect(1)}
-          className="py-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-display text-lg tracking-wider transition-all active:scale-[0.95]"
-        >
-          +1
-        </button>
-        <button
-          onClick={() => markCorrect(3)}
-          className="py-4 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 font-display text-lg tracking-wider transition-all active:scale-[0.95]"
-        >
-          +3
-        </button>
+      <div className="pt-1">
+        <ActionButtonBar rows={BUTTON_ROWS} onAction={handleAction} />
       </div>
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        <button
-          onClick={markBonk}
-          className="py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-display text-sm tracking-wider transition-all active:scale-[0.95]"
-        >
-          Bonk!
-        </button>
-        <button
-          onClick={endRound}
-          className="py-3 rounded-2xl bg-surface-raised border border-white/5 text-gray-500 font-display text-sm tracking-wider transition-all active:scale-[0.95]"
-        >
-          End Turn
-        </button>
-      </div>
+
+      {/* End turn early */}
+      <button
+        onClick={endRound}
+        className="w-full py-2 rounded-xl text-gray-600 hover:text-gray-400 text-xs font-display tracking-wider transition-colors mt-1"
+      >
+        End Turn
+      </button>
     </div>
   );
 }

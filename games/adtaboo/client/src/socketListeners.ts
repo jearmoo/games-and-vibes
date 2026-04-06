@@ -136,7 +136,8 @@ function hydrateGameState(room: any, game: any, playerId: string): Record<string
         word: c.word,
         result: c.result,
       }));
-      update.tabooWords = myTeam === cluingTeam ? [] : challenge.tabooWords;
+      const isReview = game.phase === 'REVIEW_A' || game.phase === 'REVIEW_B';
+      update.tabooWords = myTeam === cluingTeam && !isReview ? [] : challenge.tabooWords;
       if (game.turnResults) update.turnResults = game.turnResults;
     }
   }

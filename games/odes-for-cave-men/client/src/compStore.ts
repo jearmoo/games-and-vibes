@@ -1,5 +1,14 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { WordBuffer, type CaveWord } from './wordService';
+
+export interface CompReviewCard {
+  word1: string;
+  word3: string;
+  result: 'correct' | 'skipped' | 'bonked' | 'timeout';
+  originalPoints: number;
+  points: number;
+}
 
 export interface RoundEntry {
   cluerName: string;
@@ -7,9 +16,10 @@ export interface RoundEntry {
   skips: number;
   bonks: number;
   score: number;
+  cards: CompReviewCard[];
 }
 
-export type CompPhase = 'setup' | 'cluer-entry' | 'playing' | 'round-result' | 'game-over';
+export type CompPhase = 'setup' | 'cluer-entry' | 'playing' | 'review' | 'round-result' | 'game-over';
 
 export interface CompStore {
   active: boolean;
@@ -21,6 +31,7 @@ export interface CompStore {
   roundCorrect: number;
   roundSkips: number;
   roundBonks: number;
+  roundCards: CompReviewCard[];
   roundHistory: RoundEntry[];
   /** Cumulative scores per player name */
   players: Record<string, number>;
@@ -34,116 +45,205 @@ export interface CompStore {
   markSkip: () => void;
   markBonk: () => void;
   endRound: () => void;
+  adjustCardPoints: (index: number, points: number) => void;
+  lockInReview: () => void;
   nextRound: () => void;
   endGame: () => void;
   resetToSetup: () => void;
 }
 
-function calcScore(correct: number, skips: number, bonks: number): number {
-  return correct - skips - bonks;
-}
-
-export const useCompStore = create<CompStore>((set, get) => ({
-  active: false,
-  phase: 'setup',
-  timerDuration: 90,
-  timerEnd: null,
-  currentWord: null,
-  cluerName: '',
-  roundCorrect: 0,
-  roundSkips: 0,
-  roundBonks: 0,
-  roundHistory: [],
-  players: {},
-  wordBuffer: new WordBuffer(),
-
-  setTimerDuration: (seconds) => set({ timerDuration: seconds }),
-
-  startGame: async () => {
-    const { wordBuffer } = get();
-    wordBuffer.reset();
-    await wordBuffer.prefetch(20);
-    set({
-      phase: 'cluer-entry',
-      roundHistory: [],
-      players: {},
-      cluerName: '',
-    });
-  },
-
-  setCluerName: (name) => set({ cluerName: name }),
-
-  beginRound: () => {
-    const { wordBuffer, timerDuration } = get();
-    set({
-      phase: 'playing',
-      timerEnd: Date.now() + timerDuration * 1000,
-      currentWord: wordBuffer.consume(),
-      roundCorrect: 0,
-      roundSkips: 0,
-      roundBonks: 0,
-    });
-  },
-
-  markCorrect: (points) => {
-    const { wordBuffer } = get();
-    set((s) => ({
-      roundCorrect: s.roundCorrect + points,
-      currentWord: wordBuffer.consume(),
-    }));
-  },
-
-  markSkip: () => {
-    const { wordBuffer } = get();
-    set((s) => ({
-      roundSkips: s.roundSkips + 1,
-      currentWord: wordBuffer.consume(),
-    }));
-  },
-
-  markBonk: () => {
-    const { wordBuffer } = get();
-    set((s) => ({
-      roundBonks: s.roundBonks + 1,
-      currentWord: wordBuffer.consume(),
-    }));
-  },
-
-  endRound: () => {
-    const { roundCorrect, roundSkips, roundBonks, cluerName, players } = get();
-    const score = calcScore(roundCorrect, roundSkips, roundBonks);
-    const updatedPlayers = { ...players };
-    updatedPlayers[cluerName] = (updatedPlayers[cluerName] ?? 0) + score;
-
-    set((s) => ({
-      phase: 'round-result',
-      timerEnd: null,
-      players: updatedPlayers,
-      roundHistory: [
-        ...s.roundHistory,
-        { cluerName, correct: roundCorrect, skips: roundSkips, bonks: roundBonks, score },
-      ],
-    }));
-  },
-
-  nextRound: () => set({ phase: 'cluer-entry', cluerName: '' }),
-
-  endGame: () => set({ phase: 'game-over', timerEnd: null }),
-
-  resetToSetup: () =>
-    set({
+export const useCompStore = create<CompStore>()(
+  persist(
+    (set, get) => ({
       active: false,
       phase: 'setup',
+      timerDuration: 90,
       timerEnd: null,
       currentWord: null,
       cluerName: '',
       roundCorrect: 0,
       roundSkips: 0,
       roundBonks: 0,
+      roundCards: [],
       roundHistory: [],
       players: {},
+      wordBuffer: new WordBuffer(),
+
+      setTimerDuration: (seconds) => set({ timerDuration: seconds }),
+
+      startGame: async () => {
+        const { wordBuffer } = get();
+        wordBuffer.reset();
+        await wordBuffer.prefetch(20);
+        set({
+          phase: 'cluer-entry',
+          roundHistory: [],
+          players: {},
+          cluerName: '',
+        });
+      },
+
+      setCluerName: (name) => set({ cluerName: name }),
+
+      beginRound: () => {
+        const { wordBuffer, timerDuration } = get();
+        set({
+          phase: 'playing',
+          timerEnd: Date.now() + timerDuration * 1000,
+          currentWord: wordBuffer.consume(),
+          roundCorrect: 0,
+          roundSkips: 0,
+          roundBonks: 0,
+          roundCards: [],
+        });
+      },
+
+      markCorrect: (points) => {
+        const { wordBuffer } = get();
+        set((s) => {
+          const card: CompReviewCard | null = s.currentWord
+            ? {
+                word1: s.currentWord.word1,
+                word3: s.currentWord.word3,
+                result: 'correct',
+                originalPoints: points,
+                points,
+              }
+            : null;
+          return {
+            roundCorrect: s.roundCorrect + points,
+            currentWord: wordBuffer.consume(),
+            roundCards: card ? [...s.roundCards, card] : s.roundCards,
+          };
+        });
+      },
+
+      markSkip: () => {
+        const { wordBuffer } = get();
+        set((s) => {
+          const card: CompReviewCard | null = s.currentWord
+            ? {
+                word1: s.currentWord.word1,
+                word3: s.currentWord.word3,
+                result: 'skipped',
+                originalPoints: -1,
+                points: -1,
+              }
+            : null;
+          return {
+            roundSkips: s.roundSkips + 1,
+            currentWord: wordBuffer.consume(),
+            roundCards: card ? [...s.roundCards, card] : s.roundCards,
+          };
+        });
+      },
+
+      markBonk: () => {
+        const { wordBuffer } = get();
+        set((s) => {
+          const card: CompReviewCard | null = s.currentWord
+            ? {
+                word1: s.currentWord.word1,
+                word3: s.currentWord.word3,
+                result: 'bonked',
+                originalPoints: -1,
+                points: -1,
+              }
+            : null;
+          return {
+            roundBonks: s.roundBonks + 1,
+            currentWord: wordBuffer.consume(),
+            roundCards: card ? [...s.roundCards, card] : s.roundCards,
+          };
+        });
+      },
+
+      endRound: () => {
+        set({
+          phase: 'review',
+          timerEnd: null,
+        });
+      },
+
+      adjustCardPoints: (index, points) => {
+        set((s) => {
+          const roundCards = [...s.roundCards];
+          if (roundCards[index]) {
+            roundCards[index] = { ...roundCards[index], points };
+          }
+          return { roundCards };
+        });
+      },
+
+      lockInReview: () => {
+        const { roundCards, cluerName, players } = get();
+        const score = roundCards.reduce((sum, c) => sum + c.points, 0);
+        const correct = roundCards.filter((c) => c.points > 0).reduce((sum, c) => sum + c.points, 0);
+        const skips = roundCards.filter((c) => c.result === 'skipped').length;
+        const bonks = roundCards.filter((c) => c.result === 'bonked').length;
+
+        const updatedPlayers = { ...players };
+        updatedPlayers[cluerName] = (updatedPlayers[cluerName] ?? 0) + score;
+
+        set((s) => ({
+          phase: 'round-result',
+          players: updatedPlayers,
+          roundCorrect: correct,
+          roundSkips: skips,
+          roundBonks: bonks,
+          roundHistory: [...s.roundHistory, { cluerName, correct, skips, bonks, score, cards: roundCards }],
+        }));
+      },
+
+      nextRound: () => set({ phase: 'cluer-entry', cluerName: '' }),
+
+      endGame: () => set({ phase: 'game-over', timerEnd: null }),
+
+      resetToSetup: () =>
+        set({
+          active: false,
+          phase: 'setup',
+          timerEnd: null,
+          currentWord: null,
+          cluerName: '',
+          roundCorrect: 0,
+          roundSkips: 0,
+          roundBonks: 0,
+          roundCards: [],
+          roundHistory: [],
+          players: {},
+        }),
     }),
-}));
+    {
+      name: 'odes-comp-game',
+      version: 1,
+      migrate: () => ({}),
+      partialize: (state) => ({
+        active: state.active,
+        phase: state.phase,
+        timerDuration: state.timerDuration,
+        timerEnd: state.timerEnd,
+        currentWord: state.currentWord,
+        cluerName: state.cluerName,
+        roundCorrect: state.roundCorrect,
+        roundSkips: state.roundSkips,
+        roundBonks: state.roundBonks,
+        roundCards: state.roundCards,
+        roundHistory: state.roundHistory,
+        players: state.players,
+      }),
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (!state) return;
+          // If timer expired while page was closed, transition to review
+          if (state.phase === 'playing' && state.timerEnd && Date.now() >= state.timerEnd) {
+            useCompStore.setState({ phase: 'review', timerEnd: null });
+          }
+        };
+      },
+    },
+  ),
+);
 
 /** Get players sorted by score descending */
 export function useLeaderboard(): Array<{ name: string; score: number }> {

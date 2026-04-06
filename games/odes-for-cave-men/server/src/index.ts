@@ -50,11 +50,27 @@ createGameServer<CaveRoom>({
       const player = room.getPlayer(playerId);
       if (player?.team) socket.join(`${room.code}:team${player.team}`);
     },
-    onPlayerKicked: (room, kickedId) => {
+    onPlayerKicked: (room, kickedId, io) => {
       if (!room.game) return;
-      if (room.game.cluerId === kickedId) {
-        room.game.cluerId = null;
+      if (room.game.cluerId !== kickedId) return;
+
+      const team = room.game.playingTeam;
+      const newCluerId = room.pickCluer(team);
+      room.game.cluerId = newCluerId;
+      const newCluer = newCluerId ? room.getPlayer(newCluerId) : null;
+
+      if (room.game.phase === GamePhase.READY) {
+        io.to(room.code).emit('turn:ready', {
+          phase: GamePhase.READY,
+          cluerId: newCluerId,
+          cluerName: newCluer?.name ?? null,
+          playingTeam: team,
+          scores: room.game.scores,
+          round: room.game.round,
+          roundHistory: room.getRoundHistory(),
+        });
       }
+      logger.info('game', 'Cluer kicked, reassigned', { room: room.code, newCluer: newCluer?.name });
     },
     onMidGameJoin: (room, playerId) => {
       logger.info('game', 'Mid-game player awaiting team selection', {

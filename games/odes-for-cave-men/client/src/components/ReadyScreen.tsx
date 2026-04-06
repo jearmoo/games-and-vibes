@@ -1,4 +1,4 @@
-import { useGameStore, useTeamPlayers } from '../store';
+import { useGameStore, useTeamPlayers, useIsHost } from '../store';
 import { socket } from '../socket';
 
 export default function ReadyScreen() {
@@ -7,9 +7,14 @@ export default function ReadyScreen() {
   const cluerName = useGameStore((s) => s.cluerName);
   const playingTeam = useGameStore((s) => s.playingTeam);
   const round = useGameStore((s) => s.round);
+  const players = useGameStore((s) => s.players);
   const teamPlayers = useTeamPlayers(playingTeam ?? 'A');
+  const isHost = useIsHost();
 
   const isCluer = playerId === cluerId;
+  const cluerPlayer = players.find((p) => p.id === cluerId);
+  const cluerDisconnected = cluerPlayer ? !cluerPlayer.connected : false;
+  const canStart = isCluer || (isHost && cluerDisconnected);
   const isOnPlayingTeam = teamPlayers.some((p) => p.id === playerId);
   const teamColor = playingTeam === 'A' ? 'text-amber-400' : 'text-emerald-400';
   const btnClass = playingTeam === 'A' ? 'btn-team-a' : 'btn-team-b';
@@ -45,7 +50,7 @@ export default function ReadyScreen() {
         </div>
       )}
 
-      {isCluer ? (
+      {canStart ? (
         <>
           <div className="text-center">
             <div className="text-gray-400 text-sm mb-2">You're the cluer!</div>

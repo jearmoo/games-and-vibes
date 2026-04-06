@@ -290,7 +290,6 @@ function UnassignedChip({
       {player.name}
       {player.id === myId && <span className="text-[9px] opacity-60 ml-0.5">(you)</span>}
       {player.id === hostId && <span className="text-indigo-400 text-[9px] ml-0.5 font-medium">HOST</span>}
-      {!player.connected && <span className="text-[8px] text-gray-500 ml-0.5 italic">offline</span>}
       {!isLast && <span className="text-gray-600">,</span>}
     </span>
   );
@@ -331,7 +330,6 @@ function PlayerPill({
         <span className="truncate">
           {player.name}
           {player.id === myId && <span className="text-[10px] opacity-60 ml-1">(you)</span>}
-          {!player.connected && <span className="text-[9px] text-gray-500 ml-1 italic">offline</span>}
         </span>
         {player.id === hostId && (
           <span className="shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-400/20 leading-none">

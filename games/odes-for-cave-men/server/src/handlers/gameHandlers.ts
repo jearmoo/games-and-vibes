@@ -63,14 +63,18 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
     });
   });
 
-  // Cluer starts their turn (from the READY screen)
+  // Cluer starts their turn (from the READY screen), or host if cluer disconnected
   socket.on('turn:start', () => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room?.game) return;
     if (room.game.phase !== GamePhase.READY) return;
-    if (playerId !== room.game.cluerId) return;
+    if (playerId !== room.game.cluerId) {
+      // Host fallback: allow host to start if cluer is disconnected
+      const cluer = room.game.cluerId ? room.getPlayer(room.game.cluerId) : null;
+      if (!(playerId === room.hostId && (!cluer || !cluer.connected))) return;
+    }
 
     room.startTurn();
     const timerEnd = room.beginTimer(() => handleTurnEnd(room, io, metrics));
@@ -185,14 +189,22 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
     logger.info('game', 'Bonk alert sent', { room: room.code, from: player.name });
   });
 
-  // Review: adjust card points — only cluer
-  socket.on('review:adjust', ({ index, points }: { index: number; points: number }) => {
+  /** Guard: verify caller is the cluer (or host if cluer disconnected) during review phase. */
+  function canReview(): CaveRoom | null {
     const playerId = ctx.getPlayerId();
-    if (!playerId) return;
+    if (!playerId) return null;
     const room = rooms.getRoomForPlayer(playerId);
+    if (!room?.game || room.game.phase !== GamePhase.REVIEW) return null;
+    if (playerId === room.game.cluerId) return room;
+    const cluer = room.game.cluerId ? room.getPlayer(room.game.cluerId) : null;
+    if (playerId === room.hostId && (!cluer || !cluer.connected)) return room;
+    return null;
+  }
+
+  // Review: adjust card points — cluer (or host if cluer disconnected)
+  socket.on('review:adjust', ({ index, points }: { index: number; points: number }) => {
+    const room = canReview();
     if (!room?.game) return;
-    if (playerId !== room.game.cluerId) return;
-    if (room.game.phase !== GamePhase.REVIEW) return;
     if (![-1, 0, 1, 3].includes(points)) return;
 
     room.adjustCardPoints({ index, newPoints: points });
@@ -205,14 +217,10 @@ export function registerGameHandlers(ctx: SocketContext<CaveRoom>) {
     });
   });
 
-  // Review: lock in — only cluer
+  // Review: lock in — cluer (or host if cluer disconnected)
   socket.on('review:lock-in', () => {
-    const playerId = ctx.getPlayerId();
-    if (!playerId) return;
-    const room = rooms.getRoomForPlayer(playerId);
+    const room = canReview();
     if (!room?.game) return;
-    if (playerId !== room.game.cluerId) return;
-    if (room.game.phase !== GamePhase.REVIEW) return;
 
     const { nextPhase, nextCluerId } = room.lockInReview();
     logger.info('game', 'Review locked in', { room: room.code, nextPhase, nextCluerId });

@@ -38,7 +38,7 @@ export default function GuesserScreen() {
 
       {cgDisconnected && (
         <div className="w-full max-w-xs text-center px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
-          Clue-giver disconnected — waiting for reconnect...
+          Waiting for {cgName ?? 'clue-giver'}...
         </div>
       )}
 

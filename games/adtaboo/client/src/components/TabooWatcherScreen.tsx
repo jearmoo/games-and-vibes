@@ -42,7 +42,7 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
       {/* Clue-giver disconnect banner */}
       {cgDisconnected && (
         <div className="text-center px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
-          Clue-giver disconnected — waiting for reconnect...
+          Waiting for {cgName ?? 'clue-giver'}...
         </div>
       )}
 

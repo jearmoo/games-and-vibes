@@ -136,7 +136,7 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
     });
   });
 
-  /** Guard: verify caller is the opposing TM during a review phase. Returns room + team or null. */
+  /** Guard: verify caller is the cluer (or host if cluer disconnected) during a review phase. Returns room + team or null. */
   function getReviewContext(): { room: AdtabooRoom; team: TeamId } | null {
     const playerId = ctx.getPlayerId();
     if (!playerId) return null;
@@ -144,8 +144,12 @@ export function registerGameHandlers(ctx: SocketContext<AdtabooRoom>) {
     if (!room?.game) return null;
     if (room.game.phase !== GamePhase.REVIEW_A && room.game.phase !== GamePhase.REVIEW_B) return null;
     const team: TeamId = room.game.phase === GamePhase.REVIEW_A ? 'A' : 'B';
-    if (playerId !== room.tabooMasters[room.getOpposingTeam(team)]) return null;
-    return { room, team };
+    const cluerId = room.game.challenges[team].clueGiverId;
+    if (playerId === cluerId) return { room, team };
+    // Fallback: allow host if cluer is disconnected
+    const cluer = cluerId ? room.getPlayer(cluerId) : null;
+    if (playerId === room.hostId && (!cluer || !cluer.connected)) return { room, team };
+    return null;
   }
 
   function emitReviewUpdate(room: AdtabooRoom, team: TeamId): void {

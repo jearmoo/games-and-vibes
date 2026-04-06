@@ -38,11 +38,11 @@ test.describe('Clue-Giver Disconnect Resilience', () => {
     // Close Bob's page (disconnect during active cluing)
     await bob.page.close();
 
-    // Alice (guesser) should see disconnect banner — turn does NOT auto-end
-    await expect(alice.page.getByText('Clue-giver disconnected')).toBeVisible({ timeout: 10_000 });
+    // Alice (guesser) should see waiting banner — turn does NOT auto-end
+    await expect(alice.page.getByText(`Waiting for ${bob.name}...`)).toBeVisible({ timeout: 10_000 });
 
-    // Timer expires → REVIEW_A → Carol (opposing TM) locks in → CLUING_B
-    await lockInReview(carol.page);
+    // Timer expires → REVIEW_A → Alice (host, since cluer Bob disconnected) locks in → CLUING_B
+    await lockInReview(alice.page);
 
     // Dave should see "Begin Cluing" for Team B
     await expect(dave.page.getByTestId('clue-begin-button')).toBeVisible({ timeout: 20_000 });

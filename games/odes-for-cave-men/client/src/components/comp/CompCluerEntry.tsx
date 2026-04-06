@@ -6,7 +6,7 @@ export default function CompCluerEntry() {
   const beginRound = useCompStore((s) => s.beginRound);
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-fade-in">
+    <div className="h-full flex flex-col items-center justify-center p-6 pt-12 gap-6 animate-fade-in">
       <div className="text-gray-400 text-sm text-center">Who's clueing this round?</div>
 
       <input
