@@ -77,9 +77,7 @@ export default function CompGameOver() {
           {/* Detailed round history */}
           {roundHistory.length > 0 && (
             <div className="w-full max-w-sm">
-              <div className="text-gray-500 text-[10px] uppercase tracking-[0.2em] text-center mb-2">
-                Round History
-              </div>
+              <div className="text-gray-500 text-[10px] uppercase tracking-[0.2em] text-center mb-2">Round History</div>
               <div className="space-y-2">
                 {roundHistory.map((entry, i) => (
                   <RoundCard key={i} entry={entry} roundNum={i + 1} />
