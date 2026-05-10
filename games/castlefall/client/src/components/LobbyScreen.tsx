@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useSettings } from '../store';
 
@@ -20,6 +21,7 @@ export default function LobbyScreen() {
 
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
 
   const shareUrl = roomCode ? `${window.location.origin}/${roomCode}` : '';
   const handleCopy = useCallback(() => {
@@ -82,11 +84,22 @@ export default function LobbyScreen() {
                 {p.id === me?.id && <span className="text-[10px] opacity-60">(you)</span>}
                 {!p.connected && <span className="text-[10px] text-red-400/70">offline</span>}
               </span>
-              {p.id === hostId && (
-                <span className="shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/20 leading-none">
-                  HOST
-                </span>
-              )}
+              <span className="flex items-center gap-2 shrink-0">
+                {p.id === hostId && (
+                  <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/20 leading-none">
+                    HOST
+                  </span>
+                )}
+                {host && p.id !== hostId && (
+                  <button
+                    onClick={() => setConfirmKickId(p.id)}
+                    className="text-gray-500 hover:text-red-400 transition-colors text-base leading-none px-1"
+                    title={`Kick ${p.name}`}
+                  >
+                    &times;
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </div>
@@ -132,6 +145,20 @@ export default function LobbyScreen() {
           <div className="w-full py-4 text-center text-gray-500 text-sm tracking-wider">Waiting for host...</div>
         )}
       </div>
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the keep."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

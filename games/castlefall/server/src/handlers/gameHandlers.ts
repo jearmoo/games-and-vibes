@@ -69,10 +69,6 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (playerId !== room.hostId) {
-      logger.warn('game', 'Non-host attempted to end round', { room: room.code, player: playerId });
-      return;
-    }
     if (room.phase !== CastlefallPhase.ROUND) {
       logger.warn('game', 'endRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
@@ -125,10 +121,6 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (playerId !== room.hostId) {
-      logger.warn('game', 'Non-host attempted to start new round', { room: room.code, player: playerId });
-      return;
-    }
     if (room.phase !== CastlefallPhase.GAME_OVER) {
       logger.warn('game', 'startNewRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
