@@ -17,6 +17,7 @@ pnpm run format:check     # Check formatting
 pnpm run dev:adtaboo      # Run adtaboo server (4040) + client (5173) concurrently
 pnpm run dev:charades     # Run charades server (4050) + client (5173) concurrently
 pnpm run dev:cave         # Run Odes for Cave Men server (4060) + client (5173) concurrently
+pnpm run dev:castlefall   # Run Castlefall server (4070) + client (5173) concurrently
 pnpm run dev:landing      # Run landing page (3000)
 
 # Single test file
@@ -53,6 +54,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 - **`adtaboo/`** — Adversarial Taboo: teams give clues while opponents set traps. `AdtabooRoom extends BaseRoom<AdtabooPlayer>`, word providers, phase-based client.
 - **`charades/`** — Charades: act it out without words. Stateless word server, team-based play.
 - **`odes-for-cave-men/`** — Odes for Cave Men: explain big ideas with only small words. `CaveRoom extends BaseRoom<CavePlayer>`, word JSON files, timed turns.
+- **`castlefall/`** — Castlefall: two secret teams, one betrayal away. `CastlefallRoom extends BaseRoom<CastlefallPlayer>`, hidden-team social deduction.
 
 ### Apps (`apps/`)
 
@@ -73,6 +75,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
 - Adtaboo: port 4040, adtaboo.jerpi.org
 - Charades: port 4050, charades.jerpi.org
 - Odes for Cave Men: port 4060, odes.jerpi.org
+- Castlefall: port 4070, castlefall.jerpi.org
 - Landing: port 3000, games.jerpi.org
 
 ## Code Style

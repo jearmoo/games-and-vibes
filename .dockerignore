@@ -3,4 +3,5 @@ dist
 *.tmp
 .env
 data
+!games/castlefall/server/data
 .git

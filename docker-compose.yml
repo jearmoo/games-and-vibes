@@ -71,6 +71,31 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  castlefall:
+    build:
+      context: .
+      dockerfile: games/castlefall/Dockerfile
+      args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    env_file: .env
+    container_name: castlefall
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "4070:4070"
+    volumes:
+      - ./games/castlefall/data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=4070
+      - LOG_LEVEL=info
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   landing:
     build:
       context: .

@@ -82,6 +82,9 @@ jobs:
       - name: Build odes-for-cave-men image
         run: docker build -f games/odes-for-cave-men/Dockerfile -t odes-for-cave-men .
 
+      - name: Build castlefall image
+        run: docker build -f games/castlefall/Dockerfile -t castlefall .
+
       - name: Build landing image
         run: docker build -f apps/landing/Dockerfile -t landing .
 

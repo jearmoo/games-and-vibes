@@ -41,6 +41,16 @@ export const games: GameEntry[] = [
     available: true,
   },
   {
+    id: 'castlefall',
+    name: 'Castlefall',
+    tagline: 'Two secret teams. One betrayal away.',
+    url: 'https://castlefall.jerpi.org',
+    playerCount: '4-10 players',
+    accentColor: '#a855f7',
+    accentGlow: 'rgba(168, 85, 247, 0.4)',
+    available: true,
+  },
+  {
     id: 'hivemind',
     name: 'Hivemind',
     tagline: 'Think alike and score big together',
