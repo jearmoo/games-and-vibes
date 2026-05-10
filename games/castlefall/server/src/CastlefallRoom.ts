@@ -25,6 +25,7 @@ interface PersistedCastlefallRoom {
   timerSeconds?: number;
   roundStartedAt?: number;
   winningTeam?: WinningTeam;
+  roundsPlayed?: number;
 }
 
 const WORDS_PER_ROUND = 18;
@@ -37,6 +38,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
   timerSeconds: number = 0;
   roundStartedAt?: number;
   winningTeam?: WinningTeam;
+  roundsPlayed: number = 0;
 
   constructor(code: string, hostId: string) {
     super(code, hostId, { timerSeconds: 0 });
@@ -69,6 +71,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       phase: this.phase,
       round: this.getPublicRoundState(),
       reveal: this.phase === CastlefallPhase.GAME_OVER ? this.getFullReveal() : null,
+      roundsPlayed: this.roundsPlayed,
     };
   }
 
@@ -128,6 +131,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       timerSeconds: this.timerSeconds,
       roundStartedAt: this.roundStartedAt,
       winningTeam: this.winningTeam,
+      roundsPlayed: this.roundsPlayed,
     };
   }
 
@@ -155,6 +159,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     this.roundStartedAt = timerSeconds > 0 ? Date.now() : undefined;
     this.winningTeam = undefined;
     this.phase = CastlefallPhase.ROUND;
+    this.roundsPlayed += 1;
     this.touch();
   }
 
@@ -273,6 +278,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     room.timerSeconds = d.timerSeconds ?? 0;
     room.roundStartedAt = d.roundStartedAt;
     room.winningTeam = d.winningTeam;
+    room.roundsPlayed = d.roundsPlayed ?? 0;
     room.restorePlayers({ players: d.players });
     return room;
   }

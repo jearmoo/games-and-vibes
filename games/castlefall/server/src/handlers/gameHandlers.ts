@@ -32,8 +32,8 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (playerId !== room.hostId) {
-      logger.warn('game', 'Non-host attempted to start round', { room: room.code, player: playerId });
+    if (playerId !== room.hostId && room.roundsPlayed === 0) {
+      logger.warn('game', 'Non-host attempted to start first round', { room: room.code, player: playerId });
       return;
     }
     if (room.phase !== CastlefallPhase.LOBBY && room.phase !== CastlefallPhase.GAME_OVER) {

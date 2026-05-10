@@ -15,9 +15,11 @@ export default function LobbyScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
   const players = useGameStore((s) => s.room?.players ?? []);
   const hostId = useGameStore((s) => s.room?.hostId ?? null);
+  const roundsPlayed = useGameStore((s) => s.room?.roundsPlayed ?? 0);
   const settings = useSettings();
   const host = useIsHost();
   const me = useMyPlayer();
+  const canControlStart = host || roundsPlayed > 0;
 
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -132,7 +134,7 @@ export default function LobbyScreen() {
 
       {/* Start / waiting */}
       <div className="mt-auto">
-        {host ? (
+        {canControlStart ? (
           <button
             onClick={handleStart}
             disabled={!canStart || starting}
