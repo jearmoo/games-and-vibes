@@ -20,9 +20,9 @@ export default function RoundScreen() {
   }
 
   const myTeam = privateRound.team;
-  const teamColorClass = myTeam === 1 ? 'text-red-400' : 'text-blue-400';
-  const teamBorderClass = myTeam === 1 ? 'border-red-500/40' : 'border-blue-500/40';
-  const teamBgClass = myTeam === 1 ? 'bg-red-900/30' : 'bg-blue-900/30';
+  const teamColorClass = anonymous ? 'text-stone-400' : myTeam === 1 ? 'text-red-400' : 'text-blue-400';
+  const teamBorderClass = anonymous ? 'border-stone-600/40' : myTeam === 1 ? 'border-red-500/40' : 'border-blue-500/40';
+  const teamBgClass = anonymous ? 'bg-stone-800/30' : myTeam === 1 ? 'bg-red-900/30' : 'bg-blue-900/30';
   const teamHighlightClass =
     myTeam === 1
       ? 'bg-red-900/40 border-red-500/60 text-red-100 shadow-[0_0_20px_rgba(185,28,28,0.4)]'
@@ -43,17 +43,10 @@ export default function RoundScreen() {
       {/* Header: team + secret + timer */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          {anonymous ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-800/60 border border-stone-600/40 text-stone-200 text-xs tracking-wider">
-              <span>🙈</span>
-              <span>Anonymous</span>
-            </div>
-          ) : (
-            <>
-              <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Your team</div>
-              <div className={`font-display text-3xl tracking-wider ${teamColorClass}`}>TEAM {myTeam}</div>
-            </>
-          )}
+          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Your team</div>
+          <div className={`font-display text-3xl tracking-wider ${teamColorClass}`}>
+            {anonymous ? 'TEAM ???' : `TEAM ${myTeam}`}
+          </div>
         </div>
         {showTimer && (
           <div className="w-32 shrink-0">
@@ -71,12 +64,12 @@ export default function RoundScreen() {
       </button>
 
       {/* Secret word */}
-      {!anonymous && (
-        <div className={`glass-card rounded-2xl border ${teamBorderClass} ${teamBgClass} p-5 text-center`}>
-          <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret word</div>
-          <div className="font-display text-4xl tracking-wider text-white break-words">{privateRound.secretWord}</div>
+      <div className={`glass-card rounded-2xl border ${teamBorderClass} ${teamBgClass} p-5 text-center`}>
+        <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret word</div>
+        <div className="font-display text-4xl tracking-wider text-white break-words">
+          {anonymous ? '???' : privateRound.secretWord}
         </div>
-      )}
+      </div>
 
       {/* Public word grid */}
       <div className="flex-1 min-h-0">
