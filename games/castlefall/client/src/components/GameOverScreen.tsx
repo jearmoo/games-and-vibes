@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useGameStore, useIsHost } from '../store';
+import { useGameStore } from '../store';
 import type { TeamId } from '@games/castlefall-shared';
 
 export default function GameOverScreen() {
   const reveal = useGameStore((s) => s.reveal);
   const myId = useGameStore((s) => s.playerId);
-  const host = useIsHost();
   const [restarting, setRestarting] = useState(false);
+  const [wordsRevealed, setWordsRevealed] = useState(false);
 
   if (!reveal) {
     return (
@@ -72,17 +72,30 @@ export default function GameOverScreen() {
         </div>
       </div>
 
-      {/* Words side by side */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card rounded-2xl border border-red-500/40 bg-red-900/20 p-4 text-center">
-          <div className="text-red-300 text-[10px] tracking-[0.3em] uppercase mb-1">Team 1's word</div>
-          <div className="font-display text-2xl tracking-wider text-white break-words">{reveal.team1Word}</div>
+      {/* Words side by side — tap to reveal/hide */}
+      <button
+        type="button"
+        onClick={() => setWordsRevealed((v) => !v)}
+        className="block w-full hover:opacity-95 active:scale-[0.99] transition-all text-left"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div className="glass-card rounded-2xl border border-red-500/40 bg-red-900/20 p-4 text-center">
+            <div className="text-red-300 text-[10px] tracking-[0.3em] uppercase mb-1">Team 1's word</div>
+            <div className="font-display text-2xl tracking-wider text-white break-words">
+              {wordsRevealed ? reveal.team1Word : '???'}
+            </div>
+          </div>
+          <div className="glass-card rounded-2xl border border-blue-500/40 bg-blue-900/20 p-4 text-center">
+            <div className="text-blue-300 text-[10px] tracking-[0.3em] uppercase mb-1">Team 2's word</div>
+            <div className="font-display text-2xl tracking-wider text-white break-words">
+              {wordsRevealed ? reveal.team2Word : '???'}
+            </div>
+          </div>
         </div>
-        <div className="glass-card rounded-2xl border border-blue-500/40 bg-blue-900/20 p-4 text-center">
-          <div className="text-blue-300 text-[10px] tracking-[0.3em] uppercase mb-1">Team 2's word</div>
-          <div className="font-display text-2xl tracking-wider text-white break-words">{reveal.team2Word}</div>
+        <div className="text-center text-gray-500 text-[10px] tracking-[0.3em] uppercase mt-2">
+          {wordsRevealed ? 'Tap to hide words' : 'Tap to show words'}
         </div>
-      </div>
+      </button>
 
       {/* Roster by team */}
       <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
@@ -102,21 +115,15 @@ export default function GameOverScreen() {
         </div>
       </div>
 
-      {/* Host control */}
+      {/* Start New Round (any player) */}
       <div className="mt-2">
-        {host ? (
-          <button
-            onClick={handleNewRound}
-            disabled={restarting}
-            className="w-full py-4 rounded-2xl btn-primary text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
-          >
-            {restarting ? 'Starting...' : 'Start New Round'}
-          </button>
-        ) : (
-          <div className="w-full py-3 text-center text-gray-500 text-xs tracking-wider">
-            Waiting for host to start a new round...
-          </div>
-        )}
+        <button
+          onClick={handleNewRound}
+          disabled={restarting}
+          className="w-full py-4 rounded-2xl btn-primary text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
+        >
+          {restarting ? 'Starting...' : 'Start New Round'}
+        </button>
       </div>
     </div>
   );
