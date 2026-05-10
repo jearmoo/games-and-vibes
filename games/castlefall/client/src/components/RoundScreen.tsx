@@ -60,6 +60,23 @@ export default function RoundScreen() {
     );
   }
 
+  const myTeam = privateRound.team;
+  const teamColorClass = wordRevealed ? (myTeam === 1 ? 'text-red-400' : 'text-blue-400') : 'text-stone-400';
+  const cardBorderClass = wordRevealed
+    ? myTeam === 1
+      ? 'border-red-500/40'
+      : 'border-blue-500/40'
+    : 'border-stone-600/40';
+  const cardBgClass = wordRevealed
+    ? myTeam === 1
+      ? 'bg-red-900/30 hover:bg-red-900/40'
+      : 'bg-blue-900/30 hover:bg-blue-900/40'
+    : 'bg-stone-800/30 hover:bg-stone-800/50';
+  const teamHighlightClass =
+    myTeam === 1
+      ? 'bg-red-900/40 border-red-500/60 text-red-100 shadow-[0_0_20px_rgba(185,28,28,0.4)]'
+      : 'bg-blue-900/40 border-blue-500/60 text-blue-100 shadow-[0_0_20px_rgba(37,99,235,0.4)]';
+
   const showTimer = publicRound.timerSeconds > 0 && publicRound.roundStartedAt !== undefined;
   const endTime = showTimer ? publicRound.roundStartedAt! + publicRound.timerSeconds * 1000 : 0;
 
@@ -72,11 +89,13 @@ export default function RoundScreen() {
 
   return (
     <div className="h-full flex flex-col p-5 gap-4 animate-fade-in overflow-y-auto max-w-3xl mx-auto w-full">
-      {/* Header: team (always hidden during round) + timer */}
+      {/* Header: team (revealed when the player taps to show) + timer */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Your team</div>
-          <div className="font-display text-3xl tracking-wider text-stone-400">TEAM ???</div>
+          <div className={`font-display text-3xl tracking-wider ${teamColorClass}`}>
+            {wordRevealed ? `TEAM ${myTeam}` : 'TEAM ???'}
+          </div>
         </div>
         {showTimer && (
           <div className="w-32 shrink-0">
@@ -89,7 +108,7 @@ export default function RoundScreen() {
       <button
         type="button"
         onClick={() => setWordRevealed((v) => !v)}
-        className="glass-card rounded-2xl border border-stone-600/40 bg-stone-800/30 p-5 text-center w-full hover:bg-stone-800/50 active:scale-[0.99] transition-all"
+        className={`glass-card rounded-2xl border p-5 text-center w-full active:scale-[0.99] transition-all ${cardBorderClass} ${cardBgClass}`}
       >
         <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret word</div>
         {wordRevealed ? (
@@ -112,9 +131,7 @@ export default function RoundScreen() {
               <div
                 key={word}
                 className={`px-2 py-3 rounded-xl border text-center text-sm font-medium transition-all ${
-                  isMine
-                    ? 'bg-castle-gold/20 border-castle-gold/60 text-castle-gold-text shadow-[0_0_20px_rgba(212,168,75,0.35)]'
-                    : 'bg-surface-raised border-white/5 text-gray-200'
+                  isMine ? teamHighlightClass : 'bg-surface-raised border-white/5 text-gray-200'
                 }`}
               >
                 {word}
@@ -164,7 +181,7 @@ export default function RoundScreen() {
             onClick={() => setPickerOpen(true)}
             className="w-full py-4 rounded-2xl btn-primary text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all"
           >
-            Reveal Team Numbers
+            Round Ended
           </button>
         )}
       </div>
