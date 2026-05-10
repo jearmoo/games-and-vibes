@@ -1,0 +1,32 @@
+@import '@games/client-core/styles.css';
+
+/* Castlefall theme tokens — stone keep + gold sigil */
+:root {
+  --castle-stone-1: #1a1d2a;
+  --castle-stone-2: #262a3b;
+  --castle-gold: #d4a84b;
+  --castle-gold-bright: #f5c563;
+  --castle-team-1: #b91c1c;
+  --castle-team-2: #1e3a8a;
+}
+
+.btn-team-1 {
+  background: linear-gradient(135deg, #991b1b, #b91c1c);
+  box-shadow: 0 0 20px rgba(185, 28, 28, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.btn-team-1:active {
+  box-shadow: 0 0 30px rgba(185, 28, 28, 0.5);
+}
+
+.btn-team-2 {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.btn-team-2:active {
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.5);
+}
+
+.castle-gold-text {
+  color: var(--castle-gold-bright);
+  text-shadow: 0 0 16px rgba(212, 168, 75, 0.35);
+}

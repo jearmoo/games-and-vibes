@@ -1,0 +1,102 @@
+import { useState } from 'react';
+import { useGameStore, useIsHost } from '../store';
+
+export default function GameOverScreen() {
+  const reveal = useGameStore((s) => s.reveal);
+  const host = useIsHost();
+  const [restarting, setRestarting] = useState(false);
+
+  if (!reveal) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-500 font-display tracking-wider">
+        Loading reveal...
+      </div>
+    );
+  }
+
+  const team1 = reveal.players.filter((p) => p.team === 1);
+  const team2 = reveal.players.filter((p) => p.team === 2);
+
+  const banner =
+    reveal.winningTeam === 'draw'
+      ? { text: 'DRAW', color: 'castle-gold-text' }
+      : reveal.winningTeam === 1
+        ? { text: 'TEAM 1 WINS', color: 'text-red-400' }
+        : { text: 'TEAM 2 WINS', color: 'text-blue-400' };
+
+  const handleNewRound = () => {
+    if (restarting) return;
+    setRestarting(true);
+    useGameStore.getState().startNewRound();
+    setTimeout(() => setRestarting(false), 5000);
+  };
+
+  return (
+    <div className="h-full flex flex-col p-5 gap-5 animate-fade-in overflow-y-auto max-w-2xl mx-auto w-full">
+      {/* Banner */}
+      <div className="text-center mt-4">
+        <div
+          className={`font-display text-5xl tracking-[0.2em] ${banner.color}`}
+          style={{ textShadow: '0 0 30px rgba(212, 168, 75, 0.35)' }}
+        >
+          {banner.text}
+        </div>
+      </div>
+
+      {/* Words side by side */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass-card rounded-2xl border border-red-500/40 bg-red-900/20 p-4 text-center">
+          <div className="text-red-300 text-[10px] tracking-[0.3em] uppercase mb-1">Team 1's word</div>
+          <div className="font-display text-2xl tracking-wider text-white break-words">{reveal.team1Word}</div>
+        </div>
+        <div className="glass-card rounded-2xl border border-blue-500/40 bg-blue-900/20 p-4 text-center">
+          <div className="text-blue-300 text-[10px] tracking-[0.3em] uppercase mb-1">Team 2's word</div>
+          <div className="font-display text-2xl tracking-wider text-white break-words">{reveal.team2Word}</div>
+        </div>
+      </div>
+
+      {/* Roster by team */}
+      <div className="grid grid-cols-2 gap-3 flex-1 min-h-0">
+        <div className="glass-card rounded-2xl border border-red-500/30 p-4 overflow-auto">
+          <div className="text-red-300 text-xs tracking-widest uppercase mb-2">Team 1</div>
+          <div className="space-y-1">
+            {team1.map((p) => (
+              <div key={p.id} className="text-white text-sm px-2 py-1.5 rounded bg-white/5">
+                {p.name}
+              </div>
+            ))}
+            {team1.length === 0 && <div className="text-gray-500 text-xs italic">No players</div>}
+          </div>
+        </div>
+        <div className="glass-card rounded-2xl border border-blue-500/30 p-4 overflow-auto">
+          <div className="text-blue-300 text-xs tracking-widest uppercase mb-2">Team 2</div>
+          <div className="space-y-1">
+            {team2.map((p) => (
+              <div key={p.id} className="text-white text-sm px-2 py-1.5 rounded bg-white/5">
+                {p.name}
+              </div>
+            ))}
+            {team2.length === 0 && <div className="text-gray-500 text-xs italic">No players</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Host control */}
+      <div className="mt-2">
+        {host ? (
+          <button
+            onClick={handleNewRound}
+            disabled={restarting}
+            className="w-full py-4 rounded-2xl btn-primary text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
+          >
+            {restarting ? 'Starting...' : 'Start New Round'}
+          </button>
+        ) : (
+          <div className="w-full py-3 text-center text-gray-500 text-xs tracking-wider">
+            Waiting for host to start a new round...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
