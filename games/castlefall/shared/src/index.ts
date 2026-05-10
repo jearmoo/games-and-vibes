@@ -51,6 +51,7 @@ export interface CastlefallRoomDTO extends RoomDTO {
   phase: CastlefallPhase | null;
   round: PublicRoundState | null;
   reveal: FullReveal | null;
+  roundsPlayed: number;
 }
 
 export const CastlefallEvent = {
