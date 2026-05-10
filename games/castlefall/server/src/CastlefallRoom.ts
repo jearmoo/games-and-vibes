@@ -18,7 +18,7 @@ interface PersistedCastlefallRoom {
   hostId: string;
   lastActivity?: number;
   settings?: Partial<CastlefallSettings>;
-  players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean }>;
+  players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; points?: number }>;
   phase?: string;
   words?: string[];
   teamWords?: { 1: string; 2: string };
@@ -43,7 +43,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
   }
 
   override addPlayer(id: string, name: string, socketId: string): CastlefallPlayer {
-    const player: CastlefallPlayer = { id, name, socketId, connected: true };
+    const player: CastlefallPlayer = { id, name, socketId, connected: true, points: 0 };
     this.players.set(id, player);
     this.touch();
     return player;
@@ -55,6 +55,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       id: p.id,
       name: p.name,
       connected: p.connected,
+      points: p.points,
       ...(includeTeam && p.team ? { team: p.team } : {}),
     }));
   }
@@ -84,12 +85,15 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
+        points: p.points,
       })),
       ...this.serializeGameState(),
     };
   }
 
-  override restorePlayers(data: { players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean }> }) {
+  override restorePlayers(data: {
+    players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; points?: number }>;
+  }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,
@@ -99,6 +103,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
+        points: typeof p.points === 'number' && Number.isFinite(p.points) ? p.points : 0,
       });
     }
   }
@@ -155,6 +160,11 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
 
   endRound({ winningTeam }: { winningTeam: WinningTeam }): void {
     this.winningTeam = winningTeam;
+    if (winningTeam === 1 || winningTeam === 2) {
+      for (const p of this.players.values()) {
+        if (p.team === winningTeam) p.points += 1;
+      }
+    }
     this.phase = CastlefallPhase.GAME_OVER;
     this.roundStartedAt = undefined;
     this.touch();
@@ -236,7 +246,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       team2Word: this.teamWords[2],
       players: Array.from(this.players.values())
         .filter((p): p is CastlefallPlayer & { team: TeamId } => !!p.team)
-        .map((p) => ({ id: p.id, name: p.name, team: p.team })),
+        .map((p) => ({ id: p.id, name: p.name, team: p.team, points: p.points })),
     };
   }
 

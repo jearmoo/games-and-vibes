@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useGameStore, useIsHost } from '../store';
+import type { TeamId } from '@games/castlefall-shared';
 
 export default function GameOverScreen() {
   const reveal = useGameStore((s) => s.reveal);
+  const myId = useGameStore((s) => s.playerId);
   const host = useIsHost();
   const [restarting, setRestarting] = useState(false);
 
@@ -16,6 +18,33 @@ export default function GameOverScreen() {
 
   const team1 = reveal.players.filter((p) => p.team === 1);
   const team2 = reveal.players.filter((p) => p.team === 2);
+  const winningTeam = reveal.winningTeam;
+
+  const renderPlayerRow = (p: { id: string; name: string; team: TeamId; points: number }) => {
+    const isMe = p.id === myId;
+    const won = winningTeam !== 'draw' && p.team === winningTeam;
+    return (
+      <div
+        key={p.id}
+        className={`flex items-center gap-2 text-sm px-2 py-1.5 rounded ${
+          isMe ? 'bg-castle-gold/20 ring-1 ring-castle-gold/60 text-white' : 'bg-white/5 text-white'
+        }`}
+      >
+        <span className="flex-1 truncate">
+          {p.name}
+          {isMe && <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(YOU)</span>}
+        </span>
+        {won && (
+          <span className="px-1.5 py-0.5 rounded bg-castle-gold/30 text-castle-gold-text text-[10px] font-display tracking-wider">
+            +1
+          </span>
+        )}
+        <span className="px-1.5 py-0.5 rounded bg-black/30 text-castle-gold-text text-xs font-display tracking-wider min-w-[2.25rem] text-center">
+          {p.points}
+        </span>
+      </div>
+    );
+  };
 
   const banner =
     reveal.winningTeam === 'draw'
@@ -60,22 +89,14 @@ export default function GameOverScreen() {
         <div className="glass-card rounded-2xl border border-red-500/30 p-4 overflow-auto">
           <div className="text-red-300 text-xs tracking-widest uppercase mb-2">Team 1</div>
           <div className="space-y-1">
-            {team1.map((p) => (
-              <div key={p.id} className="text-white text-sm px-2 py-1.5 rounded bg-white/5">
-                {p.name}
-              </div>
-            ))}
+            {team1.map(renderPlayerRow)}
             {team1.length === 0 && <div className="text-gray-500 text-xs italic">No players</div>}
           </div>
         </div>
         <div className="glass-card rounded-2xl border border-blue-500/30 p-4 overflow-auto">
           <div className="text-blue-300 text-xs tracking-widest uppercase mb-2">Team 2</div>
           <div className="space-y-1">
-            {team2.map((p) => (
-              <div key={p.id} className="text-white text-sm px-2 py-1.5 rounded bg-white/5">
-                {p.name}
-              </div>
-            ))}
+            {team2.map(renderPlayerRow)}
             {team2.length === 0 && <div className="text-gray-500 text-xs italic">No players</div>}
           </div>
         </div>
