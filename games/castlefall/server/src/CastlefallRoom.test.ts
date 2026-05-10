@@ -375,6 +375,44 @@ describe('CastlefallRoom', () => {
     });
   });
 
+  describe('mid-game join', () => {
+    it('new player joining during ROUND has no team and getPrivateRoundStateFor returns null', () => {
+      const room = makeRoom({ playerCount: 4 });
+      room.startRound({ timerSeconds: 0 });
+      // Late joiner arrives mid round
+      room.addPlayer('late', 'LatePlayer', 'sockLate');
+      const late = room.getPlayer('late')!;
+      expect(late.team).toBeUndefined();
+      expect(room.getPrivateRoundStateFor({ playerId: 'late' })).toBeNull();
+      // buildGameState surfaces the spectator state to the client
+      const payload = buildGameState({ room, playerId: 'late' });
+      expect(payload).not.toBeNull();
+      expect(payload!.phase).toBe(CastlefallPhase.ROUND);
+      expect(payload!.public).toBeTruthy();
+      expect(payload!.public!.words).toHaveLength(18);
+      expect(payload!.private).toBeNull();
+    });
+
+    it('new player joining during ROUND gets assigned a team on next startRound', () => {
+      const room = makeRoom({ playerCount: 4 });
+      room.startRound({ timerSeconds: 0 });
+      room.addPlayer('late', 'LatePlayer', 'sockLate');
+      expect(room.getPlayer('late')!.team).toBeUndefined();
+
+      // Host ends current round and starts the next one
+      room.endRound({ winningTeam: 1 });
+      room.startNewRound();
+      room.startRound({ timerSeconds: 0 });
+
+      const late = room.getPlayer('late')!;
+      expect(late.team === 1 || late.team === 2).toBe(true);
+      const priv = room.getPrivateRoundStateFor({ playerId: 'late' });
+      expect(priv).not.toBeNull();
+      expect(priv!.team).toBe(late.team);
+      expect(priv!.secretWord).toBe(room.teamWords[late.team!]);
+    });
+  });
+
   describe('buildGameState', () => {
     it('returns null in LOBBY phase', () => {
       const room = makeRoom({ playerCount: 4 });

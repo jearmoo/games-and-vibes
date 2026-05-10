@@ -99,6 +99,32 @@ socket.on(
   },
 );
 
+socket.on(
+  'room:mid-game-joined',
+  ({
+    roomCode,
+    playerId,
+    room,
+    game,
+  }: {
+    roomCode: string;
+    playerId: string;
+    room: CastlefallRoomDTO;
+    game: CastlefallRejoinGame | null;
+  }) => {
+    useGameStore.setState({
+      roomCode,
+      playerId,
+      room,
+      publicRound: game?.public ?? null,
+      privateRound: game?.private ?? null,
+      reveal: game?.reveal ?? null,
+    });
+    saveSession();
+    window.history.replaceState(null, '', `/${roomCode}`);
+  },
+);
+
 // Player roster updates — patch the embedded room DTO
 socket.on('room:player-joined', ({ player }: { player: import('@games/castlefall-shared').CastlefallPlayerDTO }) => {
   useGameStore.setState((s) => (s.room ? { room: { ...s.room, players: [...s.room.players, player] } } : {}));
