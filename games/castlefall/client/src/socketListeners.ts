@@ -1,7 +1,12 @@
 import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
 import { CastlefallEvent, CastlefallPhase } from '@games/castlefall-shared';
-import type { CastlefallRoomDTO, RoundEndedPayload, RoundStartedPayload } from '@games/castlefall-shared';
+import type {
+  CastlefallRejoinGame,
+  CastlefallRoomDTO,
+  RoundEndedPayload,
+  RoundStartedPayload,
+} from '@games/castlefall-shared';
 import { clientLogger } from '@games/client-core';
 
 function saveSession() {
@@ -75,19 +80,18 @@ socket.on(
     roomCode: string;
     playerId: string;
     room: CastlefallRoomDTO;
-    game: {
-      publicRound: import('@games/castlefall-shared').PublicRoundState | null;
-      privateRound: import('@games/castlefall-shared').PrivateRoundState | null;
-      reveal: import('@games/castlefall-shared').FullReveal | null;
-    } | null;
+    game: CastlefallRejoinGame | null;
   }) => {
     clearAutoReconnecting();
+    const me = room.players.find((p) => p.id === playerId);
+    const currentName = useGameStore.getState().playerName;
     useGameStore.setState({
       roomCode,
       playerId,
       room,
-      publicRound: game?.publicRound ?? null,
-      privateRound: game?.privateRound ?? null,
+      playerName: me?.name || currentName,
+      publicRound: game?.public ?? null,
+      privateRound: game?.private ?? null,
       reveal: game?.reveal ?? null,
     });
     saveSession();
