@@ -19,6 +19,8 @@ export default function GameOverScreen() {
   const team1 = reveal.players.filter((p) => p.team === 1);
   const team2 = reveal.players.filter((p) => p.team === 2);
   const winningTeam = reveal.winningTeam;
+  const myTeam = reveal.players.find((p) => p.id === myId)?.team;
+  const myTeamColorClass = myTeam === 1 ? 'text-red-400' : myTeam === 2 ? 'text-blue-400' : 'text-stone-400';
 
   const renderPlayerRow = (p: { id: string; name: string; team: TeamId; points: number }) => {
     const isMe = p.id === myId;
@@ -62,8 +64,16 @@ export default function GameOverScreen() {
 
   return (
     <div className="h-full flex flex-col p-5 gap-5 animate-fade-in overflow-y-auto max-w-2xl mx-auto w-full">
+      {/* Your team — revealed at game over */}
+      {myTeam && (
+        <div className="text-center">
+          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Your team</div>
+          <div className={`font-display text-3xl tracking-wider ${myTeamColorClass}`}>{`TEAM ${myTeam}`}</div>
+        </div>
+      )}
+
       {/* Banner */}
-      <div className="text-center mt-4">
+      <div className="text-center">
         <div
           className={`font-display text-5xl tracking-[0.2em] ${banner.color}`}
           style={{ textShadow: '0 0 30px rgba(212, 168, 75, 0.35)' }}
