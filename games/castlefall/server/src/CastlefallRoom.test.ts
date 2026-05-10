@@ -301,6 +301,80 @@ describe('CastlefallRoom', () => {
     });
   });
 
+  describe('points', () => {
+    it('endRound awards +1 to every player on winning team', () => {
+      const room = makeRoom({ playerCount: 4 });
+      room.startRound({ timerSeconds: 0 });
+      // force deterministic team assignment
+      room.getPlayer('p1')!.team = 1;
+      room.getPlayer('p2')!.team = 1;
+      room.getPlayer('p3')!.team = 2;
+      room.getPlayer('p4')!.team = 2;
+
+      room.endRound({ winningTeam: 1 });
+
+      expect(room.getPlayer('p1')!.points).toBe(1);
+      expect(room.getPlayer('p2')!.points).toBe(1);
+      expect(room.getPlayer('p3')!.points).toBe(0);
+      expect(room.getPlayer('p4')!.points).toBe(0);
+    });
+
+    it('endRound with draw awards no points', () => {
+      const room = makeRoom({ playerCount: 4 });
+      room.startRound({ timerSeconds: 0 });
+      room.endRound({ winningTeam: 'draw' });
+      for (const p of room.players.values()) {
+        expect(p.points).toBe(0);
+      }
+    });
+
+    it('points persist across startNewRound', () => {
+      const room = makeRoom({ playerCount: 4 });
+      room.startRound({ timerSeconds: 0 });
+      room.getPlayer('p1')!.team = 1;
+      room.getPlayer('p2')!.team = 1;
+      room.getPlayer('p3')!.team = 2;
+      room.getPlayer('p4')!.team = 2;
+      room.endRound({ winningTeam: 1 });
+      room.startNewRound();
+
+      expect(room.getPlayer('p1')!.points).toBe(1);
+      expect(room.getPlayer('p2')!.points).toBe(1);
+      expect(room.getPlayer('p3')!.points).toBe(0);
+      expect(room.getPlayer('p4')!.points).toBe(0);
+
+      // a second round with new winners should accumulate, not reset
+      room.startRound({ timerSeconds: 0 });
+      room.getPlayer('p1')!.team = 1;
+      room.getPlayer('p2')!.team = 2;
+      room.getPlayer('p3')!.team = 2;
+      room.getPlayer('p4')!.team = 2;
+      room.endRound({ winningTeam: 2 });
+
+      expect(room.getPlayer('p1')!.points).toBe(1);
+      expect(room.getPlayer('p2')!.points).toBe(2);
+      expect(room.getPlayer('p3')!.points).toBe(1);
+      expect(room.getPlayer('p4')!.points).toBe(1);
+    });
+
+    it('points round-trip through toJSON/fromJSON', () => {
+      const room = makeRoom({ playerCount: 4 });
+      room.startRound({ timerSeconds: 0 });
+      room.getPlayer('p1')!.team = 1;
+      room.getPlayer('p2')!.team = 1;
+      room.getPlayer('p3')!.team = 2;
+      room.getPlayer('p4')!.team = 2;
+      room.endRound({ winningTeam: 1 });
+
+      const restored = CastlefallRoom.fromJSON(room.toJSON());
+
+      expect(restored.getPlayer('p1')!.points).toBe(1);
+      expect(restored.getPlayer('p2')!.points).toBe(1);
+      expect(restored.getPlayer('p3')!.points).toBe(0);
+      expect(restored.getPlayer('p4')!.points).toBe(0);
+    });
+  });
+
   describe('buildGameState', () => {
     it('returns null in LOBBY phase', () => {
       const room = makeRoom({ playerCount: 4 });

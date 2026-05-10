@@ -14,10 +14,12 @@ export type CastlefallPhase = (typeof CastlefallPhase)[keyof typeof CastlefallPh
 
 export interface CastlefallPlayer extends BasePlayer {
   team?: TeamId;
+  points: number;
 }
 
 export interface CastlefallPlayerDTO extends BasePlayerDTO {
   team?: TeamId;
+  points: number;
 }
 
 export interface CastlefallSettings extends RoomSettings {
@@ -40,7 +42,7 @@ export interface FullReveal {
   winningTeam: WinningTeam;
   team1Word: string;
   team2Word: string;
-  players: { id: string; name: string; team: TeamId }[];
+  players: { id: string; name: string; team: TeamId; points: number }[];
 }
 
 export interface CastlefallRoomDTO extends RoomDTO {
