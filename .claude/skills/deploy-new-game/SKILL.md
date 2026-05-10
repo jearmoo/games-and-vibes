@@ -190,8 +190,12 @@ docker ps --filter name=<container-name>
 
 # Check health endpoint through tunnel
 curl -sf https://<subdomain>.jerpi.org/api/health
+```
 
-# Restart deploy service if deploy.py was changed
+`deploy.py` changes (e.g. updating the `IMAGES` list for a new game) do **not** require restarting `games-deploy`. The systemd service runs `listener.py`, which invokes `deploy.py` as a subprocess per request — the new file is read on the next webhook automatically. The two-file split exists specifically so deploy logic can ship without a service restart.
+
+Restart `games-deploy` only if `listener.py` itself was changed:
+```bash
 sudo systemctl restart games-deploy
 ```
 
