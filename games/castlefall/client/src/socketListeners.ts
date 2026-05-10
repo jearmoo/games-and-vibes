@@ -1,11 +1,7 @@
 import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
 import { CastlefallEvent, CastlefallPhase } from '@games/castlefall-shared';
-import type {
-  CastlefallRoomDTO,
-  RoundEndedPayload,
-  RoundStartedPayload,
-} from '@games/castlefall-shared';
+import type { CastlefallRoomDTO, RoundEndedPayload, RoundStartedPayload } from '@games/castlefall-shared';
 import { clientLogger } from '@games/client-core';
 
 function saveSession() {
@@ -50,17 +46,23 @@ socket.on('room:kicked', () => {
 });
 
 // Room lifecycle (BaseRoom standard events)
-socket.on('room:created', ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: CastlefallRoomDTO }) => {
-  useGameStore.setState({ roomCode, playerId, room });
-  saveSession();
-  window.history.replaceState(null, '', `/${roomCode}`);
-});
+socket.on(
+  'room:created',
+  ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: CastlefallRoomDTO }) => {
+    useGameStore.setState({ roomCode, playerId, room });
+    saveSession();
+    window.history.replaceState(null, '', `/${roomCode}`);
+  },
+);
 
-socket.on('room:joined', ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: CastlefallRoomDTO }) => {
-  useGameStore.setState({ roomCode, playerId, room });
-  saveSession();
-  window.history.replaceState(null, '', `/${roomCode}`);
-});
+socket.on(
+  'room:joined',
+  ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: CastlefallRoomDTO }) => {
+    useGameStore.setState({ roomCode, playerId, room });
+    saveSession();
+    window.history.replaceState(null, '', `/${roomCode}`);
+  },
+);
 
 socket.on(
   'room:rejoined',
@@ -73,7 +75,11 @@ socket.on(
     roomCode: string;
     playerId: string;
     room: CastlefallRoomDTO;
-    game: { publicRound: import('@games/castlefall-shared').PublicRoundState | null; privateRound: import('@games/castlefall-shared').PrivateRoundState | null; reveal: import('@games/castlefall-shared').FullReveal | null } | null;
+    game: {
+      publicRound: import('@games/castlefall-shared').PublicRoundState | null;
+      privateRound: import('@games/castlefall-shared').PrivateRoundState | null;
+      reveal: import('@games/castlefall-shared').FullReveal | null;
+    } | null;
   }) => {
     clearAutoReconnecting();
     useGameStore.setState({
@@ -93,9 +99,12 @@ socket.on(
 socket.on('room:player-joined', ({ player }: { player: import('@games/castlefall-shared').CastlefallPlayerDTO }) => {
   useGameStore.setState((s) => (s.room ? { room: { ...s.room, players: [...s.room.players, player] } } : {}));
 });
-socket.on('room:player-left', ({ hostId, players }: { hostId: string; players: import('@games/castlefall-shared').CastlefallPlayerDTO[] }) => {
-  useGameStore.setState((s) => (s.room ? { room: { ...s.room, hostId, players } } : {}));
-});
+socket.on(
+  'room:player-left',
+  ({ hostId, players }: { hostId: string; players: import('@games/castlefall-shared').CastlefallPlayerDTO[] }) => {
+    useGameStore.setState((s) => (s.room ? { room: { ...s.room, hostId, players } } : {}));
+  },
+);
 socket.on('room:player-disconnected', ({ playerId: pid }: { playerId: string }) => {
   useGameStore.setState((s) => {
     if (!s.room) return {};

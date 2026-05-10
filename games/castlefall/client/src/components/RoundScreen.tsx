@@ -55,9 +55,7 @@ export default function RoundScreen() {
       {/* Secret word */}
       <div className={`glass-card rounded-2xl border ${teamBorderClass} ${teamBgClass} p-5 text-center`}>
         <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret word</div>
-        <div className="font-display text-4xl tracking-wider text-white break-words">
-          {privateRound.secretWord}
-        </div>
+        <div className="font-display text-4xl tracking-wider text-white break-words">{privateRound.secretWord}</div>
       </div>
 
       {/* Public word grid */}
@@ -70,9 +68,7 @@ export default function RoundScreen() {
               <div
                 key={word}
                 className={`px-2 py-3 rounded-xl border text-center text-sm font-medium transition-all ${
-                  isMine
-                    ? teamHighlightClass
-                    : 'bg-surface-raised border-white/5 text-gray-200'
+                  isMine ? teamHighlightClass : 'bg-surface-raised border-white/5 text-gray-200'
                 }`}
               >
                 {word}

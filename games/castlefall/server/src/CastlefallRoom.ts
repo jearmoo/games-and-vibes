@@ -89,9 +89,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     };
   }
 
-  override restorePlayers(data: {
-    players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean }>;
-  }) {
+  override restorePlayers(data: { players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean }> }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,

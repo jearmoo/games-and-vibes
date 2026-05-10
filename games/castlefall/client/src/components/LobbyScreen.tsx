@@ -56,9 +56,7 @@ export default function LobbyScreen() {
           >
             {roomCode}
           </button>
-          <div className="text-amber-400/80 text-xs mt-1 h-4">
-            {copied ? 'Link copied!' : 'Tap code to copy link'}
-          </div>
+          <div className="text-amber-400/80 text-xs mt-1 h-4">{copied ? 'Link copied!' : 'Tap code to copy link'}</div>
         </div>
         <button
           onClick={handleLeave}
@@ -70,9 +68,7 @@ export default function LobbyScreen() {
 
       {/* Player list */}
       <div className="glass-card rounded-2xl border border-white/10 p-4">
-        <div className="text-gray-400 text-xs tracking-widest uppercase mb-3">
-          Players ({players.length})
-        </div>
+        <div className="text-gray-400 text-xs tracking-widest uppercase mb-3">Players ({players.length})</div>
         <div className="space-y-1.5">
           {players.map((p) => (
             <div
@@ -133,9 +129,7 @@ export default function LobbyScreen() {
             {!canStart ? 'Need 2+ players' : starting ? 'Starting...' : 'Start Round'}
           </button>
         ) : (
-          <div className="w-full py-4 text-center text-gray-500 text-sm tracking-wider">
-            Waiting for host...
-          </div>
+          <div className="w-full py-4 text-center text-gray-500 text-sm tracking-wider">Waiting for host...</div>
         )}
       </div>
     </div>
