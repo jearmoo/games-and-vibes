@@ -9,6 +9,7 @@ export default function RoundScreen() {
   const host = useIsHost();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
 
   if (!publicRound || !privateRound) {
     return (
@@ -42,8 +43,17 @@ export default function RoundScreen() {
       {/* Header: team + secret + timer */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Your team</div>
-          <div className={`font-display text-3xl tracking-wider ${teamColorClass}`}>TEAM {myTeam}</div>
+          {anonymous ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-800/60 border border-stone-600/40 text-stone-200 text-xs tracking-wider">
+              <span>🙈</span>
+              <span>Anonymous</span>
+            </div>
+          ) : (
+            <>
+              <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Your team</div>
+              <div className={`font-display text-3xl tracking-wider ${teamColorClass}`}>TEAM {myTeam}</div>
+            </>
+          )}
         </div>
         {showTimer && (
           <div className="w-32 shrink-0">
@@ -52,18 +62,28 @@ export default function RoundScreen() {
         )}
       </div>
 
+      {/* Anonymous toggle */}
+      <button
+        onClick={() => setAnonymous((v) => !v)}
+        className="self-start px-3 py-1.5 rounded-lg bg-surface-raised border border-white/10 text-gray-300 hover:text-white text-xs tracking-wider transition-colors"
+      >
+        {anonymous ? 'Show my role' : 'Hide my role'}
+      </button>
+
       {/* Secret word */}
-      <div className={`glass-card rounded-2xl border ${teamBorderClass} ${teamBgClass} p-5 text-center`}>
-        <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret word</div>
-        <div className="font-display text-4xl tracking-wider text-white break-words">{privateRound.secretWord}</div>
-      </div>
+      {!anonymous && (
+        <div className={`glass-card rounded-2xl border ${teamBorderClass} ${teamBgClass} p-5 text-center`}>
+          <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret word</div>
+          <div className="font-display text-4xl tracking-wider text-white break-words">{privateRound.secretWord}</div>
+        </div>
+      )}
 
       {/* Public word grid */}
       <div className="flex-1 min-h-0">
         <div className="text-gray-400 text-[10px] tracking-[0.3em] uppercase mb-2">The 18 words</div>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {publicRound.words.map((word) => {
-            const isMine = word === privateRound.secretWord;
+            const isMine = !anonymous && word === privateRound.secretWord;
             return (
               <div
                 key={word}

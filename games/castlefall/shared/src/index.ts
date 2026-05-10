@@ -79,6 +79,13 @@ export interface RoundEndedPayload {
   reveal: FullReveal;
 }
 
+export interface CastlefallRejoinGame {
+  phase: CastlefallPhase;
+  public?: PublicRoundState | null;
+  private?: PrivateRoundState | null;
+  reveal?: FullReveal | null;
+}
+
 export interface CastlefallClientToServerEvents {
   [CastlefallEvent.StartRound]: (payload: StartRoundPayload) => void;
   [CastlefallEvent.EndRound]: (payload: EndRoundPayload) => void;
