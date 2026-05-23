@@ -45,9 +45,7 @@ export default function GameOverScreen() {
         <span className="flex-1 truncate">
           {p.name}
           {isMe && <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(YOU)</span>}
-          {isClapper && (
-            <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(CLAPPED)</span>
-          )}
+          {isClapper && <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(CLAPPED)</span>}
         </span>
         {lost && (
           <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 text-[10px] font-display tracking-wider">
@@ -117,9 +115,7 @@ export default function GameOverScreen() {
         >
           {banner.text}
         </div>
-        {subline && (
-          <div className={`text-xs tracking-[0.25em] uppercase mt-2 ${sublineColor}`}>{subline}</div>
-        )}
+        {subline && <div className={`text-xs tracking-[0.25em] uppercase mt-2 ${sublineColor}`}>{subline}</div>}
       </div>
 
       {/* Words side by side — tap to reveal/hide */}
