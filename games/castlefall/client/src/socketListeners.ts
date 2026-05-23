@@ -6,6 +6,7 @@ import type {
   CastlefallRoomDTO,
   RoundEndedPayload,
   RoundStartedPayload,
+  RoundUpdatedPayload,
 } from '@games/castlefall-shared';
 import { clientLogger } from '@games/client-core';
 
@@ -178,6 +179,13 @@ socket.on(CastlefallEvent.RoundStarted, ({ public: pub, private: priv }: RoundSt
     privateRound: priv,
     reveal: null,
     room: s.room ? { ...s.room, phase: CastlefallPhase.ROUND, round: pub, reveal: null } : s.room,
+  }));
+});
+
+socket.on(CastlefallEvent.RoundUpdated, ({ public: pub }: RoundUpdatedPayload) => {
+  useGameStore.setState((s) => ({
+    publicRound: pub,
+    room: s.room ? { ...s.room, round: pub } : s.room,
   }));
 });
 

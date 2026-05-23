@@ -22,20 +22,38 @@ export default function GameOverScreen() {
   const myTeam = reveal.players.find((p) => p.id === myId)?.team;
   const myTeamColorClass = myTeam === 1 ? 'text-red-400' : myTeam === 2 ? 'text-blue-400' : 'text-stone-400';
 
+  const clappingPlayerId = reveal.clappingPlayerId || null;
+  const clapper = clappingPlayerId ? reveal.players.find((p) => p.id === clappingPlayerId) : null;
+  const losingPlayerId = reveal.losingPlayerId;
+
   const renderPlayerRow = (p: { id: string; name: string; team: TeamId; points: number }) => {
     const isMe = p.id === myId;
-    const won = winningTeam !== 'draw' && p.team === winningTeam;
+    const lost = p.id === losingPlayerId;
+    const isClapper = p.id === clappingPlayerId && reveal.outcome !== 'wrong-clap';
+    const won = !lost && winningTeam !== 'draw' && p.team === winningTeam;
     return (
       <div
         key={p.id}
         className={`flex items-center gap-2 text-sm px-2 py-1.5 rounded ${
-          isMe ? 'bg-castle-gold/20 ring-1 ring-castle-gold/60 text-white' : 'bg-white/5 text-white'
+          lost
+            ? 'bg-red-900/30 ring-1 ring-red-500/60 text-white'
+            : isMe
+              ? 'bg-castle-gold/20 ring-1 ring-castle-gold/60 text-white'
+              : 'bg-white/5 text-white'
         }`}
       >
         <span className="flex-1 truncate">
           {p.name}
           {isMe && <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(YOU)</span>}
+          {isClapper && (
+            <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(CLAPPED)</span>
+          )}
         </span>
+        {lost && (
+          <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 text-[10px] font-display tracking-wider">
+            -1
+          </span>
+        )}
         {won && (
           <span className="px-1.5 py-0.5 rounded bg-castle-gold/30 text-castle-gold-text text-[10px] font-display tracking-wider">
             +1
@@ -54,6 +72,25 @@ export default function GameOverScreen() {
       : reveal.winningTeam === 1
         ? { text: 'TEAM 1 WINS', color: 'text-red-400' }
         : { text: 'TEAM 2 WINS', color: 'text-blue-400' };
+
+  let subline: string | null = null;
+  if (clapper) {
+    if (reveal.outcome === 'wrong-clap') {
+      subline = `${clapper.name} clapped wrong · -1`;
+    } else if (reveal.outcome === 'guess-correct') {
+      subline = `${clapper.name} clapped right · other team guessed it`;
+    } else if (reveal.outcome === 'guess-wrong') {
+      subline = `${clapper.name} clapped right · other team failed to guess`;
+    }
+  }
+  const sublineColor =
+    reveal.outcome === 'wrong-clap'
+      ? 'text-red-300'
+      : reveal.outcome === 'guess-correct'
+        ? winningTeam === 1
+          ? 'text-red-300'
+          : 'text-blue-300'
+        : 'text-castle-gold-text';
 
   const handleNewRound = () => {
     if (restarting) return;
@@ -80,6 +117,9 @@ export default function GameOverScreen() {
         >
           {banner.text}
         </div>
+        {subline && (
+          <div className={`text-xs tracking-[0.25em] uppercase mt-2 ${sublineColor}`}>{subline}</div>
+        )}
       </div>
 
       {/* Words side by side — tap to reveal/hide */}

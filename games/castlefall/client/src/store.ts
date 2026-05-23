@@ -8,7 +8,6 @@ import type {
   PrivateRoundState,
   PublicRoundState,
   TeamId,
-  WinningTeam,
 } from '@games/castlefall-shared';
 import { socket } from './socket';
 import { SESSION_KEY } from './constants';
@@ -37,8 +36,10 @@ export interface GameStore {
   createRoom: (args: { playerName: string }) => void;
   joinRoom: (args: { roomCode: string; playerName: string }) => void;
   leaveRoom: () => void;
-  startRound: (args: { timerSeconds: number }) => void;
-  endRound: (args: { winningTeam: WinningTeam }) => void;
+  startRound: () => void;
+  endRound: (args: { losingPlayerId: string }) => void;
+  correctClap: (args: { clappingPlayerId: string }) => void;
+  resolveGuess: (args: { guessedCorrectly: boolean }) => void;
   startNewRound: () => void;
 }
 
@@ -76,11 +77,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ ...initialState, connected: get().connected, playerName: get().playerName });
     window.history.replaceState(null, '', '/');
   },
-  startRound: ({ timerSeconds }) => {
-    socket.emit(CastlefallEvent.StartRound, { timerSeconds });
+  startRound: () => {
+    socket.emit(CastlefallEvent.StartRound, {});
   },
-  endRound: ({ winningTeam }) => {
-    socket.emit(CastlefallEvent.EndRound, { winningTeam });
+  endRound: ({ losingPlayerId }) => {
+    socket.emit(CastlefallEvent.EndRound, { losingPlayerId });
+  },
+  correctClap: ({ clappingPlayerId }) => {
+    socket.emit(CastlefallEvent.CorrectClap, { clappingPlayerId });
+  },
+  resolveGuess: ({ guessedCorrectly }) => {
+    socket.emit(CastlefallEvent.ResolveGuess, { guessedCorrectly });
   },
   startNewRound: () => {
     socket.emit(CastlefallEvent.StartNewRound);
