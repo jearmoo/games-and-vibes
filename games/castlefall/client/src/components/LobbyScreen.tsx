@@ -4,11 +4,11 @@ import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useSettings } from '../store';
 
 const TIMER_OPTIONS: Array<{ value: number; label: string }> = [
-  { value: 0, label: 'No timer' },
-  { value: 180, label: '3 min' },
+  { value: 30, label: '30 sec' },
+  { value: 60, label: '1 min' },
+  { value: 120, label: '2 min' },
   { value: 300, label: '5 min' },
-  { value: 420, label: '7 min' },
-  { value: 600, label: '10 min' },
+  { value: 0, label: 'No timer' },
 ];
 
 export default function LobbyScreen() {
@@ -37,7 +37,7 @@ export default function LobbyScreen() {
   const handleStart = () => {
     if (starting || players.length < 2) return;
     setStarting(true);
-    useGameStore.getState().startRound({ timerSeconds: settings?.timerSeconds ?? 0 });
+    useGameStore.getState().startRound();
     setTimeout(() => setStarting(false), 5000);
   };
 
@@ -109,10 +109,13 @@ export default function LobbyScreen() {
 
       {/* Settings (host) / display (non-host) */}
       <div className="glass-card rounded-2xl border border-white/10 p-4">
-        <div className="text-gray-400 text-xs tracking-widest uppercase mb-3">Round timer</div>
+        <div className="text-gray-400 text-xs tracking-widest uppercase mb-1">Response timer</div>
+        <div className="text-gray-500 text-[10px] tracking-wider mb-3">
+          starts after a correct clap · other team races to guess
+        </div>
         {host ? (
           <select
-            value={settings?.timerSeconds ?? 0}
+            value={settings?.timerSeconds ?? 60}
             onChange={(e) => {
               const val = parseInt(e.target.value, 10);
               socket.emit('settings:update', { timerSeconds: val });
@@ -127,7 +130,7 @@ export default function LobbyScreen() {
           </select>
         ) : (
           <div className="text-white text-sm">
-            {TIMER_OPTIONS.find((o) => o.value === (settings?.timerSeconds ?? 0))?.label ?? 'No timer'}
+            {TIMER_OPTIONS.find((o) => o.value === (settings?.timerSeconds ?? 60))?.label ?? 'No timer'}
           </div>
         )}
       </div>
