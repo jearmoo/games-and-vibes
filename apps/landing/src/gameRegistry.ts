@@ -51,6 +51,16 @@ export const games: GameEntry[] = [
     available: true,
   },
   {
+    id: 'two-rooms-and-a-boom',
+    name: 'Two Rooms and a Boom',
+    tagline: 'Secret roles, two rooms, one ticking bomb.',
+    url: 'https://tworooms.jerpi.org',
+    playerCount: '6-30 players',
+    accentColor: '#dc2626',
+    accentGlow: 'rgba(220, 38, 38, 0.4)',
+    available: true,
+  },
+  {
     id: 'hivemind',
     name: 'Hivemind',
     tagline: 'Think alike and score big together',
