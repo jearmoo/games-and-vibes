@@ -54,7 +54,7 @@ export const games: GameEntry[] = [
     id: 'two-rooms-and-a-boom',
     name: 'Two Rooms and a Boom',
     tagline: 'Secret roles, two rooms, one ticking bomb.',
-    url: 'https://tworooms.jerpi.org',
+    url: 'https://boom.jerpi.org',
     playerCount: '6-30 players',
     accentColor: '#dc2626',
     accentGlow: 'rgba(220, 38, 38, 0.4)',
