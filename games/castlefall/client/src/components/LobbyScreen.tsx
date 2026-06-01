@@ -1,25 +1,29 @@
 import { useState, useCallback } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useSettings } from '../store';
 
 const TIMER_OPTIONS: Array<{ value: number; label: string }> = [
-  { value: 0, label: 'No timer' },
-  { value: 180, label: '3 min' },
+  { value: 30, label: '30 sec' },
+  { value: 60, label: '1 min' },
+  { value: 120, label: '2 min' },
   { value: 300, label: '5 min' },
-  { value: 420, label: '7 min' },
-  { value: 600, label: '10 min' },
+  { value: 0, label: 'No timer' },
 ];
 
 export default function LobbyScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
   const players = useGameStore((s) => s.room?.players ?? []);
   const hostId = useGameStore((s) => s.room?.hostId ?? null);
+  const roundsPlayed = useGameStore((s) => s.room?.roundsPlayed ?? 0);
   const settings = useSettings();
   const host = useIsHost();
   const me = useMyPlayer();
+  const canControlStart = host || roundsPlayed > 0;
 
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
 
   const shareUrl = roomCode ? `${window.location.origin}/${roomCode}` : '';
   const handleCopy = useCallback(() => {
@@ -33,7 +37,7 @@ export default function LobbyScreen() {
   const handleStart = () => {
     if (starting || players.length < 2) return;
     setStarting(true);
-    useGameStore.getState().startRound({ timerSeconds: settings?.timerSeconds ?? 0 });
+    useGameStore.getState().startRound();
     setTimeout(() => setStarting(false), 5000);
   };
 
@@ -82,11 +86,22 @@ export default function LobbyScreen() {
                 {p.id === me?.id && <span className="text-[10px] opacity-60">(you)</span>}
                 {!p.connected && <span className="text-[10px] text-red-400/70">offline</span>}
               </span>
-              {p.id === hostId && (
-                <span className="shrink-0 text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/20 leading-none">
-                  HOST
-                </span>
-              )}
+              <span className="flex items-center gap-2 shrink-0">
+                {p.id === hostId && (
+                  <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/20 leading-none">
+                    HOST
+                  </span>
+                )}
+                {host && p.id !== hostId && (
+                  <button
+                    onClick={() => setConfirmKickId(p.id)}
+                    className="text-gray-500 hover:text-red-400 transition-colors text-base leading-none px-1"
+                    title={`Kick ${p.name}`}
+                  >
+                    &times;
+                  </button>
+                )}
+              </span>
             </div>
           ))}
         </div>
@@ -94,10 +109,13 @@ export default function LobbyScreen() {
 
       {/* Settings (host) / display (non-host) */}
       <div className="glass-card rounded-2xl border border-white/10 p-4">
-        <div className="text-gray-400 text-xs tracking-widest uppercase mb-3">Round timer</div>
+        <div className="text-gray-400 text-xs tracking-widest uppercase mb-1">Response timer</div>
+        <div className="text-gray-500 text-[10px] tracking-wider mb-3">
+          starts after a correct clap · other team races to guess
+        </div>
         {host ? (
           <select
-            value={settings?.timerSeconds ?? 0}
+            value={settings?.timerSeconds ?? 60}
             onChange={(e) => {
               const val = parseInt(e.target.value, 10);
               socket.emit('settings:update', { timerSeconds: val });
@@ -112,14 +130,14 @@ export default function LobbyScreen() {
           </select>
         ) : (
           <div className="text-white text-sm">
-            {TIMER_OPTIONS.find((o) => o.value === (settings?.timerSeconds ?? 0))?.label ?? 'No timer'}
+            {TIMER_OPTIONS.find((o) => o.value === (settings?.timerSeconds ?? 60))?.label ?? 'No timer'}
           </div>
         )}
       </div>
 
       {/* Start / waiting */}
       <div className="mt-auto">
-        {host ? (
+        {canControlStart ? (
           <button
             onClick={handleStart}
             disabled={!canStart || starting}
@@ -132,6 +150,20 @@ export default function LobbyScreen() {
           <div className="w-full py-4 text-center text-gray-500 text-sm tracking-wider">Waiting for host...</div>
         )}
       </div>
+
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${players.find((p) => p.id === confirmKickId)?.name ?? 'player'}?`}
+          message="They'll be removed from the keep."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            socket.emit('player:kick', { targetId: confirmKickId });
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

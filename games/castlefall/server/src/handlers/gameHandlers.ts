@@ -4,9 +4,9 @@ import { logger } from '@games/server-core';
 import {
   CastlefallEvent,
   CastlefallPhase,
+  type CorrectClapPayload,
   type EndRoundPayload,
-  type StartRoundPayload,
-  type WinningTeam,
+  type ResolveGuessPayload,
 } from '@games/castlefall-shared';
 import type { CastlefallRoom } from '../CastlefallRoom.js';
 
@@ -24,16 +24,22 @@ function emitRoundStarted(room: CastlefallRoom, io: Server) {
   }
 }
 
+function emitRoundUpdated(room: CastlefallRoom, io: Server) {
+  const publicState = room.getPublicRoundState();
+  if (!publicState) return;
+  io.to(room.code).emit(CastlefallEvent.RoundUpdated, { public: publicState });
+}
+
 export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
   const { io, socket, rooms, metrics } = ctx;
 
-  socket.on(CastlefallEvent.StartRound, (payload: StartRoundPayload) => {
+  socket.on(CastlefallEvent.StartRound, () => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (playerId !== room.hostId) {
-      logger.warn('game', 'Non-host attempted to start round', { room: room.code, player: playerId });
+    if (playerId !== room.hostId && room.roundsPlayed === 0) {
+      logger.warn('game', 'Non-host attempted to start first round', { room: room.code, player: playerId });
       return;
     }
     if (room.phase !== CastlefallPhase.LOBBY && room.phase !== CastlefallPhase.GAME_OVER) {
@@ -51,8 +57,7 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
       return;
     }
 
-    const timerSeconds = Math.max(0, Math.floor(Number(payload?.timerSeconds) || 0));
-    room.startRound({ timerSeconds });
+    room.startRound();
     metrics.gameStarted();
 
     emitRoundStarted(room, io);
@@ -60,7 +65,6 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     logger.info('game', 'Round started', {
       room: room.code,
       players: room.getActivePlayers().length,
-      timerSeconds,
     });
   });
 
@@ -69,31 +73,98 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (playerId !== room.hostId) {
-      logger.warn('game', 'Non-host attempted to end round', { room: room.code, player: playerId });
-      return;
-    }
     if (room.phase !== CastlefallPhase.ROUND) {
       logger.warn('game', 'endRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
-
-    const winningTeam = validateWinningTeam(payload?.winningTeam);
-    if (winningTeam === null) {
-      logger.warn('game', 'endRound rejected: invalid winningTeam', {
+    const losingPlayerId = payload?.losingPlayerId;
+    if (typeof losingPlayerId !== 'string') {
+      logger.warn('game', 'endRound rejected: missing losingPlayerId', { room: room.code });
+      return;
+    }
+    const loser = room.getPlayer(losingPlayerId);
+    if (!loser || !loser.team) {
+      logger.warn('game', 'endRound rejected: invalid losingPlayerId', {
         room: room.code,
-        value: payload?.winningTeam,
+        value: losingPlayerId,
       });
       return;
     }
 
-    room.endRound({ winningTeam });
+    room.endRound({ losingPlayerId });
     metrics.gameCompleted();
-
     const reveal = room.getFullReveal();
     io.to(room.code).emit(CastlefallEvent.RoundEnded, { reveal });
+    logger.info('game', 'Round ended via wrong clap', {
+      room: room.code,
+      losingPlayerId,
+      winningTeam: room.winningTeam,
+    });
+  });
 
-    logger.info('game', 'Round ended', { room: room.code, winningTeam });
+  socket.on(CastlefallEvent.CorrectClap, (payload: CorrectClapPayload) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    if (room.phase !== CastlefallPhase.ROUND) {
+      logger.warn('game', 'correctClap rejected: wrong phase', { room: room.code, phase: room.phase });
+      return;
+    }
+    if (room.respondingState) {
+      logger.warn('game', 'correctClap rejected: already responding', { room: room.code });
+      return;
+    }
+    const clappingPlayerId = payload?.clappingPlayerId;
+    if (typeof clappingPlayerId !== 'string') {
+      logger.warn('game', 'correctClap rejected: missing clappingPlayerId', { room: room.code });
+      return;
+    }
+    const clapper = room.getPlayer(clappingPlayerId);
+    if (!clapper || !clapper.team) {
+      logger.warn('game', 'correctClap rejected: invalid clappingPlayerId', {
+        room: room.code,
+        value: clappingPlayerId,
+      });
+      return;
+    }
+
+    room.correctClap({ clappingPlayerId });
+    emitRoundUpdated(room, io);
+    logger.info('game', 'Correct clap → response window opened', {
+      room: room.code,
+      clappingPlayerId,
+      timerSeconds: room.settings.timerSeconds,
+    });
+  });
+
+  socket.on(CastlefallEvent.ResolveGuess, (payload: ResolveGuessPayload) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    if (room.phase !== CastlefallPhase.ROUND) {
+      logger.warn('game', 'resolveGuess rejected: wrong phase', { room: room.code, phase: room.phase });
+      return;
+    }
+    if (!room.respondingState) {
+      logger.warn('game', 'resolveGuess rejected: not in responding state', { room: room.code });
+      return;
+    }
+    if (typeof payload?.guessedCorrectly !== 'boolean') {
+      logger.warn('game', 'resolveGuess rejected: missing guessedCorrectly', { room: room.code });
+      return;
+    }
+
+    room.resolveGuess({ guessedCorrectly: payload.guessedCorrectly });
+    metrics.gameCompleted();
+    const reveal = room.getFullReveal();
+    io.to(room.code).emit(CastlefallEvent.RoundEnded, { reveal });
+    logger.info('game', 'Round ended via guess resolution', {
+      room: room.code,
+      guessedCorrectly: payload.guessedCorrectly,
+      winningTeam: room.winningTeam,
+    });
   });
 
   socket.on('settings:update', (payload: { timerSeconds?: number }) => {
@@ -125,10 +196,6 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (playerId !== room.hostId) {
-      logger.warn('game', 'Non-host attempted to start new round', { room: room.code, player: playerId });
-      return;
-    }
     if (room.phase !== CastlefallPhase.GAME_OVER) {
       logger.warn('game', 'startNewRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
@@ -139,9 +206,4 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
 
     logger.info('game', 'New round prepared', { room: room.code });
   });
-}
-
-function validateWinningTeam(value: unknown): WinningTeam | null {
-  if (value === 1 || value === 2 || value === 'draw') return value;
-  return null;
 }

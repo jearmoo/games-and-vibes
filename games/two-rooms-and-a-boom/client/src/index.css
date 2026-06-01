@@ -1,0 +1,66 @@
+@import '@games/client-core/styles.css';
+
+/*
+ * Two Rooms and a Boom inherits the shared jerpi design system from
+ * client-core (Righteous display font, #080c18 base + noise overlay,
+ * .glass-card / .game-input / .btn-primary / .btn-success). Below are only
+ * this game's red/blue accent additions, layered on top.
+ */
+
+/* Faint two-room glow over the shared surface base (Castlefall does the same
+   with its own tint, keeping the shared dark tone + noise overlay). */
+body {
+  background-image:
+    radial-gradient(900px 520px at 12% -10%, rgba(37, 99, 235, 0.14), transparent 60%),
+    radial-gradient(900px 520px at 112% 6%, rgba(220, 38, 38, 0.14), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* The shared .btn-primary / .btn-success only define colour + glow; give every
+   button in this game a consistent pill shape, padding and weight so the
+   purple primary, the ghost button and the success button all match. */
+.btn-primary,
+.btn-success,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  transition:
+    filter 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.btn-primary:hover,
+.btn-success:hover {
+  filter: brightness(1.08);
+}
+
+/* Secondary button: shared surface tokens, same footprint as .btn-primary. */
+.btn-ghost {
+  background: #161c32; /* surface.raised */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.btn-ghost:hover {
+  background: #1c2440; /* surface.hover */
+}
+
+/* Compact ghost variant for inline chips (deck +/- and toolbar). */
+.btn-ghost-sm {
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+/* Scrollable role catalog without a visible scrollbar. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

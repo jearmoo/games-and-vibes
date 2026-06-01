@@ -85,6 +85,9 @@ jobs:
       - name: Build castlefall image
         run: docker build -f games/castlefall/Dockerfile -t castlefall .
 
+      - name: Build two-rooms-and-a-boom image
+        run: docker build -f games/two-rooms-and-a-boom/Dockerfile -t two-rooms-and-a-boom .
+
       - name: Build landing image
         run: docker build -f apps/landing/Dockerfile -t landing .
 

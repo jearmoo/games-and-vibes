@@ -1,5 +1,5 @@
-import { createGameServer, RoomManager, MetricsCollector, JsonFileStore } from '@games/server-core';
-import { CastlefallPhase } from '@games/castlefall-shared';
+import { createGameServer, RoomManager, MetricsCollector, JsonFileStore, logger } from '@games/server-core';
+import { CastlefallPhase, type CastlefallRejoinGame } from '@games/castlefall-shared';
 import { CastlefallRoom } from './CastlefallRoom.js';
 import { registerGameHandlers } from './handlers/gameHandlers.js';
 
@@ -17,7 +17,7 @@ const rooms = new RoomManager<CastlefallRoom>({
   roomFromJSON: (data) => CastlefallRoom.fromJSON(data),
 });
 
-function buildGameState(room: CastlefallRoom, playerId: string) {
+function buildGameState(room: CastlefallRoom, playerId: string): CastlefallRejoinGame | null {
   if (room.phase === CastlefallPhase.LOBBY) return null;
   if (room.phase === CastlefallPhase.ROUND) {
     return {
@@ -42,5 +42,11 @@ createGameServer<CastlefallRoom>({
 
   lobbyCallbacks: {
     buildGameState,
+    onMidGameJoin: (room, playerId) => {
+      logger.info('game', 'Mid-game player joined as spectator until next round', {
+        room: room.code,
+        player: room.getPlayer(playerId)?.name,
+      });
+    },
   },
 });

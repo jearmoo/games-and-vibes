@@ -8,6 +8,8 @@ import {
   type FullReveal,
   type PrivateRoundState,
   type PublicRoundState,
+  type RespondingState,
+  type RoundOutcome,
   type TeamId,
   type WinningTeam,
 } from '@games/castlefall-shared';
@@ -18,32 +20,39 @@ interface PersistedCastlefallRoom {
   hostId: string;
   lastActivity?: number;
   settings?: Partial<CastlefallSettings>;
-  players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean }>;
+  players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; points?: number }>;
   phase?: string;
   words?: string[];
   teamWords?: { 1: string; 2: string };
-  timerSeconds?: number;
-  roundStartedAt?: number;
+  respondingState?: RespondingState;
+  outcome?: RoundOutcome;
   winningTeam?: WinningTeam;
+  clappingPlayerId?: string;
+  losingPlayerId?: string;
+  roundsPlayed?: number;
 }
 
 const WORDS_PER_ROUND = 18;
+const DEFAULT_TIMER_SECONDS = 60;
 
 export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
   declare settings: CastlefallSettings;
   phase: CastlefallPhase = CastlefallPhase.LOBBY;
   words: string[] = [];
   teamWords: { 1: string; 2: string } = { 1: '', 2: '' };
-  timerSeconds: number = 0;
-  roundStartedAt?: number;
+  respondingState?: RespondingState;
+  outcome?: RoundOutcome;
   winningTeam?: WinningTeam;
+  clappingPlayerId?: string;
+  losingPlayerId?: string;
+  roundsPlayed: number = 0;
 
   constructor(code: string, hostId: string) {
-    super(code, hostId, { timerSeconds: 0 });
+    super(code, hostId, { timerSeconds: DEFAULT_TIMER_SECONDS });
   }
 
   override addPlayer(id: string, name: string, socketId: string): CastlefallPlayer {
-    const player: CastlefallPlayer = { id, name, socketId, connected: true };
+    const player: CastlefallPlayer = { id, name, socketId, connected: true, points: 0 };
     this.players.set(id, player);
     this.touch();
     return player;
@@ -51,11 +60,14 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
 
   override playerDTOs(): CastlefallPlayerDTO[] {
     const includeTeam = this.phase === CastlefallPhase.GAME_OVER;
+    const includeInRound = this.phase === CastlefallPhase.ROUND || this.phase === CastlefallPhase.GAME_OVER;
     return Array.from(this.players.values()).map((p) => ({
       id: p.id,
       name: p.name,
       connected: p.connected,
+      points: p.points,
       ...(includeTeam && p.team ? { team: p.team } : {}),
+      ...(includeInRound ? { inRound: !!p.team } : {}),
     }));
   }
 
@@ -68,6 +80,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       phase: this.phase,
       round: this.getPublicRoundState(),
       reveal: this.phase === CastlefallPhase.GAME_OVER ? this.getFullReveal() : null,
+      roundsPlayed: this.roundsPlayed,
     };
   }
 
@@ -84,12 +97,15 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
+        points: p.points,
       })),
       ...this.serializeGameState(),
     };
   }
 
-  override restorePlayers(data: { players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean }> }) {
+  override restorePlayers(data: {
+    players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; points?: number }>;
+  }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,
@@ -99,6 +115,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
+        points: typeof p.points === 'number' && Number.isFinite(p.points) ? p.points : 0,
       });
     }
   }
@@ -120,10 +137,26 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       phase: this.phase,
       words: this.words,
       teamWords: this.teamWords,
-      timerSeconds: this.timerSeconds,
-      roundStartedAt: this.roundStartedAt,
+      respondingState: this.respondingState,
+      outcome: this.outcome,
       winningTeam: this.winningTeam,
+      clappingPlayerId: this.clappingPlayerId,
+      losingPlayerId: this.losingPlayerId,
+      roundsPlayed: this.roundsPlayed,
     };
+  }
+
+  private clearRoundState(): void {
+    this.words = [];
+    this.teamWords = { 1: '', 2: '' };
+    this.respondingState = undefined;
+    this.outcome = undefined;
+    this.winningTeam = undefined;
+    this.clappingPlayerId = undefined;
+    this.losingPlayerId = undefined;
+    for (const p of this.players.values()) {
+      p.team = undefined;
+    }
   }
 
   resetToLobby(): void {
@@ -131,32 +164,94 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       if (player.removed) this.players.delete(id);
     }
     this.phase = CastlefallPhase.LOBBY;
-    this.words = [];
-    this.teamWords = { 1: '', 2: '' };
-    this.timerSeconds = 0;
-    this.roundStartedAt = undefined;
-    this.winningTeam = undefined;
-    for (const p of this.players.values()) {
-      p.team = undefined;
-    }
+    this.clearRoundState();
     this.touch();
   }
 
-  startRound({ timerSeconds }: { timerSeconds: number }): void {
+  startRound(): void {
     this.words = pickWords({ count: WORDS_PER_ROUND });
     this.teamWords = pickTeamWords({ words: this.words });
     this.assignTeams();
-    this.timerSeconds = timerSeconds;
-    this.roundStartedAt = timerSeconds > 0 ? Date.now() : undefined;
+    this.respondingState = undefined;
+    this.outcome = undefined;
     this.winningTeam = undefined;
+    this.clappingPlayerId = undefined;
+    this.losingPlayerId = undefined;
     this.phase = CastlefallPhase.ROUND;
+    this.roundsPlayed += 1;
     this.touch();
   }
 
-  endRound({ winningTeam }: { winningTeam: WinningTeam }): void {
+  /** Wrong-clap path: clapper takes -1, opposing team each +1, round ends. */
+  endRound({ losingPlayerId }: { losingPlayerId: string }): void {
+    const loser = this.players.get(losingPlayerId);
+    if (!loser?.team) {
+      logger.warn('game', 'endRound: loser has no team, ignoring', { player: losingPlayerId });
+      return;
+    }
+    const winningTeam: TeamId = loser.team === 1 ? 2 : 1;
+    this.outcome = 'wrong-clap';
     this.winningTeam = winningTeam;
+    this.clappingPlayerId = loser.id;
+    this.losingPlayerId = loser.id;
+    this.respondingState = undefined;
+    loser.points -= 1;
+    for (const p of this.players.values()) {
+      if (p.team === winningTeam) p.points += 1;
+    }
     this.phase = CastlefallPhase.GAME_OVER;
-    this.roundStartedAt = undefined;
+    this.touch();
+  }
+
+  /** Correct-clap path: start the response window for the opposing team. */
+  correctClap({ clappingPlayerId }: { clappingPlayerId: string }): void {
+    if (this.phase !== CastlefallPhase.ROUND) {
+      logger.warn('game', 'correctClap rejected: wrong phase', { phase: this.phase });
+      return;
+    }
+    if (this.respondingState) {
+      logger.warn('game', 'correctClap rejected: already responding', { room: this.code });
+      return;
+    }
+    const clapper = this.players.get(clappingPlayerId);
+    if (!clapper?.team) {
+      logger.warn('game', 'correctClap: clapper has no team, ignoring', { player: clappingPlayerId });
+      return;
+    }
+    this.respondingState = {
+      clapperId: clapper.id,
+      clapperTeam: clapper.team,
+      startedAt: Date.now(),
+      timerSeconds: this.settings.timerSeconds,
+    };
+    this.touch();
+  }
+
+  /** Resolve the opposing team's response attempt. Ends the round. */
+  resolveGuess({ guessedCorrectly }: { guessedCorrectly: boolean }): void {
+    const responding = this.respondingState;
+    if (!responding) {
+      logger.warn('game', 'resolveGuess rejected: not in responding state', { room: this.code });
+      return;
+    }
+    const clapperTeam = responding.clapperTeam;
+    const opposingTeam: TeamId = clapperTeam === 1 ? 2 : 1;
+    if (guessedCorrectly) {
+      this.outcome = 'guess-correct';
+      this.winningTeam = opposingTeam;
+      for (const p of this.players.values()) {
+        if (p.team === opposingTeam) p.points += 1;
+      }
+    } else {
+      this.outcome = 'guess-wrong';
+      this.winningTeam = clapperTeam;
+      for (const p of this.players.values()) {
+        if (p.team === clapperTeam) p.points += 1;
+      }
+    }
+    this.clappingPlayerId = responding.clapperId;
+    this.respondingState = undefined;
+    this.phase = CastlefallPhase.GAME_OVER;
     this.touch();
   }
 
@@ -165,14 +260,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       if (player.removed) this.players.delete(id);
     }
     this.phase = CastlefallPhase.LOBBY;
-    this.words = [];
-    this.teamWords = { 1: '', 2: '' };
-    this.timerSeconds = 0;
-    this.roundStartedAt = undefined;
-    this.winningTeam = undefined;
-    for (const p of this.players.values()) {
-      p.team = undefined;
-    }
+    this.clearRoundState();
     this.touch();
   }
 
@@ -214,8 +302,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     return {
       phase: this.phase,
       words: [...this.words],
-      timerSeconds: this.timerSeconds,
-      roundStartedAt: this.roundStartedAt,
+      ...(this.respondingState ? { responding: { ...this.respondingState } } : {}),
     };
   }
 
@@ -231,12 +318,15 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
 
   getFullReveal(): FullReveal {
     return {
+      outcome: this.outcome ?? 'wrong-clap',
       winningTeam: this.winningTeam ?? 'draw',
+      clappingPlayerId: this.clappingPlayerId ?? '',
+      ...(this.losingPlayerId ? { losingPlayerId: this.losingPlayerId } : {}),
       team1Word: this.teamWords[1],
       team2Word: this.teamWords[2],
       players: Array.from(this.players.values())
         .filter((p): p is CastlefallPlayer & { team: TeamId } => !!p.team)
-        .map((p) => ({ id: p.id, name: p.name, team: p.team })),
+        .map((p) => ({ id: p.id, name: p.name, team: p.team, points: p.points })),
     };
   }
 
@@ -260,9 +350,12 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     }
     room.words = d.words ?? [];
     room.teamWords = d.teamWords ?? { 1: '', 2: '' };
-    room.timerSeconds = d.timerSeconds ?? 0;
-    room.roundStartedAt = d.roundStartedAt;
+    room.respondingState = d.respondingState;
+    room.outcome = d.outcome;
     room.winningTeam = d.winningTeam;
+    room.clappingPlayerId = d.clappingPlayerId;
+    room.losingPlayerId = d.losingPlayerId;
+    room.roundsPlayed = d.roundsPlayed ?? 0;
     room.restorePlayers({ players: d.players });
     return room;
   }

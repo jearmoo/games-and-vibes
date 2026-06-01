@@ -1,7 +1,13 @@
 import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
 import { CastlefallEvent, CastlefallPhase } from '@games/castlefall-shared';
-import type { CastlefallRoomDTO, RoundEndedPayload, RoundStartedPayload } from '@games/castlefall-shared';
+import type {
+  CastlefallRejoinGame,
+  CastlefallRoomDTO,
+  RoundEndedPayload,
+  RoundStartedPayload,
+  RoundUpdatedPayload,
+} from '@games/castlefall-shared';
 import { clientLogger } from '@games/client-core';
 
 function saveSession() {
@@ -75,19 +81,44 @@ socket.on(
     roomCode: string;
     playerId: string;
     room: CastlefallRoomDTO;
-    game: {
-      publicRound: import('@games/castlefall-shared').PublicRoundState | null;
-      privateRound: import('@games/castlefall-shared').PrivateRoundState | null;
-      reveal: import('@games/castlefall-shared').FullReveal | null;
-    } | null;
+    game: CastlefallRejoinGame | null;
   }) => {
     clearAutoReconnecting();
+    const me = room.players.find((p) => p.id === playerId);
+    const currentName = useGameStore.getState().playerName;
     useGameStore.setState({
       roomCode,
       playerId,
       room,
-      publicRound: game?.publicRound ?? null,
-      privateRound: game?.privateRound ?? null,
+      playerName: me?.name || currentName,
+      publicRound: game?.public ?? null,
+      privateRound: game?.private ?? null,
+      reveal: game?.reveal ?? null,
+    });
+    saveSession();
+    window.history.replaceState(null, '', `/${roomCode}`);
+  },
+);
+
+socket.on(
+  'room:mid-game-joined',
+  ({
+    roomCode,
+    playerId,
+    room,
+    game,
+  }: {
+    roomCode: string;
+    playerId: string;
+    room: CastlefallRoomDTO;
+    game: CastlefallRejoinGame | null;
+  }) => {
+    useGameStore.setState({
+      roomCode,
+      playerId,
+      room,
+      publicRound: game?.public ?? null,
+      privateRound: game?.private ?? null,
       reveal: game?.reveal ?? null,
     });
     saveSession();
@@ -148,6 +179,13 @@ socket.on(CastlefallEvent.RoundStarted, ({ public: pub, private: priv }: RoundSt
     privateRound: priv,
     reveal: null,
     room: s.room ? { ...s.room, phase: CastlefallPhase.ROUND, round: pub, reveal: null } : s.room,
+  }));
+});
+
+socket.on(CastlefallEvent.RoundUpdated, ({ public: pub }: RoundUpdatedPayload) => {
+  useGameStore.setState((s) => ({
+    publicRound: pub,
+    room: s.room ? { ...s.room, round: pub } : s.room,
   }));
 });
 
