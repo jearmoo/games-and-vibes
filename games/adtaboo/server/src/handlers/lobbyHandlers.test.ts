@@ -186,4 +186,70 @@ describe('adtaboo lobby handlers', () => {
       expect(room.teamNames.A).toBe('Team A');
     });
   });
+
+  describe('taboo-master:set', () => {
+    function seedTeams(room: AdtabooRoom) {
+      room.getPlayer('host1')!.team = 'A';
+      room.getPlayer('p2')!.team = 'A';
+      room.getPlayer('p3')!.team = 'B';
+      room.getPlayer('p4')!.team = 'B';
+    }
+
+    it('allows host to set a TM', () => {
+      const room = setupRoom(rooms, ctx);
+      seedTeams(room);
+
+      socket.trigger('taboo-master:set', { team: 'A', masterId: 'p2' });
+
+      expect(room.tabooMasters.A).toBe('p2');
+      expect(io.getRoomEvent(room.code, 'taboo-master:updated')).toHaveLength(1);
+    });
+
+    it('allows current TM to pass the role to a teammate', () => {
+      const room = setupRoom(rooms, ctx);
+      seedTeams(room);
+      room.setTabooMaster('A', 'p2');
+      ctx.setPlayerId('p2');
+
+      socket.trigger('taboo-master:set', { team: 'A', masterId: 'host1' });
+
+      expect(room.tabooMasters.A).toBe('host1');
+      expect(io.getRoomEvent(room.code, 'taboo-master:updated')).toHaveLength(1);
+    });
+
+    it("rejects TM of one team trying to reassign the opposing team's TM", () => {
+      const room = setupRoom(rooms, ctx);
+      seedTeams(room);
+      room.setTabooMaster('A', 'p2');
+      room.setTabooMaster('B', 'p3');
+      ctx.setPlayerId('p2');
+
+      socket.trigger('taboo-master:set', { team: 'B', masterId: 'p4' });
+
+      expect(room.tabooMasters.B).toBe('p3');
+      expect(io.getRoomEvent(room.code, 'taboo-master:updated')).toHaveLength(0);
+    });
+
+    it('rejects a non-host, non-TM player', () => {
+      const room = setupRoom(rooms, ctx);
+      seedTeams(room);
+      room.setTabooMaster('A', 'host1');
+      ctx.setPlayerId('p2');
+
+      socket.trigger('taboo-master:set', { team: 'A', masterId: 'p2' });
+
+      expect(room.tabooMasters.A).toBe('host1');
+      expect(io.getRoomEvent(room.code, 'taboo-master:updated')).toHaveLength(0);
+    });
+
+    it("rejects setting a TM to a player who isn't on the named team", () => {
+      const room = setupRoom(rooms, ctx);
+      seedTeams(room);
+
+      socket.trigger('taboo-master:set', { team: 'A', masterId: 'p3' });
+
+      expect(room.tabooMasters.A).toBeNull();
+      expect(io.getRoomEvent(room.code, 'taboo-master:updated')).toHaveLength(0);
+    });
+  });
 });
