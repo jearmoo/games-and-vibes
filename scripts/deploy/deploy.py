@@ -115,10 +115,21 @@ def deploy(target_sha: str) -> int:
     else:
         log_and_print('No deployed commit found (first deploy or labels missing).')
 
-    log_and_print(f'Checking out {target_sha}...')
-    result = run_cmd(['git', 'checkout', target_sha])
+    # Fetch then reset --hard rather than `git checkout`: the latter aborts on
+    # dirty working-tree edits, *and* silently preserves them when the target
+    # commit doesn't touch those files — letting uncommitted local changes
+    # smuggle themselves into the build. Reset --hard makes the deploy
+    # idempotent against whatever state the working tree happens to be in.
+    log_and_print(f'Fetching origin...')
+    result = run_cmd(['git', 'fetch', 'origin'])
     if result.returncode != 0:
-        log_and_print(f'git checkout failed (exit {result.returncode})')
+        log_and_print(f'git fetch failed (exit {result.returncode})')
+        return result.returncode
+
+    log_and_print(f'Resetting to {target_sha}...')
+    result = run_cmd(['git', 'reset', '--hard', target_sha])
+    if result.returncode != 0:
+        log_and_print(f'git reset --hard failed (exit {result.returncode})')
         return result.returncode
 
     log_and_print('Rebuilding all services...')
