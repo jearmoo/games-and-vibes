@@ -103,11 +103,21 @@ export function registerAdtabooLobbyHandlers(ctx: SocketContext<AdtabooRoom>) {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
-    if (!room || room.hostId !== playerId) return;
+    if (!room) return;
+    const isHost = room.hostId === playerId;
+    // The current TM may pass their own role to another teammate (but not change the
+    // opposing team's TM). Host retains full control over both slots.
+    const isCurrentTm = room.tabooMasters[team] === playerId;
+    if (!isHost && !isCurrentTm) return;
     if (room.setTabooMaster(team, masterId)) {
       io.to(room.code).emit('taboo-master:updated', { tabooMasters: room.tabooMasters });
       const masterName = room.getPlayer(masterId)?.name;
-      logger.info('room', 'Taboo master set', { room: room.code, team, master: masterName });
+      logger.info('room', 'Taboo master set', {
+        room: room.code,
+        team,
+        master: masterName,
+        by: isHost ? 'host' : 'previous-tm',
+      });
 
       // If swapped during cluing, send the new TM the taboo words/buzzes they need
       const cluingTeam = room.getCluingTeam();

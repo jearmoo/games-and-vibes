@@ -365,6 +365,8 @@ function TeamColumn({
   onSetMaster: (id: string) => void;
   isDragActive: boolean;
 }) {
+  // The current TM of this team may pass the role to another teammate; host may set either team.
+  const canSetMaster = isHost || (myId === tabooMasterId && myTeam === team);
   const teamName = useTeamName(team);
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(teamName);
@@ -453,13 +455,13 @@ function TeamColumn({
             actions={
               <span className="flex items-center gap-1.5 shrink-0">
                 {p.id === tabooMasterId && <span className="text-accent text-[10px] font-medium">TM</span>}
-                {isHost && p.id !== tabooMasterId && (
+                {canSetMaster && p.id !== tabooMasterId && (
                   <button
                     data-testid={`lobby-set-tm-${p.name}`}
                     onClick={() => onSetMaster(p.id)}
                     className="text-[10px] text-gray-400 hover:text-white transition-colors"
                   >
-                    Set TM
+                    {isHost ? 'Set TM' : 'Pass TM'}
                   </button>
                 )}
                 {isHost && p.id !== hostId && (
