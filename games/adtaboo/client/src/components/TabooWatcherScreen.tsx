@@ -90,7 +90,11 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
                 <div key={word} className="flex items-center gap-0.5">
                   <button
                     data-testid={`taboo-buzz-${word}`}
-                    onClick={() => socket.emit('taboo:buzz', { tabooWord: word })}
+                    // volatile: drop taps issued while disconnected instead of buffering them.
+                    // Prevents replay storms when a flaky TM socket flushes a backlog on reconnect
+                    // (observed: 11+ buzzes for one word stamped within the same ms → -13 turn).
+                    // Late corrections are still possible via the ReviewScreen's review:undo-buzz.
+                    onClick={() => socket.volatile.emit('taboo:buzz', { tabooWord: word })}
                     className={`px-3 py-2 min-h-[44px] rounded-l-xl text-sm font-medium transition-all active:scale-[0.95] border ${
                       isBuzzed
                         ? 'bg-team-b/30 text-team-b-glow border-team-b/40'
@@ -103,7 +107,8 @@ export default function TabooWatcherScreen({ isMaster }: { isMaster: boolean }) 
                   {isBuzzed && (
                     <button
                       data-testid={`taboo-undo-buzz-${word}`}
-                      onClick={() => socket.emit('taboo:undo-buzz', { tabooWord: word })}
+                      // volatile: mirror taboo:buzz so reconnect doesn't replay stale undo taps either.
+                      onClick={() => socket.volatile.emit('taboo:undo-buzz', { tabooWord: word })}
                       className="px-2 py-2 min-h-[44px] rounded-r-xl bg-surface-raised text-gray-400 hover:text-white text-xs border border-white/10 transition-colors"
                     >
                       −
