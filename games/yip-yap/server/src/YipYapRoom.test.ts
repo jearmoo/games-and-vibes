@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { CastlefallRoom } from './CastlefallRoom.js';
-import { CastlefallPhase, type CastlefallRejoinGame, type TeamId } from '@games/castlefall-shared';
+import { YipYapRoom } from './YipYapRoom.js';
+import { YipYapPhase, type YipYapRejoinGame, type TeamId } from '@games/yip-yap-shared';
 
 // Mirror of buildGameState in src/index.ts — kept in sync manually.
 // TODO: extract buildGameState from index.ts so tests can import it directly.
-function buildGameState({ room, playerId }: { room: CastlefallRoom; playerId: string }): CastlefallRejoinGame | null {
-  if (room.phase === CastlefallPhase.LOBBY) return null;
-  if (room.phase === CastlefallPhase.ROUND) {
+function buildGameState({ room, playerId }: { room: YipYapRoom; playerId: string }): YipYapRejoinGame | null {
+  if (room.phase === YipYapPhase.LOBBY) return null;
+  if (room.phase === YipYapPhase.ROUND) {
     return {
       phase: room.phase,
       public: room.getPublicRoundState(),
@@ -19,8 +19,8 @@ function buildGameState({ room, playerId }: { room: CastlefallRoom; playerId: st
   };
 }
 
-function makeRoom({ playerCount }: { playerCount: number }): CastlefallRoom {
-  const room = new CastlefallRoom('TEST', 'p1');
+function makeRoom({ playerCount }: { playerCount: number }): YipYapRoom {
+  const room = new YipYapRoom('TEST', 'p1');
   for (let i = 1; i <= playerCount; i++) {
     room.addPlayer(`p${i}`, `Player${i}`, `sock${i}`);
   }
@@ -28,14 +28,14 @@ function makeRoom({ playerCount }: { playerCount: number }): CastlefallRoom {
 }
 
 /** Force a known team split: p1+p2 → team 1, p3+p4 → team 2. */
-function forceTeams(room: CastlefallRoom): void {
+function forceTeams(room: YipYapRoom): void {
   room.getPlayer('p1')!.team = 1;
   room.getPlayer('p2')!.team = 1;
   room.getPlayer('p3')!.team = 2;
   room.getPlayer('p4')!.team = 2;
 }
 
-describe('CastlefallRoom', () => {
+describe('YipYapRoom', () => {
   describe('startRound', () => {
     it('picks 18 distinct words from the wordbank', () => {
       const room = makeRoom({ playerCount: 4 });
@@ -135,7 +135,7 @@ describe('CastlefallRoom', () => {
       for (const playerDto of dto.players) {
         expect(playerDto.team).toBeUndefined();
       }
-      expect(dto.phase).toBe(CastlefallPhase.ROUND);
+      expect(dto.phase).toBe(YipYapPhase.ROUND);
       expect(dto.round).not.toBeNull();
       expect(dto.round!.words).toHaveLength(18);
     });
@@ -186,7 +186,7 @@ describe('CastlefallRoom', () => {
 
       room.endRound({ losingPlayerId: 'p3' });
 
-      expect(room.phase).toBe(CastlefallPhase.GAME_OVER);
+      expect(room.phase).toBe(YipYapPhase.GAME_OVER);
       expect(room.outcome).toBe('wrong-clap');
       expect(room.winningTeam).toBe(1);
       expect(room.clappingPlayerId).toBe('p3');
@@ -220,7 +220,7 @@ describe('CastlefallRoom', () => {
 
       room.endRound({ losingPlayerId: 'late' });
 
-      expect(room.phase).toBe(CastlefallPhase.ROUND);
+      expect(room.phase).toBe(YipYapPhase.ROUND);
       expect(room.outcome).toBeUndefined();
       expect(room.winningTeam).toBeUndefined();
       for (const p of room.players.values()) expect(p.points).toBe(0);
@@ -238,7 +238,7 @@ describe('CastlefallRoom', () => {
       room.correctClap({ clappingPlayerId: 'p1' });
       const after = Date.now();
 
-      expect(room.phase).toBe(CastlefallPhase.ROUND);
+      expect(room.phase).toBe(YipYapPhase.ROUND);
       expect(room.respondingState).toBeDefined();
       expect(room.respondingState!.clapperId).toBe('p1');
       expect(room.respondingState!.clapperTeam).toBe(1);
@@ -285,7 +285,7 @@ describe('CastlefallRoom', () => {
       room.correctClap({ clappingPlayerId: 'p1' });
       room.resolveGuess({ guessedCorrectly: true });
 
-      expect(room.phase).toBe(CastlefallPhase.GAME_OVER);
+      expect(room.phase).toBe(YipYapPhase.GAME_OVER);
       expect(room.outcome).toBe('guess-correct');
       expect(room.winningTeam).toBe(2);
       expect(room.clappingPlayerId).toBe('p1');
@@ -305,7 +305,7 @@ describe('CastlefallRoom', () => {
       room.correctClap({ clappingPlayerId: 'p1' });
       room.resolveGuess({ guessedCorrectly: false });
 
-      expect(room.phase).toBe(CastlefallPhase.GAME_OVER);
+      expect(room.phase).toBe(YipYapPhase.GAME_OVER);
       expect(room.outcome).toBe('guess-wrong');
       expect(room.winningTeam).toBe(1);
       expect(room.clappingPlayerId).toBe('p1');
@@ -320,7 +320,7 @@ describe('CastlefallRoom', () => {
       room.startRound();
       forceTeams(room);
       room.resolveGuess({ guessedCorrectly: true });
-      expect(room.phase).toBe(CastlefallPhase.ROUND);
+      expect(room.phase).toBe(YipYapPhase.ROUND);
       expect(room.outcome).toBeUndefined();
     });
   });
@@ -375,7 +375,7 @@ describe('CastlefallRoom', () => {
       forceTeams(room);
       room.endRound({ losingPlayerId: 'p1' });
       room.startNewRound();
-      expect(room.phase).toBe(CastlefallPhase.LOBBY);
+      expect(room.phase).toBe(YipYapPhase.LOBBY);
       expect(room.teamWords).toEqual({ 1: '', 2: '' });
       expect(room.outcome).toBeUndefined();
       expect(room.winningTeam).toBeUndefined();
@@ -407,9 +407,9 @@ describe('CastlefallRoom', () => {
       const room = makeRoom({ playerCount: 2 });
       const json = room.toJSON() as Record<string, unknown>;
       json.phase = 'bogus-phase';
-      expect(() => CastlefallRoom.fromJSON(json)).not.toThrow();
-      const restored = CastlefallRoom.fromJSON(json);
-      expect(restored.phase).toBe(CastlefallPhase.LOBBY);
+      expect(() => YipYapRoom.fromJSON(json)).not.toThrow();
+      const restored = YipYapRoom.fromJSON(json);
+      expect(restored.phase).toBe(YipYapPhase.LOBBY);
     });
   });
 
@@ -422,9 +422,9 @@ describe('CastlefallRoom', () => {
       const expectedTeamWords = { ...room.teamWords };
 
       const json = room.toJSON();
-      const restored = CastlefallRoom.fromJSON(json);
+      const restored = YipYapRoom.fromJSON(json);
 
-      expect(restored.phase).toBe(CastlefallPhase.ROUND);
+      expect(restored.phase).toBe(YipYapPhase.ROUND);
       expect(restored.teamWords).toEqual(expectedTeamWords);
       expect(restored.respondingState).toBeUndefined();
       expect(restored.outcome).toBeUndefined();
@@ -440,9 +440,9 @@ describe('CastlefallRoom', () => {
       forceTeams(room);
       room.endRound({ losingPlayerId: 'p3' });
 
-      const restored = CastlefallRoom.fromJSON(room.toJSON());
+      const restored = YipYapRoom.fromJSON(room.toJSON());
 
-      expect(restored.phase).toBe(CastlefallPhase.GAME_OVER);
+      expect(restored.phase).toBe(YipYapPhase.GAME_OVER);
       expect(restored.outcome).toBe('wrong-clap');
       expect(restored.winningTeam).toBe(1);
       expect(restored.clappingPlayerId).toBe('p3');
@@ -460,9 +460,9 @@ describe('CastlefallRoom', () => {
       room.correctClap({ clappingPlayerId: 'p1' });
       const startedAt = room.respondingState!.startedAt;
 
-      const restored = CastlefallRoom.fromJSON(room.toJSON());
+      const restored = YipYapRoom.fromJSON(room.toJSON());
 
-      expect(restored.phase).toBe(CastlefallPhase.ROUND);
+      expect(restored.phase).toBe(YipYapPhase.ROUND);
       expect(restored.respondingState).toBeDefined();
       expect(restored.respondingState!.clapperId).toBe('p1');
       expect(restored.respondingState!.clapperTeam).toBe(1);
@@ -476,9 +476,9 @@ describe('CastlefallRoom', () => {
       room.correctClap({ clappingPlayerId: 'p1' });
       room.resolveGuess({ guessedCorrectly: true });
 
-      const restored = CastlefallRoom.fromJSON(room.toJSON());
+      const restored = YipYapRoom.fromJSON(room.toJSON());
 
-      expect(restored.phase).toBe(CastlefallPhase.GAME_OVER);
+      expect(restored.phase).toBe(YipYapPhase.GAME_OVER);
       expect(restored.outcome).toBe('guess-correct');
       expect(restored.winningTeam).toBe(2);
       expect(restored.clappingPlayerId).toBe('p1');
@@ -495,7 +495,7 @@ describe('CastlefallRoom', () => {
       const expectedTeams = new Map<string, TeamId | undefined>();
       for (const p of room.players.values()) expectedTeams.set(p.id, p.team);
 
-      const restored = CastlefallRoom.fromJSON(room.toJSON());
+      const restored = YipYapRoom.fromJSON(room.toJSON());
 
       for (const [id, team] of expectedTeams) {
         expect(restored.getPlayer(id)!.team).toBe(team);
@@ -509,7 +509,7 @@ describe('CastlefallRoom', () => {
       const expectedTeams = new Map<string, TeamId | undefined>();
       for (const p of room.players.values()) expectedTeams.set(p.id, p.team);
 
-      const restored = CastlefallRoom.fromJSON(room.toJSON());
+      const restored = YipYapRoom.fromJSON(room.toJSON());
 
       for (const [id, team] of expectedTeams) {
         const priv = restored.getPrivateRoundStateFor({ playerId: id });
@@ -570,7 +570,7 @@ describe('CastlefallRoom', () => {
       forceTeams(room);
       room.endRound({ losingPlayerId: 'p3' });
 
-      const restored = CastlefallRoom.fromJSON(room.toJSON());
+      const restored = YipYapRoom.fromJSON(room.toJSON());
 
       expect(restored.getPlayer('p1')!.points).toBe(1);
       expect(restored.getPlayer('p2')!.points).toBe(1);
@@ -589,7 +589,7 @@ describe('CastlefallRoom', () => {
       expect(room.getPrivateRoundStateFor({ playerId: 'late' })).toBeNull();
       const payload = buildGameState({ room, playerId: 'late' });
       expect(payload).not.toBeNull();
-      expect(payload!.phase).toBe(CastlefallPhase.ROUND);
+      expect(payload!.phase).toBe(YipYapPhase.ROUND);
       expect(payload!.public).toBeTruthy();
       expect(payload!.public!.words).toHaveLength(18);
       expect(payload!.private).toBeNull();
@@ -626,7 +626,7 @@ describe('CastlefallRoom', () => {
       room.startRound();
       const payload = buildGameState({ room, playerId: 'p1' });
       expect(payload).not.toBeNull();
-      expect(payload!.phase).toBe(CastlefallPhase.ROUND);
+      expect(payload!.phase).toBe(YipYapPhase.ROUND);
       expect(Object.prototype.hasOwnProperty.call(payload, 'public')).toBe(true);
       expect(Object.prototype.hasOwnProperty.call(payload, 'private')).toBe(true);
       expect(Object.prototype.hasOwnProperty.call(payload, 'publicRound')).toBe(false);
@@ -644,7 +644,7 @@ describe('CastlefallRoom', () => {
       room.endRound({ losingPlayerId: 'p1' });
       const payload = buildGameState({ room, playerId: 'p1' });
       expect(payload).not.toBeNull();
-      expect(payload!.phase).toBe(CastlefallPhase.GAME_OVER);
+      expect(payload!.phase).toBe(YipYapPhase.GAME_OVER);
       expect(Object.prototype.hasOwnProperty.call(payload, 'reveal')).toBe(true);
       expect(Object.prototype.hasOwnProperty.call(payload, 'public')).toBe(false);
       expect(Object.prototype.hasOwnProperty.call(payload, 'private')).toBe(false);

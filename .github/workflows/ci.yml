@@ -82,8 +82,8 @@ jobs:
       - name: Build odes-for-cave-men image
         run: docker build -f games/odes-for-cave-men/Dockerfile -t odes-for-cave-men .
 
-      - name: Build castlefall image
-        run: docker build -f games/castlefall/Dockerfile -t castlefall .
+      - name: Build yip-yap image
+        run: docker build -f games/yip-yap/Dockerfile -t yip-yap .
 
       - name: Build two-rooms-and-a-boom image
         run: docker build -f games/two-rooms-and-a-boom/Dockerfile -t two-rooms-and-a-boom .

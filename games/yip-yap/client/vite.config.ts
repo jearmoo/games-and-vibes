@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const serverPort = process.env.CASTLEFALL_SERVER_PORT || '4070';
+const serverPort = process.env.YIPYAP_SERVER_PORT || '4070';
 
 export default defineConfig({
   plugins: [react()],
