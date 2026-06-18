@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { clearSession as clearStoredSession } from '@games/client-core';
 import { DecryptoEvent, DecryptoPhase } from '@games/decrypto-shared';
 import type {
   ClueContent,
@@ -81,7 +82,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   leaveRoom: () => {
     socket.emit('room:leave');
-    localStorage.removeItem(SESSION_KEY);
+    clearStoredSession(SESSION_KEY);
     set({ ...initialState, connected: get().connected, playerName: get().playerName });
     window.history.replaceState(null, '', '/');
   },

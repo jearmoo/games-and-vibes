@@ -1,26 +1,43 @@
-import { clientLogger } from '@games/client-core';
+import { clientLogger, clearSession as clearStoredSession, saveSession as persistSession } from '@games/client-core';
 import { DecryptoEvent } from '@games/decrypto-shared';
 import type { DecryptoPlayerDTO, DecryptoRejoinGame, DecryptoRoomDTO, PrivateTeamState } from '@games/decrypto-shared';
-import { autoReconnecting, clearAutoReconnecting, socket } from './socket';
+import { autoReconnecting, clearAutoReconnecting, reconnectExpired, socket } from './socket';
 import { initialState, SESSION_KEY, useGameStore } from './store';
+import { RECONNECT_SESSION_TTL_MS, SESSION_REFRESH_INTERVAL_MS } from './constants';
 
 function saveSession() {
   const { roomCode, playerId, playerName } = useGameStore.getState();
   if (roomCode && playerId) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode, playerId, playerName }));
+    persistSession(SESSION_KEY, {
+      roomCode,
+      playerId,
+      playerName,
+      expiresAt: Date.now() + RECONNECT_SESSION_TTL_MS,
+    });
   }
 }
 
 function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
+  clearStoredSession(SESSION_KEY);
 }
 
 function requestPrivateState() {
   socket.emit(DecryptoEvent.RequestPrivateState);
 }
 
+window.setInterval(() => {
+  const { connected, roomCode, playerId } = useGameStore.getState();
+  if (connected && roomCode && playerId) saveSession();
+}, SESSION_REFRESH_INTERVAL_MS);
+
 socket.on('connect', () => {
   useGameStore.setState({ connected: true });
+  if (reconnectExpired.current) {
+    reconnectExpired.current = false;
+    useGameStore.setState({ ...initialState, connected: true });
+    useGameStore.getState().setError('Your saved room expired. Please rejoin.');
+    window.history.replaceState(null, '', '/');
+  }
 });
 
 socket.on('disconnect', () => {
@@ -147,10 +164,12 @@ socket.on('room:host-updated', ({ hostId }: { hostId: string }) => {
 
 socket.on(DecryptoEvent.StateUpdated, ({ room }: { room: DecryptoRoomDTO }) => {
   useGameStore.setState({ room });
+  saveSession();
 });
 
 socket.on(DecryptoEvent.PrivateStateUpdated, ({ private: privateState }: { private: PrivateTeamState }) => {
   useGameStore.setState({ privateState });
+  saveSession();
 });
 
 socket.on('room:error', ({ message }: { message: string }) => {

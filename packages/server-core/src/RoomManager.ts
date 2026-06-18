@@ -12,6 +12,7 @@ export interface RoomManagerOptions<T extends BaseRoom> {
   roomFactory: (code: string, hostId: string) => T;
   roomFromJSON: (data: any) => T;
   snapshotPath?: string;
+  staleTimeoutMs?: number;
 }
 
 export class RoomManager<T extends BaseRoom> {
@@ -23,12 +24,14 @@ export class RoomManager<T extends BaseRoom> {
   private roomFactory: (code: string, hostId: string) => T;
   private roomFromJSON: (data: any) => T;
   private snapshotPath: string | null;
+  private staleTimeoutMs: number;
 
   constructor(opts: RoomManagerOptions<T>) {
     this.store = opts.store ?? null;
     this.roomFactory = opts.roomFactory;
     this.roomFromJSON = opts.roomFromJSON;
     this.snapshotPath = opts.snapshotPath ?? null;
+    this.staleTimeoutMs = opts.staleTimeoutMs ?? STALE_TIMEOUT;
     this.cleanupInterval = setInterval(() => this.cleanup(), 60_000);
     this.snapshotInterval = setInterval(() => this.snapshot(), 60_000);
   }
@@ -96,7 +99,7 @@ export class RoomManager<T extends BaseRoom> {
   private cleanup(): void {
     const now = Date.now();
     for (const [code, room] of this.rooms) {
-      if (now - room.lastActivity > STALE_TIMEOUT) {
+      if (now - room.lastActivity > this.staleTimeoutMs) {
         this.deleteRoom(code);
       }
     }

@@ -6,6 +6,11 @@ import { assertStoredEmbeddingAssetsAvailable } from './keywordEmbeddings.genera
 
 const ROOMS_PATH = process.env.ROOMS_PATH || '/data/rooms.json';
 const METRICS_PATH = process.env.METRICS_PATH || '/data/metrics.json';
+const DEFAULT_ROOM_STALE_TIMEOUT_MS = 60 * 60 * 1000;
+const ROOM_STALE_TIMEOUT_MS = Number.parseInt(
+  process.env.ROOM_STALE_TIMEOUT_MS || String(DEFAULT_ROOM_STALE_TIMEOUT_MS),
+  10,
+);
 const embeddingAssets = assertStoredEmbeddingAssetsAvailable();
 
 logger.info('game', 'Verified Decrypto embedding assets', embeddingAssets);
@@ -17,6 +22,7 @@ const metrics = new MetricsCollector(metricsStore);
 const rooms = new RoomManager<DecryptoRoom>({
   store: roomStore,
   snapshotPath: ROOMS_PATH,
+  staleTimeoutMs: Number.isFinite(ROOM_STALE_TIMEOUT_MS) ? ROOM_STALE_TIMEOUT_MS : DEFAULT_ROOM_STALE_TIMEOUT_MS,
   roomFactory: (code, hostId) => new DecryptoRoom(code, hostId),
   roomFromJSON: (data) => DecryptoRoom.fromJSON(data),
 });

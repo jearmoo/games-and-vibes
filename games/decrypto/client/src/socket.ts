@@ -1,9 +1,12 @@
 import { createSocket } from '@games/client-core';
-import { SESSION_KEY } from './constants';
+import { RECONNECT_SESSION_TTL_MS, SESSION_KEY } from './constants';
 
-const { socket, autoReconnecting } = createSocket({ sessionKey: SESSION_KEY, reconnectTimeoutMs: 130_000 });
+const { socket, autoReconnecting, reconnectExpired } = createSocket({
+  sessionKey: SESSION_KEY,
+  reconnectTimeoutMs: RECONNECT_SESSION_TTL_MS,
+});
 
-export { socket, autoReconnecting };
+export { socket, autoReconnecting, reconnectExpired };
 export function clearAutoReconnecting() {
   autoReconnecting.current = false;
 }

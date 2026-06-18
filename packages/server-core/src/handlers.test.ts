@@ -116,6 +116,20 @@ describe('lobbyHandlers', () => {
     expect(player.connected).toBe(true);
   });
 
+  it('room:join refreshes room activity when a player reconnects', () => {
+    socket.trigger('room:create', { playerName: 'Alice' });
+    const { roomCode, playerId } = socket.getLastEmitted('room:created')![0] as any;
+
+    const room = rooms.getRoom(roomCode)!;
+    const player = room.getPlayer(playerId)!;
+    player.connected = false;
+    room.lastActivity = 1;
+
+    socket.trigger('room:join', { roomCode, playerName: 'Alice', sessionId: playerId });
+    expect(socket.getLastEmitted('room:rejoined')).toBeDefined();
+    expect(room.lastActivity).toBeGreaterThan(1);
+  });
+
   it('room:join rejects new player when game active and no onMidGameJoin', () => {
     socket.trigger('room:create', { playerName: 'Alice' });
     const { roomCode } = socket.getLastEmitted('room:created')![0] as any;
