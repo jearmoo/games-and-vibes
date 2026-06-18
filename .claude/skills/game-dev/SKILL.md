@@ -41,11 +41,11 @@ server-core           Base types + room infrastructure
 
 ### Port Allocation
 
-| Game    | Server Port | Subdomain           |
-|---------|-------------|---------------------|
-| adtaboo | 4040        | adtaboo.jerpi.org   |
-| landing | 3000        | games.jerpi.org     |
-| (next)  | 4041+       | <name>.jerpi.org    |
+| Game    | Server Port | Subdomain         |
+| ------- | ----------- | ----------------- |
+| adtaboo | 4040        | adtaboo.jerpi.org |
+| landing | 3000        | games.jerpi.org   |
+| (next)  | 4041+       | <name>.jerpi.org  |
 
 ## Layer Guide
 
@@ -59,6 +59,7 @@ Always start with type definitions. They are the contract between server and cli
 - **Game types** (`games/<name>/shared/src/index.ts`): Extend base types from `@games/server-core`. Define `GamePlayer extends BasePlayer` with game-specific fields, `GamePhase` const + type, `GameState`, game-specific settings, game DTO.
 
 Pattern for GamePhase:
+
 ```typescript
 export const GamePhase = {
   LOBBY: 'LOBBY',
@@ -73,6 +74,7 @@ export type GamePhase = (typeof GamePhase)[keyof typeof GamePhase];
 The room class owns all game state. Handlers never store state — they call room methods.
 
 Extend `BaseRoom<GamePlayer>` and implement 5 abstract methods:
+
 - `onPlayerRemoved(playerId)` — Clean up role assignments (e.g., clear clue-giver)
 - `isGameActive()` — True during gameplay phases, false in lobby/game-over
 - `getPhase()` — Return current GamePhase string or null
@@ -80,12 +82,14 @@ Extend `BaseRoom<GamePlayer>` and implement 5 abstract methods:
 - `resetToLobby()` — Clear all game state, return to lobby
 
 Optionally override:
+
 - `clearTimer()` — Cancel any active setTimeout (no-op by default)
 - `addPlayer()` — Extend to add game-specific player fields
 - `playerDTOs()` — Extend to include game-specific fields in the DTO
 - `toJSON()` / `restorePlayers()` — Extend to serialize/restore game-specific player fields
 
 Also implement:
+
 - `static fromJSON(data)` — Factory that calls `restorePlayers(data)` and restores game state
 - `toDTO()` — Override to include game-specific fields, delegate base fields to `super.toDTO()`
 
@@ -96,6 +100,7 @@ Reference: `games/adtaboo/server/src/AdtabooRoom.ts`
 Organize by game phase. Each handler file exports a `register*Handlers(ctx: SocketContext<GameRoom>)` function.
 
 Every socket handler follows this skeleton:
+
 ```typescript
 socket.on('event:name', (payload) => {
   const playerId = ctx.getPlayerId();
@@ -111,6 +116,7 @@ socket.on('event:name', (payload) => {
 ```
 
 Typical handler files:
+
 - `lobbyHandlers.ts` — Game-specific lobby events (settings, game start, role assignment, team joining)
 - `gameHandlers.ts` — Core gameplay events
 - Additional files per phase as needed (e.g., `setupHandlers.ts`)
@@ -118,25 +124,28 @@ Typical handler files:
 ### 4. Server Entry Point
 
 Wire everything together with `createGameServer()`:
+
 ```typescript
 createGameServer<GameRoom>({
   gameName: 'Game Name',
-  rooms,              // RoomManager<GameRoom> with factory + fromJSON
-  metrics,            // MetricsCollector with JsonFileStore
+  rooms, // RoomManager<GameRoom> with factory + fromJSON
+  metrics, // MetricsCollector with JsonFileStore
   registerGameHandlers: (ctx) => {
     // ctx includes io, socket, rooms, metrics, getPlayerId, setPlayerId
     registerMyLobbyHandlers(ctx);
     registerMyGameHandlers(ctx);
   },
   lobbyCallbacks: {
-    buildGameState,     // Return game state for reconnecting players
+    buildGameState, // Return game state for reconnecting players
     onPlayerSocketJoin, // Extra socket room joins on reconnect (e.g., team rooms)
   },
   connectionCallbacks: {
-    onPlayerDisconnect,   // Game-specific disconnect cleanup
-    onBeforePlayerLeave,  // Clean up extra socket rooms on leave (e.g., team rooms)
+    onPlayerDisconnect, // Game-specific disconnect cleanup
+    onBeforePlayerLeave, // Clean up extra socket rooms on leave (e.g., team rooms)
   },
-  onRoomRestored: (room, io) => { /* restore timers after server restart */ },
+  onRoomRestored: (room, io) => {
+    /* restore timers after server restart */
+  },
 });
 ```
 
@@ -147,6 +156,7 @@ Reference: `games/adtaboo/server/src/index.ts`
 Flat store mirroring server state. One file, no nested stores.
 
 Pattern:
+
 - State fields match server DTO + UI-only state (connected, error)
 - Setter actions for each field or group
 - Derived hooks exported alongside: `useMyPlayer()`, `useMyRole()`, `useIsHost()`, `useTeamPlayers(team)`
@@ -164,6 +174,7 @@ Reference: `games/adtaboo/client/src/socketListeners.ts`
 ### 7. Client UI — Phase Routing
 
 `App.tsx` uses a `ScreenRouter` that switches on `phase`:
+
 ```typescript
 function ScreenRouter({ phase }: { phase: string }) {
   switch (phase) {
@@ -175,6 +186,18 @@ function ScreenRouter({ phase }: { phase: string }) {
 ```
 
 Use `AnimatePresence` from framer-motion for phase transitions. Show `ScoreBoard` above the phase content during gameplay. Show `ReconnectBanner` when disconnected.
+
+### Overlay UI — Sheets
+
+Use the shared `Sheet` component from `@games/client-core` as the default for any user-triggered overlay UI:
+
+- Player pickers (e.g., "Who clapped?")
+- Confirmations and quick decisions
+- Info panels and help content
+
+`Sheet` is a bottom-sheet with backdrop blur, slide-up animation, and tap-outside-to-close. It feels native on mobile and keeps the game's context visible behind the overlay. Prefer it over inline replacement UIs or centered modals for mobile-first game flows.
+
+Reference: `games/castlefall/client/src/components/RoundScreen.tsx` (clap picker / outcome sheets)
 
 Reference: `games/adtaboo/client/src/App.tsx`
 
@@ -209,6 +232,7 @@ These rules prevent the bugs and inconsistencies that break multiplayer games:
 Use `/game-test` for comprehensive guidance on writing and running tests. It covers unit tests (room class, handlers, persistence, client utils), e2e tests (Playwright), the full `@games/test-utils` API, and a new-game testing checklist.
 
 Quick commands:
+
 ```bash
 pnpm -r --filter='!*-e2e' test   # All unit tests
 pnpm run typecheck                # Cross-package type errors
@@ -217,6 +241,7 @@ pnpm run typecheck                # Cross-package type errors
 ## Validation Checklist
 
 Before committing any game change:
+
 ```bash
 pnpm run typecheck    # Catches cross-package type errors
 pnpm run lint         # ESLint across all packages

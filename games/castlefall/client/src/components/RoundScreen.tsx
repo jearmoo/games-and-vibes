@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Timer } from '@games/client-core';
+import { Timer, Sheet } from '@games/client-core';
 import { useGameStore } from '../store';
 
 type ClapStep = 'picking-clapper' | 'picking-outcome';
@@ -258,77 +258,94 @@ export default function RoundScreen() {
               </button>
             </div>
           </div>
-        ) : clapStep === 'picking-outcome' && pickedClapper ? (
-          <div className="space-y-3 glass-card rounded-2xl border border-castle-gold/40 bg-castle-gold/10 p-4">
-            <div className="text-center">
-              <div className="text-castle-gold-text text-[10px] tracking-[0.3em] uppercase mb-1">Clapper</div>
-              <div className="font-display text-2xl tracking-wider text-white break-words">{pickedClapper.name}</div>
-              <div className="text-gray-300 text-xs tracking-wider mt-2">Did they guess the word?</div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+        ) : (
+          <>
+            <Sheet open={clapStep === 'picking-clapper'} onClose={() => setClapStep(null)} title="Who clapped?">
+              <div className="grid grid-cols-2 gap-2">
+                {inRoundPlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setPickedClapper({ id: p.id, name: p.name });
+                      setClapStep('picking-outcome');
+                    }}
+                    disabled={submitting}
+                    className="px-3 py-3 rounded-xl bg-surface-raised border border-white/10 hover:border-castle-gold/60 hover:bg-castle-gold/10 text-white font-medium text-sm disabled:opacity-50 active:scale-[0.97] transition-all text-left truncate"
+                  >
+                    {p.name}
+                    {p.id === myId && (
+                      <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(YOU)</span>
+                    )}
+                  </button>
+                ))}
+              </div>
               <button
-                onClick={handleSubmitWrong}
-                disabled={submitting}
-                className="px-3 py-3 rounded-xl bg-red-900/30 border border-red-500/40 hover:border-red-500/70 hover:bg-red-900/40 text-white font-display tracking-wider disabled:opacity-50 active:scale-[0.97] transition-all"
+                onClick={() => setClapStep(null)}
+                className="w-full py-3 mt-2 text-gray-500 hover:text-white text-xs tracking-wider transition-colors"
               >
-                <div className="text-sm">Wrong</div>
-                <div className="text-[10px] tracking-widest text-red-200 mt-1">-1 clapper · +1 other team</div>
+                Cancel
               </button>
-              <button
-                onClick={handleSubmitRight}
-                disabled={submitting}
-                className="px-3 py-3 rounded-xl bg-castle-gold/20 border border-castle-gold/50 hover:border-castle-gold/80 hover:bg-castle-gold/30 text-white font-display tracking-wider disabled:opacity-50 active:scale-[0.97] transition-all"
-              >
-                <div className="text-sm">Right</div>
-                <div className="text-[10px] tracking-widest text-castle-gold-text mt-1">other team races to guess</div>
-              </button>
-            </div>
-            <button
-              onClick={() => {
+            </Sheet>
+
+            <Sheet
+              open={clapStep === 'picking-outcome' && !!pickedClapper}
+              onClose={() => {
                 setClapStep('picking-clapper');
                 setPickedClapper(null);
               }}
-              disabled={submitting}
-              className="w-full py-2 text-gray-500 hover:text-white text-xs tracking-wider transition-colors"
+              title="Did they guess the word?"
             >
-              Back
-            </button>
-          </div>
-        ) : clapStep === 'picking-clapper' ? (
-          <div className="space-y-3">
-            <div className="text-gray-300 text-xs tracking-widest uppercase text-center">Who clapped?</div>
-            <div className="grid grid-cols-2 gap-2">
-              {inRoundPlayers.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setPickedClapper({ id: p.id, name: p.name });
-                    setClapStep('picking-outcome');
-                  }}
-                  disabled={submitting}
-                  className="px-3 py-3 rounded-xl bg-surface-raised border border-white/10 hover:border-castle-gold/60 hover:bg-castle-gold/10 text-white font-medium text-sm disabled:opacity-50 active:scale-[0.97] transition-all text-left truncate"
-                >
-                  {p.name}
-                  {p.id === myId && (
-                    <span className="ml-1 text-castle-gold-text text-[10px] tracking-widest">(YOU)</span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setClapStep(null)}
-              className="w-full py-2 text-gray-500 hover:text-white text-xs tracking-wider transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setClapStep('picking-clapper')}
-            className="w-full py-4 rounded-2xl btn-primary text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all"
-          >
-            Someone Clapped
-          </button>
+              {pickedClapper && (
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <div className="font-display text-2xl tracking-wider text-white break-words">
+                      {pickedClapper.name}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleSubmitWrong}
+                      disabled={submitting}
+                      className="px-3 py-3 rounded-xl bg-red-900/30 border border-red-500/40 hover:border-red-500/70 hover:bg-red-900/40 text-white font-display tracking-wider disabled:opacity-50 active:scale-[0.97] transition-all"
+                    >
+                      <div className="text-sm">Wrong</div>
+                      <div className="text-[10px] tracking-widest text-red-200 mt-1">-1 clapper · +1 other team</div>
+                    </button>
+                    <button
+                      onClick={handleSubmitRight}
+                      disabled={submitting}
+                      className="px-3 py-3 rounded-xl bg-castle-gold/20 border border-castle-gold/50 hover:border-castle-gold/80 hover:bg-castle-gold/30 text-white font-display tracking-wider disabled:opacity-50 active:scale-[0.97] transition-all"
+                    >
+                      <div className="text-sm">Right</div>
+                      <div className="text-[10px] tracking-widest text-castle-gold-text mt-1">
+                        other team races to guess
+                      </div>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setClapStep('picking-clapper');
+                      setPickedClapper(null);
+                    }}
+                    disabled={submitting}
+                    className="w-full py-2 text-gray-500 hover:text-white text-xs tracking-wider transition-colors"
+                  >
+                    Back
+                  </button>
+                </div>
+              )}
+            </Sheet>
+
+            {/* Main action button when no sheet is open */}
+            {!clapStep && (
+              <button
+                onClick={() => setClapStep('picking-clapper')}
+                className="w-full py-4 rounded-2xl btn-primary text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all"
+              >
+                Someone Clapped
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
