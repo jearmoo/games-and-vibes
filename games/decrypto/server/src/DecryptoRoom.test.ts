@@ -331,7 +331,7 @@ describe('DecryptoRoom', () => {
     }
   });
 
-  it('requires two connected players on each team to start word setup', () => {
+  it('requires two available players on each team to start word setup', () => {
     const room = new DecryptoRoom('TEST', 'p1');
     addPlayer(room, 'p1', 'Rhea', 'red');
     addPlayer(room, 'p2', 'Ravi', 'red');
@@ -339,7 +339,7 @@ describe('DecryptoRoom', () => {
 
     expect(room.startGame()).toEqual({
       ok: false,
-      message: 'Need 2 connected players on each team.',
+      message: 'Need 2 players on each team.',
     });
 
     addPlayer(room, 'p4', 'Bo', 'blue');

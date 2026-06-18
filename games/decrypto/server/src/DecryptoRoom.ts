@@ -568,7 +568,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       return { ok: false, message: 'The game has already started.' };
     }
     if (!this.canStart()) {
-      return { ok: false, message: 'Need 2 connected players on each team.' };
+      return { ok: false, message: 'Need 2 players on each team.' };
     }
 
     this.scores = cloneScores(EMPTY_SCORES);

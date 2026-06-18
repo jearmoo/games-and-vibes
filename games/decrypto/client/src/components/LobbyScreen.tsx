@@ -105,9 +105,7 @@ export default function LobbyScreen() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-gray-400 text-xs tracking-widest uppercase">Players</div>
-            <div className="text-gray-500 text-xs mt-1">
-              Decrypto needs at least 2 connected players on each channel.
-            </div>
+            <div className="text-gray-500 text-xs mt-1">Decrypto needs at least 2 players on each channel.</div>
           </div>
           <div className="text-right font-display text-white tracking-wider">
             {players.length}
@@ -272,7 +270,6 @@ function TeamColumn({
             <span className="min-w-0 truncate">
               {p.name}
               {p.id === myId && <span className="ml-1 text-[10px] text-cyan-200 tracking-widest">(YOU)</span>}
-              {!p.connected && <span className="ml-1 text-[10px] text-rose-300/80">offline</span>}
             </span>
             <span className="flex items-center gap-2 shrink-0">
               {p.id === hostId && (

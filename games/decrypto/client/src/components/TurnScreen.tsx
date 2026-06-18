@@ -194,9 +194,7 @@ function MobileScoreSummary({ scores, players }: { scores: ScoreBoard; players: 
                   {teamPlayers.map((player) => (
                     <span
                       key={player.id}
-                      className={`min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 ${
-                        player.connected ? 'text-gray-300' : 'text-gray-500'
-                      }`}
+                      className="min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 text-gray-300"
                     >
                       {player.name}
                     </span>
