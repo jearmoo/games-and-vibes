@@ -529,9 +529,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       return { ok: false, message: 'Unlock your team words before regenerating.' };
     }
     const existing = [...this.keywords.red, ...this.keywords.blue];
-    const currentWord = this.keywords[team][index];
-    const withoutCurrent = existing.filter((word) => word !== currentWord);
-    this.keywords[team][index] = pickReplacementKeyword(withoutCurrent);
+    this.keywords[team][index] = pickReplacementKeyword(existing);
     this.touch();
     return { ok: true };
   }
