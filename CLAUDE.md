@@ -45,6 +45,7 @@ pnpm monorepo for a multi-game party platform. Three layers: shared packages, ga
   - `sessionStore` — localStorage session persistence
   - `clientLogger` — structured browser logging (category-based, level-gated)
   - Tailwind preset, shared CSS (glassmorphism), Timer/ReconnectBanner/ErrorToast components
+  - `Sheet` — reusable bottom-sheet overlay with backdrop blur; use as the default for any user-triggered overlay UI (pickers, confirmations, info panels). Prefer `Sheet` over inline replacements or centered modals for mobile-first game flows.
 - **`test-utils/`** — Shared test infrastructure:
   - `TestRoom` — concrete BaseRoom for testing abstract class
   - `MockStore` — in-memory RoomStore/MetricsStore
