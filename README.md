@@ -8,6 +8,7 @@ A multiplayer party game platform — real-time browser games you play with frie
 - **[Charades](games/charades/)** — Act it out without saying a word. Live at [charades.jerpi.org](https://charades.jerpi.org).
 - **[Odes for Cave Men](games/odes-for-cave-men/)** — Explain big ideas with only small words. Live at [odes.jerpi.org](https://odes.jerpi.org).
 - **[Castlefall](games/castlefall/)** — Two secret teams. One betrayal away. Live at [castlefall.jerpi.org](https://castlefall.jerpi.org).
+- **[Decrypto](games/decrypto/)** — Transmit clues and intercept the other team's code. Live at [decrypto.jerpi.org](https://decrypto.jerpi.org).
 
 ## Tech Stack
 
@@ -30,6 +31,7 @@ games/
   charades/             # Charades (server + client)
   odes-for-cave-men/    # Odes for Cave Men (server + client + shared)
   castlefall/           # Castlefall (server + client + shared)
+  decrypto/             # Decrypto (server + client + shared)
 
 apps/
   landing/         # games.jerpi.org hub page
@@ -45,6 +47,7 @@ pnpm run dev:adtaboo  # Run Adtaboo server (4040) + client (5173)
 pnpm run dev:charades # Run Charades server (4050) + client (5173)
 pnpm run dev:cave     # Run Odes for Cave Men server (4060) + client (5173)
 pnpm run dev:castlefall # Run Castlefall server (4070) + client (5173)
+pnpm run dev:decrypto # Run Decrypto server (4090) + client (5176)
 pnpm run dev:landing  # Run landing page (3000)
 ```
 
@@ -74,6 +77,7 @@ docker compose up -d --build
 | Charades | 4050 | charades.jerpi.org |
 | Odes for Cave Men | 4060 | odes.jerpi.org |
 | Castlefall | 4070 | castlefall.jerpi.org |
+| Decrypto | 4090 | decrypto.jerpi.org |
 | Landing | 3000 | games.jerpi.org |
 
 ## Environment Variables

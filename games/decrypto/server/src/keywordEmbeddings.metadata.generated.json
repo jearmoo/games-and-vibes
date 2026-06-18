@@ -1,0 +1,54 @@
+{
+  "provider": "sentence-transformers",
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "vocabularySize": 150000,
+  "targetVocabularySize": 440,
+  "generatedAt": "2026-06-18T20:11:26.501Z",
+  "source": {
+    "library": "wordfreq",
+    "language": "en",
+    "filterSettings": {
+      "requestedLimit": 150000,
+      "sourcePoolSize": null,
+      "wordfreqWordlist": "best",
+      "fullWordlist": true,
+      "scanned": 164527,
+      "accepted": 150000,
+      "zipfFrequencyFloor": 1.5,
+      "minLength": 3,
+      "maxLength": 18,
+      "alphabeticOnly": true,
+      "allowHyphen": false,
+      "lowercaseOnly": true,
+      "profanityAdultTermsExcluded": false,
+      "stopwordCount": 325,
+      "rejected": {
+        "format": 13482,
+        "length": 755,
+        "stopword": 290,
+        "frequency": 0,
+        "duplicate": 0
+      }
+    },
+    "forcedTargetTerms": 440,
+    "forcedSupplementalTerms": 1,
+    "targetEmbeddingInput": "Decrypto target terms are stored by normalized display word, but embedded from getEmbeddingInput(card); exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs."
+  },
+  "embedding": {
+    "dimensions": 384,
+    "normalized": true,
+    "truncateDimension": null,
+    "dimensionalityReduction": "none; full model output dimensions are stored",
+    "quantization": "int8/127",
+    "runtimeVectorFormat": "keywordEmbeddings.int8.bin loaded lazily as an Int8Array; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized"
+  },
+  "assets": {
+    "vectors": "keywordEmbeddings.int8.bin",
+    "terms": "keywordTerms.generated.json",
+    "metadata": "keywordEmbeddings.metadata.generated.json"
+  },
+  "scoring": {
+    "rawCosine": "cosine approximation over normalized Sentence Transformers embeddings after int8 quantization",
+    "transformation": "raw cosine is linearly calibrated from stored target-word distribution floor/ceiling, clamped to 0..1, multiplied by a target-neighbor rank weight, then capped below 1 for non-exact embedding matches; non-neighbor unrelated words can intentionally score 0"
+  }
+}

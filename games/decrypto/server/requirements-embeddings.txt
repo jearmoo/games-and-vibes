@@ -1,0 +1,2 @@
+sentence-transformers>=5,<6
+wordfreq>=3,<4

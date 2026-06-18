@@ -13,7 +13,7 @@ Two files, split so deploy logic can be updated without restarting the service:
 
 - **Python stdlib only** — no pip packages, runs on bare system Python 3.13+
 - **No auth needed** — n8n webhook workflow handles authentication upstream
-- **IMAGES list** — `["adversarial-taboo", "charades", "odes-for-cave-men", "castlefall", "two-rooms-and-a-boom", "games-landing"]` in `deploy.py`, must match `container_name` values in `docker-compose.yml`
+- **IMAGES list** — `["adversarial-taboo", "charades", "odes-for-cave-men", "castlefall", "two-rooms-and-a-boom", "decrypto", "games-landing"]` in `deploy.py`, must match `container_name` values in `docker-compose.yml`
 - **Commit-targeted deploys** — every request must include `?ref=<sha>`. The script deploys exactly that commit (via `git fetch && git reset --hard`), not HEAD. Reset rather than checkout so dirty working-tree edits on the deploy host can neither block a deploy nor silently smuggle themselves into the build.
 
 ## Deploy Ordering

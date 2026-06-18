@@ -1,0 +1,29 @@
+{
+  "name": "@games/decrypto-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PORT=4090 ROOMS_PATH=../data/rooms.json METRICS_PATH=../data/metrics.json tsx watch src/index.ts",
+    "build": "tsc && node scripts/copy-embedding-assets.mjs",
+    "generate:embeddings": "tsx scripts/generate-keyword-embeddings.ts",
+    "setup:embeddings": "python3 -m venv .venv && .venv/bin/pip install -r requirements-embeddings.txt",
+    "start": "node dist/index.js",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@games/decrypto-shared": "workspace:*",
+    "@games/server-core": "workspace:*",
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0"
+  },
+  "devDependencies": {
+    "@games/test-utils": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

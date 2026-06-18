@@ -1,0 +1,897 @@
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { Timer } from '@games/client-core';
+import {
+  CODE_DIGITS,
+  DecryptoPhase,
+  type ClueContent,
+  type Code,
+  type CodeDigit,
+  type DecryptoPlayerDTO,
+  type GuessKind,
+  type PublicTeamTurnState,
+  type ScoreBoard,
+  type TeamId,
+} from '@games/decrypto-shared';
+import { useGameStore } from '../store';
+import {
+  ClueBank,
+  ClueView,
+  CodeDisplay,
+  DisclosureChevron,
+  KeywordPanel,
+  ScoreStrip,
+  SignalHistory,
+  TEAM_STYLES,
+  TeamBadge,
+  clueHasContent,
+  clueListLabel,
+  createTextClue,
+  formatCode,
+  otherTeam,
+  possessiveName,
+} from './shared';
+
+function createEmptyClues(): ClueContent[] {
+  return [createTextClue(), createTextClue(), createTextClue()];
+}
+
+export default function TurnScreen() {
+  const room = useGameStore((s) => s.room);
+  const privateState = useGameStore((s) => s.privateState);
+  const [clues, setClues] = useState<ClueContent[]>(createEmptyClues);
+  const [submitting, setSubmitting] = useState(false);
+
+  const turn = room?.turn;
+  const myTeam = privateState?.team;
+  const myTurn = myTeam && turn ? turn.teams[myTeam] : undefined;
+  const turnKey = myTurn ? `${turn?.round}:${myTurn.team}:${myTurn.encryptorId}` : '';
+
+  useEffect(() => {
+    setClues(createEmptyClues());
+    setSubmitting(false);
+  }, [turnKey]);
+
+  if (!room || !turn) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-500 font-display tracking-wider">
+        Loading transmission...
+      </div>
+    );
+  }
+
+  const phase = room.phase;
+  const clueTimer = phase === DecryptoPhase.CLUE ? turn.clueTimer : undefined;
+
+  return (
+    <div
+      className={`h-full flex flex-col px-5 pb-5 gap-4 animate-fade-in overflow-y-auto max-w-6xl mx-auto w-full ${
+        clueTimer ? 'pt-32 sm:pt-36' : 'pt-5'
+      }`}
+    >
+      {clueTimer && <FixedClueTimer endTime={clueTimer.expiresAt} duration={clueTimer.durationSeconds} />}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">
+        <div className="space-y-4 min-w-0">
+          <HeaderPanel />
+          <KeywordPanel team={privateState?.team} keywords={privateState?.keywords} />
+
+          {phase === DecryptoPhase.CLUE ? (
+            <CluePhase clues={clues} setClues={setClues} submitting={submitting} setSubmitting={setSubmitting} />
+          ) : (
+            <GuessPhase />
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <ClueBank myTeam={privateState?.team} keywords={privateState?.keywords} history={room.clueHistory} />
+          <HistoryPanel />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeaderPanel() {
+  const room = useGameStore((s) => s.room)!;
+  const turn = room.turn!;
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const phaseLabel = room.phase === DecryptoPhase.CLUE ? 'Simultaneous clues' : 'Decode transmissions';
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [room.phase, turn.round]);
+
+  return (
+    <>
+      <div className="glass-card overflow-hidden rounded-xl border border-white/10 p-1.5 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileOpen((value) => !value)}
+          aria-expanded={mobileOpen}
+          className="group flex h-8 w-full items-center justify-between gap-2 rounded-lg px-2 text-left transition-[background-color,box-shadow] hover:bg-white/5 active:bg-white/5 active:shadow-[inset_0_2px_10px_rgba(0,0,0,0.35)]"
+        >
+          <span className="font-display text-sm tracking-wider text-white transition-transform duration-150 group-active:translate-y-px">
+            Round {turn.round}
+          </span>
+          <span className="sr-only">{mobileOpen ? 'Collapse round details' : 'Expand round details'}</span>
+          <span className="transition-transform duration-150 group-active:translate-y-px">
+            <DisclosureChevron open={mobileOpen} />
+          </span>
+        </button>
+        <div
+          aria-hidden={!mobileOpen}
+          className={`grid transition-[grid-template-rows,opacity] duration-[200ms] ease-out ${
+            mobileOpen
+              ? 'visible grid-rows-[1fr] opacity-100'
+              : 'invisible pointer-events-none grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div
+            className={`min-h-0 overflow-hidden transition-transform duration-[200ms] ease-out ${
+              mobileOpen ? 'translate-y-0' : '-translate-y-3'
+            }`}
+          >
+            <div className="mt-1.5 rounded-lg border border-white/10 bg-black/15 p-2">
+              <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
+              <MobileScoreSummary scores={room.scores} players={room.players} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="glass-card hidden rounded-2xl border border-white/10 p-4 sm:block">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Round {turn.round}</div>
+            <div className="font-display text-3xl tracking-wider text-white">{phaseLabel}</div>
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
+              {(['red', 'blue'] as TeamId[]).map((team) => {
+                const teamTurn = turn.teams[team];
+                const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
+                return (
+                  <span key={team} className={`rounded-lg border ${TEAM_STYLES[team].border} px-2 py-1`}>
+                    <span className={TEAM_STYLES[team].text}>{TEAM_STYLES[team].label}</span>
+                    <span className="text-gray-500"> by </span>
+                    <span className="text-white">{encryptor?.name ?? 'Unknown'}</span>
+                    {teamTurn.clueLocked && <span className="text-emerald-300"> locked</span>}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <div className="w-full min-w-0">
+            <ScoreStrip scores={room.scores} />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MobileScoreSummary({ scores, players }: { scores: ScoreBoard; players: DecryptoPlayerDTO[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {(['red', 'blue'] as TeamId[]).map((team) => {
+        const style = TEAM_STYLES[team];
+        const teamPlayers = players.filter((player) => player.team === team);
+        return (
+          <div key={team} className={`min-w-0 rounded-xl border ${style.border} ${style.bg} px-3 py-2`}>
+            <div className={`font-display tracking-wider ${style.text}`}>{style.label}</div>
+            <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+              <div>
+                <span className="block text-gray-500 uppercase tracking-widest">Ints</span>
+                <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
+                <span className="text-gray-600"> /2</span>
+              </div>
+              <div>
+                <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Miscoms</span>
+                <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
+                <span className="text-gray-600"> /2</span>
+              </div>
+            </div>
+            <div className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-snug text-gray-300">
+              {teamPlayers.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {teamPlayers.map((player) => (
+                    <span
+                      key={player.id}
+                      className={`min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 ${
+                        player.connected ? 'text-gray-300' : 'text-gray-500'
+                      }`}
+                    >
+                      {player.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-gray-600">No players</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function FixedClueTimer({ endTime, duration }: { endTime: number; duration: number }) {
+  return (
+    <div className="fixed left-1/2 top-3 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-amber-300/25 bg-surface/92 p-3 shadow-[0_16px_45px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="mb-2 text-center text-[10px] tracking-[0.3em] text-amber-200 uppercase">Clue timer</div>
+      <Timer endTime={endTime} duration={duration} />
+    </div>
+  );
+}
+
+function CluePhase({
+  clues,
+  setClues,
+  submitting,
+  setSubmitting,
+}: {
+  clues: ClueContent[];
+  setClues: (clues: ClueContent[]) => void;
+  submitting: boolean;
+  setSubmitting: (submitting: boolean) => void;
+}) {
+  const room = useGameStore((s) => s.room)!;
+  const privateState = useGameStore((s) => s.privateState);
+  const myTeam = privateState?.team;
+  const myTurn = myTeam ? room.turn?.teams[myTeam] : undefined;
+  const isEncryptor = privateState?.isEncryptor ?? false;
+  const locked = myTurn?.clueLocked ?? false;
+  const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSubmitting(false);
+  }, [locked, setSubmitting]);
+
+  if (!myTeam || !myTurn) {
+    return <StatusPanel text="You joined mid-game and are spectating until the next lobby." />;
+  }
+
+  const encryptor = room.players.find((p) => p.id === myTurn.encryptorId);
+
+  if (!isEncryptor) {
+    return (
+      <div className="space-y-4">
+        <TeamClueStatus />
+        <StatusPanel
+          text={
+            locked
+              ? `${encryptor?.name ?? 'Your encryptor'} locked in. Waiting for the clue timer or the other team.`
+              : `${encryptor?.name ?? 'Your encryptor'} is writing clues for your team.`
+          }
+        />
+      </div>
+    );
+  }
+
+  const updateClue = (index: number, clue: ClueContent) => {
+    const next = [...clues];
+    next[index] = clue;
+    setClues(next);
+    if (!locked) useGameStore.getState().saveClues(next);
+  };
+
+  const handleLock = () => {
+    if (submitting || clues.some((clue) => !clueHasContent(clue))) return;
+    setSubmitting(true);
+    useGameStore.getState().submitClues(clues);
+    setTimeout(() => setSubmitting(false), 5000);
+  };
+
+  const canLock = !submitting && clues.every(clueHasContent);
+  const editingDrawing = drawingIndex !== null ? clues[drawingIndex] : undefined;
+
+  const handleUnlock = () => {
+    if (submitting) return;
+    setSubmitting(true);
+    useGameStore.getState().unlockClues();
+    setTimeout(() => setSubmitting(false), 1200);
+  };
+
+  return (
+    <div className="space-y-4">
+      <TeamClueStatus />
+      <div className="glass-card rounded-2xl border border-amber-400/30 bg-amber-500/5 p-4 space-y-4">
+        <div className="text-center">
+          <div className="text-amber-300 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret code</div>
+          <CodeDisplay code={privateState?.code} />
+        </div>
+
+        <div className="space-y-3">
+          {privateState?.code?.map((digit, index) => {
+            const clue = clues[index] ?? createTextClue();
+            const textMode = clue.kind === 'text';
+            return (
+              <div key={`${digit}-${index}`} className="block">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-gray-400 text-xs tracking-widest uppercase">
+                    Clue {index + 1} for #{digit}
+                  </span>
+                  <span className="text-gray-500 text-xs truncate">
+                    {privateState.keywords?.[digit - 1] ?? 'Keyword'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => updateClue(index, createTextClue(textMode ? clue.text : ''))}
+                    className={`py-2 rounded-xl border text-xs font-semibold tracking-wider transition-all disabled:opacity-40 ${
+                      textMode
+                        ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
+                        : 'border-white/10 bg-surface-raised text-gray-300 hover:bg-surface-hover'
+                    }`}
+                  >
+                    Text
+                  </button>
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      updateClue(index, { kind: 'drawing', dataUrl: clue.kind === 'drawing' ? clue.dataUrl : '' });
+                      setDrawingIndex(index);
+                    }}
+                    className={`py-2 rounded-xl border text-xs font-semibold tracking-wider transition-all disabled:opacity-40 ${
+                      !textMode
+                        ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
+                        : 'border-white/10 bg-surface-raised text-gray-300 hover:bg-surface-hover'
+                    }`}
+                  >
+                    Draw
+                  </button>
+                </div>
+                {textMode ? (
+                  <input
+                    value={clue.text}
+                    onChange={(event) => updateClue(index, createTextClue(event.target.value))}
+                    maxLength={32}
+                    disabled={locked}
+                    className="game-input w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 disabled:opacity-50"
+                    placeholder="One clue"
+                  />
+                ) : (
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-2">
+                    <ClueView clue={clue} imageClassName="!h-20" />
+                    <button
+                      type="button"
+                      disabled={locked}
+                      onClick={() => setDrawingIndex(index)}
+                      className="mt-2 w-full py-2 rounded-lg bg-surface-raised hover:bg-surface-hover border border-white/10 text-gray-300 text-[11px] tracking-widest uppercase disabled:opacity-40"
+                    >
+                      {clue.dataUrl ? 'Edit Drawing' : 'Open Drawing Editor'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {locked ? (
+          <button
+            onClick={handleUnlock}
+            disabled={submitting}
+            className="w-full py-4 rounded-2xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-white font-display tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
+          >
+            {submitting ? 'Unlocking...' : 'Unlock Clues'}
+          </button>
+        ) : (
+          <button
+            onClick={handleLock}
+            disabled={!canLock}
+            className="btn-decrypto w-full py-4 rounded-2xl text-white font-display tracking-wider disabled:opacity-30 disabled:shadow-none active:scale-[0.97] transition-all"
+          >
+            {submitting ? 'Locking...' : 'Lock Clues'}
+          </button>
+        )}
+      </div>
+      {drawingIndex !== null && editingDrawing?.kind === 'drawing' && (
+        <DrawingClueModal
+          initialDataUrl={editingDrawing.dataUrl}
+          onSave={(dataUrl) => {
+            updateClue(drawingIndex, { kind: 'drawing', dataUrl });
+            setDrawingIndex(null);
+          }}
+          onClose={() => setDrawingIndex(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TeamClueStatus() {
+  const room = useGameStore((s) => s.room)!;
+  const turn = room.turn!;
+
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      {(['red', 'blue'] as TeamId[]).map((team) => {
+        const teamTurn = turn.teams[team];
+        const style = TEAM_STYLES[team];
+        const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
+        return (
+          <div key={team} className={`min-w-0 rounded-2xl border ${style.border} ${style.bg} p-3 sm:p-4`}>
+            <div className={`font-display text-base sm:text-lg tracking-wider ${style.text}`}>{style.label}</div>
+            <div className="mt-1 truncate text-xs text-gray-400 sm:text-sm">{encryptor?.name ?? 'Unknown'}</div>
+            <div
+              className={`mt-2 text-[10px] tracking-widest uppercase sm:mt-3 sm:text-xs ${
+                teamTurn.clueLocked ? 'text-emerald-300' : 'text-gray-500'
+              }`}
+            >
+              {teamTurn.clueLocked ? 'Locked in' : 'Writing'}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DrawingClueModal({
+  initialDataUrl,
+  onSave,
+  onClose,
+}: {
+  initialDataUrl: string;
+  onSave: (dataUrl: string) => void;
+  onClose: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = useRef(false);
+  const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    if (!initialDataUrl) return;
+    const image = new Image();
+    image.onload = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    };
+    image.src = initialDataUrl;
+  }, [initialDataUrl]);
+
+  const pointForEvent = (event: PointerEvent<HTMLCanvasElement>) => {
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  };
+
+  const startDrawing = (event: PointerEvent<HTMLCanvasElement>) => {
+    const context = event.currentTarget.getContext('2d');
+    if (!context) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drawingRef.current = true;
+    const point = pointForEvent(event);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+  };
+
+  const draw = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    const context = event.currentTarget.getContext('2d');
+    if (!context) return;
+    const point = pointForEvent(event);
+    context.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    context.strokeStyle = '#f8fafc';
+    context.lineWidth = tool === 'eraser' ? 28 : 7;
+    context.lineTo(point.x, point.y);
+    context.stroke();
+  };
+
+  const stopDrawing = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const save = () => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hasInk = pixels.some((value, index) => index % 4 === 3 && value > 0);
+    onSave(hasInk ? canvas.toDataURL('image/png') : '');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 p-4 flex items-center justify-center">
+      <div className="w-full max-w-4xl glass-card rounded-2xl border border-white/10 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-display text-2xl tracking-wider text-white">Draw clue</div>
+            <div className="text-gray-500 text-xs mt-1">Sketch, erase, clear, then save.</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setTool('pen')}
+              className={`px-3 py-2 rounded-xl border text-xs tracking-widest uppercase ${
+                tool === 'pen'
+                  ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
+                  : 'border-white/10 bg-surface-raised text-gray-300'
+              }`}
+            >
+              Pen
+            </button>
+            <button
+              type="button"
+              onClick={() => setTool('eraser')}
+              className={`px-3 py-2 rounded-xl border text-xs tracking-widest uppercase ${
+                tool === 'eraser'
+                  ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
+                  : 'border-white/10 bg-surface-raised text-gray-300'
+              }`}
+            >
+              Eraser
+            </button>
+            <button
+              type="button"
+              onClick={clear}
+              className="px-3 py-2 rounded-xl bg-surface-raised border border-white/10 text-gray-300 text-xs tracking-widest uppercase"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <canvas
+          ref={canvasRef}
+          width={720}
+          height={420}
+          onPointerDown={startDrawing}
+          onPointerMove={draw}
+          onPointerUp={stopDrawing}
+          onPointerCancel={stopDrawing}
+          className="w-full aspect-[12/7] rounded-2xl bg-black/35 border border-white/10 touch-none cursor-crosshair"
+        />
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-3 rounded-xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-gray-300 font-display tracking-wider"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            className="btn-success py-3 rounded-xl text-white font-display tracking-wider"
+          >
+            Save Drawing
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuessPhase() {
+  const room = useGameStore((s) => s.room)!;
+  const privateState = useGameStore((s) => s.privateState);
+  const turn = room.turn!;
+  const myTeam = privateState?.team;
+  const activeTeam = turn.activeGuessTeam;
+  const playerId = useGameStore((s) => s.playerId);
+  const [showOtherTeamClues, setShowOtherTeamClues] = useState(false);
+
+  useEffect(() => {
+    setShowOtherTeamClues(false);
+  }, [activeTeam, myTeam, turn.round]);
+
+  if (!myTeam) return <StatusPanel text="You joined mid-game and are spectating until the next lobby." />;
+
+  if (!activeTeam) {
+    const myTurn = turn.teams[myTeam];
+    const isEncryptor = myTurn.encryptorId === playerId;
+    const opponentTeam = otherTeam(myTeam);
+    const opponentStyle = TEAM_STYLES[opponentTeam];
+    return (
+      <div className="space-y-4">
+        <div className={`grid grid-cols-1 ${showOtherTeamClues ? 'sm:grid-cols-2' : ''} gap-4`}>
+          <CluesInOrder
+            team={myTeam}
+            teamTurn={turn.teams[myTeam]}
+            action={
+              !showOtherTeamClues ? (
+                <button
+                  type="button"
+                  onClick={() => setShowOtherTeamClues(true)}
+                  className={`hidden sm:inline-flex px-3 py-2 rounded-xl border ${opponentStyle.border} ${opponentStyle.bg} ${opponentStyle.text} text-xs font-semibold tracking-wider transition-all active:scale-[0.97]`}
+                >
+                  Show other team's clues
+                </button>
+              ) : undefined
+            }
+          />
+          {showOtherTeamClues && (
+            <CluesInOrder
+              team={opponentTeam}
+              teamTurn={turn.teams[opponentTeam]}
+              className="hidden sm:block"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setShowOtherTeamClues(false)}
+                  className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-gray-300 text-xs font-semibold tracking-wider transition-all active:scale-[0.97]"
+                >
+                  Hide
+                </button>
+              }
+            />
+          )}
+        </div>
+        {isEncryptor ? (
+          <StatusPanel text="Your teammates are decrypting. The encryptor cannot submit the team guess." />
+        ) : (
+          <GuessPanel
+            team={myTeam}
+            kind="decrypt"
+            title="Decrypt your team's code"
+            description="Round 1 has no interception attempt. Decode your own team's clues."
+            disabled={myTurn.guesses.decryptSubmitted}
+            submittedText="Your team submitted its decryption."
+          />
+        )}
+      </div>
+    );
+  }
+
+  const activeTurn = turn.teams[activeTeam];
+  const isActiveTeam = myTeam === activeTeam;
+  const isOpponent = myTeam === otherTeam(activeTeam);
+  const isEncryptor = activeTurn.encryptorId === playerId;
+
+  return (
+    <div className="space-y-4">
+      <CluesInOrder team={activeTeam} teamTurn={activeTurn} />
+
+      {isActiveTeam && !isEncryptor && (
+        <GuessPanel
+          team={activeTeam}
+          kind="decrypt"
+          title="Decrypt your team's code"
+          description="Use the clues to choose the 3 keyword numbers in order."
+          disabled={activeTurn.guesses.decryptSubmitted}
+          submittedText="Your team submitted its decryption."
+        />
+      )}
+
+      {isActiveTeam && isEncryptor && (
+        <StatusPanel text="Your teammates are decrypting. The encryptor cannot submit the team guess." />
+      )}
+
+      {isOpponent && (
+        <GuessPanel
+          team={activeTeam}
+          kind="intercept"
+          title={`Intercept ${TEAM_STYLES[activeTeam].label}'s code`}
+          description="Guess the same 3-digit sequence before the transmitting team reveals it."
+          disabled={activeTurn.guesses.interceptSubmitted}
+          submittedText="Your team submitted its intercept."
+        />
+      )}
+    </div>
+  );
+}
+
+function CluesInOrder({
+  team,
+  teamTurn,
+  action,
+  className = '',
+}: {
+  team: TeamId;
+  teamTurn: PublicTeamTurnState;
+  action?: ReactNode;
+  className?: string;
+}) {
+  const style = TEAM_STYLES[team];
+  const room = useGameStore((s) => s.room)!;
+  const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
+
+  return (
+    <div className={`glass-card rounded-2xl border ${style.border} p-3 sm:p-4 ${className}`}>
+      <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3 sm:gap-3">
+        <div className="min-w-0">
+          <div className="text-gray-500 text-[9px] tracking-[0.24em] uppercase sm:text-[10px] sm:tracking-[0.3em]">
+            Clues in order <span className="sm:hidden">→</span>
+            <span className="hidden sm:inline">→</span>
+          </div>
+          <div className={`truncate font-display text-base tracking-wider sm:text-lg ${style.text}`}>
+            {style.label} by {encryptor?.name ?? 'Unknown'}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {action}
+          <TeamBadge team={team} />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+        {teamTurn.clues.map((clue, index) => (
+          <div
+            key={`${clueListLabel([clue])}-${index}`}
+            className="min-h-[4.75rem] rounded-xl border border-white/10 bg-black/20 p-2 sm:min-h-[5rem] sm:p-3"
+          >
+            <ClueView
+              clue={clue}
+              className="text-xs leading-snug sm:text-base"
+              imageClassName="!h-12 sm:!h-24"
+              previewTitle={`${possessiveName(encryptor?.name ?? 'Unknown')} round ${teamTurn.round} drawing clue`}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GuessPanel({
+  team,
+  kind,
+  title,
+  description,
+  disabled,
+  submittedText,
+}: {
+  team: TeamId;
+  kind: GuessKind;
+  title: string;
+  description: string;
+  disabled: boolean;
+  submittedText: string;
+}) {
+  const [code, setCode] = useState<CodeDigit[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [posting, setPosting] = useState(false);
+  const [showTeamGuesses, setShowTeamGuesses] = useState(false);
+  const privateState = useGameStore((s) => s.privateState);
+  const canSubmit = code.length === 3 && !disabled && !submitting;
+  const canPost = code.length === 3 && !disabled && !posting;
+  const selected = useMemo(() => new Set(code), [code]);
+  const postedGuesses = (privateState?.guessShares ?? []).filter(
+    (share) => share.targetTeam === team && share.kind === kind,
+  );
+
+  if (disabled) return <StatusPanel text={submittedText} />;
+
+  return (
+    <div className="glass-card rounded-2xl border border-white/10 p-4 space-y-4">
+      <div>
+        <div className="font-display text-xl tracking-wider text-white">{title}</div>
+        <div className="text-gray-400 text-sm mt-1">{description}</div>
+      </div>
+
+      <div className="flex justify-center gap-2">
+        {[0, 1, 2].map((index) => (
+          <div
+            key={index}
+            className="code-chip w-14 h-14 rounded-2xl flex items-center justify-center font-display text-2xl text-white"
+          >
+            {code[index] ?? '?'}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-5 gap-2">
+        {CODE_DIGITS.map((digit) => (
+          <button
+            key={digit}
+            onClick={() => {
+              if (selected.has(digit) || code.length >= 3) return;
+              setCode([...code, digit]);
+            }}
+            disabled={selected.has(digit) || code.length >= 3}
+            className="py-3 rounded-xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-white font-display text-xl disabled:opacity-30 active:scale-[0.97] transition-all"
+          >
+            {digit}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setCode(code.slice(0, -1))}
+          disabled={code.length === 0 || submitting}
+          className="flex min-h-12 items-center justify-center rounded-xl border border-white/10 bg-surface-raised text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97] disabled:opacity-30"
+          aria-label="Delete last digit"
+          title="Delete last digit"
+        >
+          <BackspaceIcon />
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+        <button
+          type="button"
+          onClick={() => setShowTeamGuesses((value) => !value)}
+          disabled={postedGuesses.length === 0}
+          className="w-full flex items-center justify-between gap-3 text-left text-xs tracking-widest uppercase text-gray-400 disabled:opacity-40"
+        >
+          <span>Team posted guesses</span>
+          <span>{showTeamGuesses ? 'Hide' : `Show (${postedGuesses.length})`}</span>
+        </button>
+        {showTeamGuesses && (
+          <div className="mt-3 space-y-2">
+            {postedGuesses.map((share) => (
+              <div
+                key={`${share.round}-${share.playerId}-${share.kind}-${share.updatedAt}`}
+                className="flex items-center justify-between gap-3 rounded-lg bg-black/20 border border-white/10 px-3 py-2"
+              >
+                <span className="text-gray-300 text-sm truncate">{share.playerName}</span>
+                <span className="font-display text-white tracking-wider">{formatCode(share.code)}</span>
+              </div>
+            ))}
+            {postedGuesses.length === 0 && (
+              <div className="text-gray-600 text-sm text-center py-2">No guesses posted.</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          onClick={() => {
+            if (!canPost) return;
+            setPosting(true);
+            useGameStore.getState().postGuessShare({ team, kind, code: code as Code });
+            setTimeout(() => setPosting(false), 1500);
+          }}
+          disabled={!canPost}
+          className="py-3 rounded-xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-gray-200 font-display tracking-wider disabled:opacity-30 active:scale-[0.97] transition-all"
+        >
+          {posting ? 'Posted' : 'Post'}
+        </button>
+        <button
+          onClick={() => {
+            if (!canSubmit) return;
+            setSubmitting(true);
+            useGameStore.getState().submitGuess({ team, kind, code: code as Code });
+            setTimeout(() => setSubmitting(false), 5000);
+          }}
+          disabled={!canSubmit}
+          className="btn-success py-3 rounded-xl text-white font-display tracking-wider disabled:opacity-30 disabled:shadow-none active:scale-[0.97] transition-all"
+        >
+          {submitting ? 'Submitting...' : 'Submit Final'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BackspaceIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-7" fill="currentColor">
+      <path d="M9.25 5.25h10.5A2.25 2.25 0 0 1 22 7.5v9a2.25 2.25 0 0 1-2.25 2.25H9.25c-.72 0-1.39-.34-1.82-.92L2.48 13.1a1.75 1.75 0 0 1 0-2.2l4.95-4.73c.43-.58 1.1-.92 1.82-.92Zm4.08 4.02a.9.9 0 0 0-1.27 1.27L13.52 12l-1.46 1.46a.9.9 0 1 0 1.27 1.27l1.46-1.46 1.46 1.46a.9.9 0 0 0 1.27-1.27L16.06 12l1.46-1.46a.9.9 0 0 0-1.27-1.27l-1.46 1.46-1.46-1.46Z" />
+    </svg>
+  );
+}
+
+function StatusPanel({ text }: { text: string }) {
+  return (
+    <div className="glass-card rounded-2xl border border-white/10 p-5 text-center">
+      <div className="text-gray-400 font-semibold">{text}</div>
+    </div>
+  );
+}
+
+function HistoryPanel() {
+  const history = useGameStore((s) => s.room?.clueHistory ?? []);
+  return <SignalHistory history={history} limit={6} sticky />;
+}
