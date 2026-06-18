@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { TeamId, TiebreakerVocabularyMode } from '@games/decrypto-shared';
 import { useGameStore, useIsHost } from '../store';
 import { ClueBank, ScoreStrip, SignalHistory, TEAM_STYLES, TeamBadge, otherTeam } from './shared';
@@ -39,6 +40,7 @@ export default function TieBreakerScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [focusedSlot, setFocusedSlot] = useState<number | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const submitted = !!(myTeam && room?.tiebreaker?.submissions[myTeam]?.submitted);
   const vocabularyMode = room?.tiebreaker?.vocabularyMode ?? room?.settings.tiebreakerVocabularyMode ?? 'english';
@@ -87,22 +89,27 @@ export default function TieBreakerScreen() {
 
   return (
     <div className="min-h-full flex flex-col px-5 py-5 gap-5 animate-fade-in overflow-y-auto max-w-5xl mx-auto w-full">
-      <div className="text-center">
-        <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Sudden decode</div>
-        <div className="font-display text-4xl tracking-wider text-white">Tiebreaker</div>
-        <div className="mt-2 text-sm text-gray-400">
-          Guess the opposing team's four keywords from the signal history.
+      <div className="relative min-h-24 text-center">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Open tiebreaker settings"
+          title="Tiebreaker settings"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-lg text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+        >
+          ⚙
+        </button>
+        <div className="mx-auto max-w-[calc(100%-3rem)]">
+          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Sudden decode</div>
+          <div className="font-display text-4xl tracking-wider text-white">Tiebreaker</div>
+          <div className="mt-2 text-sm text-gray-400">
+            Guess the opposing team's four keywords from the signal history.
+          </div>
         </div>
       </div>
 
       <ScoreStrip scores={room.scores} />
       <SubmissionStrip submissions={room.tiebreaker?.submissions} />
-      <VocabularyModeControl
-        mode={vocabularyMode}
-        isHost={isHost}
-        locked={hasAnySubmission}
-        vocabularySize={vocabulary.length}
-      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">
         <div className={`relative min-w-0 space-y-4 ${suggestionListOpen ? 'z-[70]' : 'z-0'}`}>
@@ -149,6 +156,16 @@ export default function TieBreakerScreen() {
           includeIntercept
         />
       </div>
+
+      {settingsOpen && (
+        <VocabularySettingsPanel
+          mode={vocabularyMode}
+          isHost={isHost}
+          locked={hasAnySubmission}
+          vocabularySize={vocabulary.length}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -188,38 +205,75 @@ function SubmissionStrip({
   );
 }
 
-function VocabularyModeControl({
+function VocabularySettingsPanel({
   mode,
   isHost,
   locked,
   vocabularySize,
+  onClose,
 }: {
   mode: TiebreakerVocabularyMode;
   isHost: boolean;
   locked: boolean;
   vocabularySize: number;
+  onClose: () => void;
 }) {
   const options: Array<{ mode: TiebreakerVocabularyMode; label: string; caption: string }> = [
     { mode: 'english', label: 'All English', caption: 'Common words' },
     { mode: 'word-bank', label: 'Word Bank', caption: 'Decrypto cards' },
   ];
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
   const setMode = (nextMode: TiebreakerVocabularyMode) => {
     if (!isHost || locked || nextMode === mode) return;
     useGameStore.getState().setTiebreakerVocabularyMode(nextMode);
   };
 
-  return (
-    <div className="glass-card rounded-2xl border border-white/10 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Guess pool</div>
-          <div className="text-sm text-gray-300">
-            {mode === 'word-bank' ? 'Limited to Decrypto words' : 'Using common English words'}
-            <span className="ml-2 text-gray-500">{vocabularySize.toLocaleString()} words</span>
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tiebreaker settings"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-md" />
+      <div
+        className="relative w-full max-w-md rounded-2xl border border-white/10 bg-surface/95 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.55)] animate-fade-in"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Tiebreaker settings</div>
+            <div className="font-display text-2xl tracking-wider text-white">Guess pool</div>
+            <div className="mt-1 text-sm text-gray-400">
+              {mode === 'word-bank' ? 'Limited to Decrypto words' : 'Using common English words'}
+              <span className="ml-2 text-gray-500">{vocabularySize.toLocaleString()} words</span>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close tiebreaker settings"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-xl leading-none text-gray-400 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+          >
+            &times;
+          </button>
         </div>
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-black/25 p-1">
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {options.map((option) => {
             const active = option.mode === mode;
             return (
@@ -228,11 +282,11 @@ function VocabularyModeControl({
                 type="button"
                 onClick={() => setMode(option.mode)}
                 disabled={!isHost || locked}
-                className={`min-w-[7.25rem] rounded-lg px-3 py-2 text-left transition-all ${
+                className={`rounded-xl border px-3 py-3 text-left transition-all ${
                   active
-                    ? 'bg-white/12 text-white shadow-inner shadow-white/5'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
-                } disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400`}
+                    ? 'border-white/25 bg-white/12 text-white shadow-inner shadow-white/5'
+                    : 'border-white/10 bg-black/20 text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                } disabled:cursor-not-allowed disabled:hover:bg-black/20 disabled:hover:text-gray-400`}
               >
                 <div className="font-display text-xs tracking-wider uppercase">{option.label}</div>
                 <div className="mt-0.5 text-[10px] text-gray-500">{option.caption}</div>
@@ -240,11 +294,14 @@ function VocabularyModeControl({
             );
           })}
         </div>
+
+        {!isHost && <div className="mt-3 text-[11px] text-gray-500">Only the host can change this setting.</div>}
+        {isHost && locked && (
+          <div className="mt-3 text-[11px] text-gray-500">Locked after the first tiebreaker submission.</div>
+        )}
       </div>
-      {isHost && locked && (
-        <div className="mt-2 text-[11px] text-gray-500">Locked after the first tiebreaker submission.</div>
-      )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
