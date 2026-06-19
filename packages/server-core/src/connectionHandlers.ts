@@ -6,7 +6,7 @@ import { logger } from './logger.js';
 export interface ConnectionCallbacks<T extends BaseRoom> {
   /** Called when a player disconnects during an active game. Use for game-specific cleanup. */
   onPlayerDisconnect?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
-  /** Called when host needs reassignment. Return new host id or undefined. */
+  /** Called when host needs reassignment. Return undefined to keep the current host. */
   onHostReassign?: (room: T, oldHostId: string) => string | undefined;
   /** Called before a player leaves, for cleaning up extra socket rooms (e.g., team rooms). */
   onBeforePlayerLeave?: (room: T, playerId: string, socket: Socket) => void;
@@ -45,7 +45,11 @@ export function registerConnectionHandlers<T extends BaseRoom>(
     }
 
     if (room.hostId === playerId) {
-      const newHostId = callbacks?.onHostReassign?.(room, playerId);
+      const newHostId =
+        callbacks?.onHostReassign?.(room, playerId) ??
+        (callbacks?.onHostReassign
+          ? undefined
+          : room.getActivePlayers().find((activePlayer) => activePlayer.connected && activePlayer.id !== playerId)?.id);
       const newHost = newHostId ? room.getPlayer(newHostId) : undefined;
       if (newHost && !newHost.removed && newHost.id !== playerId) {
         room.hostId = newHost.id;

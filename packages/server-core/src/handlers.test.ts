@@ -291,7 +291,7 @@ describe('connectionHandlers', () => {
     }
   });
 
-  it('does not reassign host when the host only disconnects', () => {
+  it('reassigns host by default when the host disconnects', () => {
     socket.trigger('room:create', { playerName: 'Host' });
     const { roomCode, playerId: hostId } = socket.getLastEmitted('room:created')![0] as any;
     socket.trigger('room:join', { roomCode, playerName: 'Bob' });
@@ -303,19 +303,19 @@ describe('connectionHandlers', () => {
     ctx.setPlayerId(hostId);
     socket.trigger('disconnect');
 
-    expect(room.hostId).toBe(hostId);
+    expect(room.hostId).toBe(bob.id);
     expect(room.getPlayer(hostId)?.connected).toBe(false);
-    expect(io.getRoomEvent(roomCode, 'room:host-updated')).toHaveLength(0);
+    const hostUpdated = io.getRoomEvent(roomCode, 'room:host-updated').at(-1)![0] as any;
+    expect(hostUpdated.hostId).toBe(bob.id);
   });
 
-  it('can reassign host on disconnect when a game opts in', () => {
+  it('can suppress host reassignment when a game opts out', () => {
     const mock = createMockSocketContext<TestRoom>(socketOpts);
     registerLobbyHandlers(mock.ctx, {
       buildGameState: (_room, _playerId) => null,
     });
     registerConnectionHandlers(mock.ctx, {
-      onHostReassign: (room, oldHostId) =>
-        room.getActivePlayers().find((player) => player.connected && player.id !== oldHostId)?.id,
+      onHostReassign: () => undefined,
     });
 
     mock.socket.trigger('room:create', { playerName: 'Host' });
@@ -323,14 +323,13 @@ describe('connectionHandlers', () => {
     mock.socket.trigger('room:join', { roomCode, playerName: 'Bob' });
 
     const room = mock.rooms.getRoom(roomCode)!;
-    const bob = room.getPlayerByName('Bob')!;
 
     mock.ctx.setPlayerId(hostId);
     mock.socket.trigger('disconnect');
 
-    expect(room.hostId).toBe(bob.id);
-    const hostUpdated = mock.io.getRoomEvent(roomCode, 'room:host-updated').at(-1)![0] as any;
-    expect(hostUpdated.hostId).toBe(bob.id);
+    expect(room.hostId).toBe(hostId);
+    expect(room.getPlayer(hostId)?.connected).toBe(false);
+    expect(mock.io.getRoomEvent(roomCode, 'room:host-updated')).toHaveLength(0);
     mock.rooms.destroy();
     mock.metrics.destroy();
   });
