@@ -4,8 +4,6 @@ import re
 import sys
 
 
-DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-
 BASE_STOPWORDS = {
     "a",
     "about",
@@ -228,26 +226,6 @@ def common_words(
     }
 
 
-def embed_texts(model_name: str, keyed_texts: list[tuple[str, str]], truncate_dim: int | None) -> dict:
-    from sentence_transformers import SentenceTransformer
-
-    model = SentenceTransformer(model_name)
-    texts = [text for _, text in keyed_texts]
-    embeddings = model.encode(
-        texts,
-        batch_size=128,
-        show_progress_bar=False,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-        truncate_dim=truncate_dim,
-    )
-    return {
-        "model": model_name,
-        "dimensions": int(embeddings.shape[1]) if len(keyed_texts) else 0,
-        "embeddings": {key: embeddings[index].astype(float).tolist() for index, (key, _) in enumerate(keyed_texts)},
-    }
-
-
 def main() -> int:
     request = json.load(sys.stdin)
     action = request.get("action")
@@ -259,23 +237,6 @@ def main() -> int:
         max_length = int(request.get("maxLength", 18))
         wordlist = request.get("wordlist") or "best"
         json.dump(common_words(limit, source_pool_size, zipf_floor, min_length, max_length, wordlist), sys.stdout)
-        return 0
-    if action == "embed":
-        keyed_texts: list[tuple[str, str]] = []
-        if isinstance(request.get("items"), list):
-            for item in request.get("items", []):
-                if not isinstance(item, dict):
-                    continue
-                key = normalize_term(str(item.get("key", "")))
-                text = str(item.get("text", "")).strip()
-                if key and text:
-                    keyed_texts.append((key, text))
-        else:
-            terms = [normalize_term(term) for term in request.get("terms", [])]
-            keyed_texts = [(term, term) for term in terms if term]
-        model = request.get("model") or DEFAULT_MODEL
-        truncate_dim = request.get("truncateDim")
-        json.dump(embed_texts(model, keyed_texts, int(truncate_dim) if truncate_dim else None), sys.stdout)
         return 0
     raise ValueError(f"Unknown action: {action}")
 

@@ -58,6 +58,7 @@ export interface DecryptoSettings extends RoomSettings {
   maxIntercepts: number;
   maxMiscommunications: number;
   tiebreakerVocabularyMode: TiebreakerVocabularyMode;
+  offlineAwareness: boolean;
 }
 
 export interface TeamScore {
@@ -213,8 +214,10 @@ export const DecryptoEvent = {
   UnlockClues: 'decrypto:unlockClues',
   PostGuessShare: 'decrypto:postGuessShare',
   SubmitGuess: 'decrypto:submitGuess',
+  SetOfflineAwareness: 'decrypto:setOfflineAwareness',
   SetTiebreakerVocabularyMode: 'decrypto:setTiebreakerVocabularyMode',
   SubmitTiebreaker: 'decrypto:submitTiebreaker',
+  UnlockTiebreaker: 'decrypto:unlockTiebreaker',
   RequestTiebreakerRepeat: 'decrypto:requestTiebreakerRepeat',
   TakeWin: 'decrypto:takeWin',
   ReleaseWords: 'decrypto:releaseWords',
@@ -263,6 +266,10 @@ export interface SetTiebreakerVocabularyModePayload {
   mode: TiebreakerVocabularyMode;
 }
 
+export interface SetOfflineAwarenessPayload {
+  enabled: boolean;
+}
+
 export interface ReleaseWordsPayload {
   team: TeamId;
 }
@@ -287,8 +294,10 @@ export interface DecryptoClientToServerEvents {
   [DecryptoEvent.UnlockClues]: () => void;
   [DecryptoEvent.PostGuessShare]: (payload: PostGuessSharePayload) => void;
   [DecryptoEvent.SubmitGuess]: (payload: SubmitGuessPayload) => void;
+  [DecryptoEvent.SetOfflineAwareness]: (payload: SetOfflineAwarenessPayload) => void;
   [DecryptoEvent.SetTiebreakerVocabularyMode]: (payload: SetTiebreakerVocabularyModePayload) => void;
   [DecryptoEvent.SubmitTiebreaker]: (payload: SubmitTiebreakerPayload) => void;
+  [DecryptoEvent.UnlockTiebreaker]: () => void;
   [DecryptoEvent.RequestTiebreakerRepeat]: () => void;
   [DecryptoEvent.TakeWin]: () => void;
   [DecryptoEvent.ReleaseWords]: (payload: ReleaseWordsPayload) => void;

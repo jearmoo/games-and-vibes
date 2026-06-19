@@ -3,29 +3,28 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { getEmbeddingInput, KEYWORD_CARDS, normalizeCardKey } from '../src/wordbank.js';
+import { KEYWORD_CARDS, normalizeCardKey } from '../src/wordbank.js';
 
-const DEFAULT_MODEL = 'sentence-transformers/all-MiniLM-L6-v2';
-const DEFAULT_TRUNCATE_DIM = 0;
+const DEFAULT_MODEL = 'text-embedding-3-large';
+const DEFAULT_DIMENSIONS = 384;
 const DEFAULT_VOCABULARY_WORD_LIMIT = 150_000;
 const DEFAULT_SOURCE_POOL_SIZE = 0;
 const DEFAULT_ZIPF_FREQUENCY_FLOOR = 1.5;
 const DEFAULT_WORDFREQ_WORDLIST = 'best';
 const DEFAULT_MIN_WORD_LENGTH = 3;
 const DEFAULT_MAX_WORD_LENGTH = 18;
-const BATCH_SIZE = 2_048;
+const DEFAULT_BATCH_SIZE = 1_024;
 const QUANTIZATION_SCALE = 127;
 const VECTOR_ASSET_FILE = 'keywordEmbeddings.int8.bin';
 const TERMS_ASSET_FILE = 'keywordTerms.generated.json';
 const METADATA_ASSET_FILE = 'keywordEmbeddings.metadata.generated.json';
-const SUPPLEMENTAL_TIEBREAKER_TERMS = [
-  'teapot',
-];
+const SUPPLEMENTAL_TIEBREAKER_TERMS = ['teapot'];
 
-type PythonEmbeddingResponse = {
-  model: string;
-  dimensions: number;
-  embeddings: Record<string, number[]>;
+type OpenAIEmbeddingResponse = {
+  data: Array<{
+    index: number;
+    embedding: number[];
+  }>;
 };
 
 type PythonCommonWordsResponse = {
@@ -53,13 +52,14 @@ type VocabularyFilterStats = {
 
 type GenerationOptions = {
   model: string;
-  truncateDim: number;
+  dimensions: number;
   vocabularyWordLimit: number;
   sourcePoolSize: number;
   zipfFrequencyFloor: number;
   wordfreqWordlist: string;
   minWordLength: number;
   maxWordLength: number;
+  batchSize: number;
 };
 
 type EmbeddingItem = {
@@ -68,7 +68,7 @@ type EmbeddingItem = {
 };
 
 type EmbeddingMetadata = {
-  provider: 'sentence-transformers';
+  provider: 'openai';
   model: string;
   vocabularySize: number;
   targetVocabularySize: number;
@@ -79,12 +79,13 @@ type EmbeddingMetadata = {
     filterSettings: VocabularyFilterStats;
     forcedTargetTerms: number;
     forcedSupplementalTerms: number;
+    guessEmbeddingInput: string;
     targetEmbeddingInput: string;
   };
   embedding: {
     dimensions: number;
     normalized: boolean;
-    truncateDimension: number | null;
+    requestedDimensions: number;
     dimensionalityReduction: string;
     quantization: string;
     runtimeVectorFormat: string;
@@ -121,7 +122,10 @@ function cliValue(name: string): string | undefined {
 }
 
 function optionValue(envNames: string[], cliName: string): string | undefined {
-  return cliValue(cliName) ?? envNames.map((name) => process.env[name]).find((value) => value !== undefined && value.trim() !== '');
+  return (
+    cliValue(cliName) ??
+    envNames.map((name) => process.env[name]).find((value) => value !== undefined && value.trim() !== '')
+  );
 }
 
 function positiveIntegerOption(envNames: string[], cliName: string, fallback: number): number {
@@ -142,22 +146,18 @@ function positiveNumberOption(envNames: string[], cliName: string, fallback: num
 
 function generationOptions(): GenerationOptions {
   return {
-    model: optionValue(['SENTENCE_TRANSFORMER_MODEL'], 'model') ?? DEFAULT_MODEL,
-    truncateDim: positiveIntegerOption(
-      ['SENTENCE_TRANSFORMER_TRUNCATE_DIM'],
-      'truncate-dim',
-      DEFAULT_TRUNCATE_DIM,
+    model: optionValue(['OPENAI_EMBEDDING_MODEL', 'DECRYPTO_EMBEDDING_MODEL'], 'model') ?? DEFAULT_MODEL,
+    dimensions: positiveIntegerOption(
+      ['OPENAI_EMBEDDING_DIMENSIONS', 'DECRYPTO_EMBEDDING_DIMENSIONS'],
+      'dimensions',
+      DEFAULT_DIMENSIONS,
     ),
     vocabularyWordLimit: positiveIntegerOption(
       ['DECRYPTO_EMBEDDING_VOCAB_SIZE', 'EMBEDDING_VOCAB_WORD_LIMIT', 'COMMON_EMBEDDING_WORD_LIMIT'],
       'word-limit',
       DEFAULT_VOCABULARY_WORD_LIMIT,
     ),
-    sourcePoolSize: positiveIntegerOption(
-      ['EMBEDDING_SOURCE_POOL_SIZE'],
-      'source-pool-size',
-      DEFAULT_SOURCE_POOL_SIZE,
-    ),
+    sourcePoolSize: positiveIntegerOption(['EMBEDDING_SOURCE_POOL_SIZE'], 'source-pool-size', DEFAULT_SOURCE_POOL_SIZE),
     zipfFrequencyFloor: positiveNumberOption(
       ['EMBEDDING_ZIPF_FREQUENCY_FLOOR'],
       'zipf-floor',
@@ -166,18 +166,19 @@ function generationOptions(): GenerationOptions {
     wordfreqWordlist: optionValue(['EMBEDDING_WORDFREQ_WORDLIST'], 'wordfreq-wordlist') ?? DEFAULT_WORDFREQ_WORDLIST,
     minWordLength: positiveIntegerOption(['EMBEDDING_MIN_WORD_LENGTH'], 'min-word-length', DEFAULT_MIN_WORD_LENGTH),
     maxWordLength: positiveIntegerOption(['EMBEDDING_MAX_WORD_LENGTH'], 'max-word-length', DEFAULT_MAX_WORD_LENGTH),
+    batchSize: positiveIntegerOption(['DECRYPTO_EMBEDDING_BATCH_SIZE'], 'batch-size', DEFAULT_BATCH_SIZE),
   };
 }
 
 function pythonExecutable(): string {
-  const configured = process.env.SENTENCE_TRANSFORMERS_PYTHON || process.env.DECRYPTO_EMBEDDINGS_PYTHON;
+  const configured = process.env.DECRYPTO_VOCABULARY_PYTHON || process.env.DECRYPTO_EMBEDDINGS_PYTHON;
   if (configured) return configured;
   const localVenv = resolve(dirname(fileURLToPath(import.meta.url)), '../.venv/bin/python3');
   return existsSync(localVenv) ? localVenv : 'python3';
 }
 
 async function requestPython<T>(payload: Record<string, unknown>): Promise<T> {
-  const scriptPath = resolve(dirname(fileURLToPath(import.meta.url)), 'embed-sentence-transformer.py');
+  const scriptPath = resolve(dirname(fileURLToPath(import.meta.url)), 'vocabulary-helper.py');
   const child = spawn(pythonExecutable(), [scriptPath], {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: {
@@ -204,7 +205,7 @@ async function requestPython<T>(payload: Record<string, unknown>): Promise<T> {
     child.on('close', resolveProcess);
   });
   if (code !== 0) {
-    throw new Error(`Sentence Transformers helper failed (${code}): ${stderr.trim() || stdout.trim()}`);
+    throw new Error(`Embedding vocabulary helper failed (${code}): ${stderr.trim() || stdout.trim()}`);
   }
   return JSON.parse(stdout) as T;
 }
@@ -247,61 +248,97 @@ async function commonEnglishTerms(options: GenerationOptions): Promise<PythonCom
   };
 }
 
-function uniqueEmbeddingItems(commonTerms: readonly string[]): {
+function uniqueEmbeddingItems(
+  commonTerms: readonly string[],
+  vocabularyWordLimit: number,
+): {
   targetTerms: string[];
   supplementalTerms: string[];
-  allTerms: string[];
-  embeddingItems: EmbeddingItem[];
+  guessTerms: string[];
+  guessItems: EmbeddingItem[];
+  targetItems: EmbeddingItem[];
   targetEmbeddingInputs: Record<string, string>;
 } {
-  const targetItems = KEYWORD_CARDS.map((card) => ({
+  const targetCards = KEYWORD_CARDS.map((card) => ({
     key: normalizeCardKey(card.displayWord),
-    text: getEmbeddingInput(card),
-  }))
-    .filter(({ key }) => key)
-    .sort((left, right) => left.key.localeCompare(right.key));
-  const targetTerms = [...new Set(targetItems.map(({ key }) => key))];
-  const supplementalTerms = [...new Set(SUPPLEMENTAL_TIEBREAKER_TERMS.map(normalizeEmbeddingTerm).filter(Boolean))].sort();
-  const allTerms: string[] = [];
-  const embeddingItems: EmbeddingItem[] = [];
+    text: card.displayWord,
+  })).filter(({ key }) => key);
+  const targetTerms = [...new Set(targetCards.map(({ key }) => key))].sort();
+  const targetItems = targetTerms.map((term) => {
+    const card = targetCards.find((targetCard) => targetCard.key === term);
+    if (!card) throw new Error(`Missing target card for ${term}.`);
+    return { key: targetVectorKey(term), text: card.text };
+  });
+  const supplementalTerms = [
+    ...new Set(SUPPLEMENTAL_TIEBREAKER_TERMS.map(normalizeEmbeddingTerm).filter(Boolean)),
+  ].sort();
+  const forcedGuessText = new Map(
+    KEYWORD_CARDS.map((card) => [normalizeCardKey(card.displayWord), card.displayWord] as const).filter(([key]) => key),
+  );
+  for (const term of supplementalTerms) forcedGuessText.set(term, term);
+  const guessTerms: string[] = [];
+  const guessItems: EmbeddingItem[] = [];
   const targetEmbeddingInputs: Record<string, string> = {};
-  const seen = new Set<string>();
-  for (const item of targetItems) {
-    if (seen.has(item.key)) continue;
-    seen.add(item.key);
-    allTerms.push(item.key);
-    embeddingItems.push(item);
-    targetEmbeddingInputs[item.key] = item.text;
+
+  for (const term of targetTerms) {
+    const card = targetCards.find((targetCard) => targetCard.key === term);
+    if (!card) throw new Error(`Missing target card for ${term}.`);
+    targetEmbeddingInputs[term] = card.text;
   }
-  for (const term of [...supplementalTerms, ...commonTerms]) {
-    if (!term || seen.has(term)) continue;
-    seen.add(term);
-    allTerms.push(term);
-    embeddingItems.push({ key: term, text: term });
+  const seenGuessTerms = new Set<string>();
+  const addGuessTerm = (term: string, text = term) => {
+    if (!term || seenGuessTerms.has(term) || guessTerms.length >= vocabularyWordLimit) return;
+    seenGuessTerms.add(term);
+    guessTerms.push(term);
+    guessItems.push({ key: term, text });
+  };
+  for (const [term, text] of [...forcedGuessText.entries()].sort((left, right) => left[0].localeCompare(right[0]))) {
+    addGuessTerm(term, text);
   }
-  return { targetTerms, supplementalTerms, allTerms, embeddingItems, targetEmbeddingInputs };
+  for (const term of commonTerms) addGuessTerm(term);
+  return { targetTerms, supplementalTerms, guessTerms, guessItems, targetItems, targetEmbeddingInputs };
 }
 
 async function createEmbeddings(
   items: readonly EmbeddingItem[],
   model: string,
-  truncateDim: number,
+  dimensions: number,
+  batchSize: number,
 ): Promise<Map<string, readonly number[]>> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY must be set to generate Decrypto OpenAI embeddings.');
+  }
   const vectors = new Map<string, readonly number[]>();
-  for (let index = 0; index < items.length; index += BATCH_SIZE) {
-    const batch = items.slice(index, index + BATCH_SIZE);
-    const response = await requestPython<PythonEmbeddingResponse>({
-      action: 'embed',
-      model,
-      items: batch,
-      ...(truncateDim > 0 ? { truncateDim } : {}),
+  for (let index = 0; index < items.length; index += batchSize) {
+    const batch = items.slice(index, index + batchSize);
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        input: batch.map((item) => item.text),
+        dimensions,
+        encoding_format: 'float',
+      }),
     });
-    for (const item of batch) {
-      const embedding = response.embeddings[item.key];
-      if (!embedding) throw new Error(`Sentence Transformers response did not include ${item.key}.`);
-      vectors.set(item.key, quantizeVector(embedding));
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI embeddings request failed (${response.status}): ${errorText.slice(0, 500)}`);
     }
-    console.info(`Generated embeddings for ${Math.min(index + BATCH_SIZE, items.length)} / ${items.length} terms.`);
+    const payload = (await response.json()) as OpenAIEmbeddingResponse;
+    for (const [batchIndex, item] of batch.entries()) {
+      const embedding = payload.data.find((entry) => entry.index === batchIndex)?.embedding;
+      if (!embedding) throw new Error(`OpenAI embeddings response did not include ${item.key}.`);
+      if (embedding.length !== dimensions) {
+        throw new Error(`OpenAI returned ${embedding.length} dimensions for ${item.key}; expected ${dimensions}.`);
+      }
+      vectors.set(item.key, quantizeVector(normalizeVector(embedding)));
+    }
+    console.info(`Generated embeddings for ${Math.min(index + batchSize, items.length)} / ${items.length} terms.`);
   }
   return vectors;
 }
@@ -332,7 +369,12 @@ function calibrationFor(targetTerms: readonly string[], embeddings: ReadonlyMap<
   const scores: number[] = [];
   for (let left = 0; left < targetTerms.length; left += 1) {
     for (let right = left + 1; right < targetTerms.length; right += 1) {
-      scores.push(cosineVector(embeddings.get(targetTerms[left]!) ?? [], embeddings.get(targetTerms[right]!) ?? []));
+      scores.push(
+        cosineVector(
+          embeddings.get(targetVectorKey(targetTerms[left]!)) ?? [],
+          embeddings.get(targetVectorKey(targetTerms[right]!)) ?? [],
+        ),
+      );
     }
   }
   scores.sort((a, b) => a - b);
@@ -344,6 +386,18 @@ function calibrationFor(targetTerms: readonly string[], embeddings: ReadonlyMap<
   };
 }
 
+function targetVectorKey(term: string): string {
+  return `target:${term}`;
+}
+
+function normalizeVector(vector: readonly number[]): number[] {
+  let magnitude = 0;
+  for (const value of vector) magnitude += value * value;
+  if (magnitude === 0) return [...vector];
+  const scale = 1 / Math.sqrt(magnitude);
+  return vector.map((value) => value * scale);
+}
+
 function quantizeVector(vector: readonly number[]): number[] {
   return vector.map((value) => Math.max(-127, Math.min(127, Math.round(value * QUANTIZATION_SCALE))));
 }
@@ -352,13 +406,18 @@ function roundNumber(value: number): number {
   return Number(value.toFixed(6));
 }
 
-function encodedVectorBytes(terms: readonly string[], embeddings: ReadonlyMap<string, readonly number[]>): Buffer {
-  const firstTerm = terms[0];
-  const dimensions = firstTerm ? embeddings.get(firstTerm)?.length ?? 0 : 0;
-  const bytes = Buffer.alloc(terms.length * dimensions);
-  terms.forEach((term, termIndex) => {
-    const embedding = embeddings.get(term);
-    if (!embedding) throw new Error(`Missing generated embedding for ${term}.`);
+function encodedVectorBytes(
+  guessTerms: readonly string[],
+  targetTerms: readonly string[],
+  embeddings: ReadonlyMap<string, readonly number[]>,
+): Buffer {
+  const firstKey = guessTerms[0] ?? targetVectorKey(targetTerms[0] ?? '');
+  const dimensions = firstKey ? (embeddings.get(firstKey)?.length ?? 0) : 0;
+  const vectorKeys = [...guessTerms, ...targetTerms.map(targetVectorKey)];
+  const bytes = Buffer.alloc(vectorKeys.length * dimensions);
+  vectorKeys.forEach((key, termIndex) => {
+    const embedding = embeddings.get(key);
+    if (!embedding) throw new Error(`Missing generated embedding for ${key}.`);
     embedding.forEach((value, dimensionIndex) => {
       bytes.writeInt8(value, termIndex * dimensions + dimensionIndex);
     });
@@ -388,7 +447,7 @@ type StoredEmbeddingAssetStatus = {
   expectedVectorBytes: number;
 };
 
-export const STORED_EMBEDDING_PROVIDER = 'sentence-transformers';
+export const STORED_EMBEDDING_PROVIDER = 'openai';
 export const STORED_EMBEDDING_MODEL = ${JSON.stringify(metadata.model)};
 export const STORED_EMBEDDING_DIMENSIONS = ${metadata.embedding.dimensions};
 export const STORED_EMBEDDING_NORMALIZED = true;
@@ -401,6 +460,7 @@ export const STORED_EMBEDDING_SCORE_CEILING = ${calibration.ceiling};
 
 let termsPayloadCache: StoredTermsPayload | undefined;
 let termIndexCache: Map<string, number> | undefined;
+let targetIndexCache: Map<string, number> | undefined;
 let vectorBytesCache: Int8Array | undefined;
 let vectorNormCache: Float32Array | undefined;
 
@@ -428,10 +488,24 @@ function termIndexMap(): Map<string, number> {
   return termIndexCache;
 }
 
+function targetIndexMap(): Map<string, number> {
+  targetIndexCache ??= new Map(loadTermsPayload().targetTerms.map((term, index) => [term, index]));
+  return targetIndexCache;
+}
+
+function totalVectorCount(): number {
+  const termsPayload = loadTermsPayload();
+  return termsPayload.terms.length + termsPayload.targetTerms.length;
+}
+
+function targetVectorIndex(targetIndex: number): number {
+  return getStoredEmbeddingTerms().length + targetIndex;
+}
+
 function vectorBytes(): Int8Array {
   if (vectorBytesCache) return vectorBytesCache;
   const buffer = readFileSync(assetPath(STORED_EMBEDDING_ASSET_FILES.vectors));
-  const expectedLength = getStoredEmbeddingTerms().length * STORED_EMBEDDING_DIMENSIONS;
+  const expectedLength = totalVectorCount() * STORED_EMBEDDING_DIMENSIONS;
   if (buffer.byteLength !== expectedLength) {
     throw new Error(
       \`Generated Decrypto embedding vector asset has \${buffer.byteLength} bytes; expected \${expectedLength}.\`,
@@ -444,23 +518,22 @@ function vectorBytes(): Int8Array {
 function vectorNorms(): Float32Array {
   if (vectorNormCache) return vectorNormCache;
   const bytes = vectorBytes();
-  const terms = getStoredEmbeddingTerms();
-  const norms = new Float32Array(terms.length);
-  for (let termIndex = 0; termIndex < terms.length; termIndex += 1) {
-    const offset = termIndex * STORED_EMBEDDING_DIMENSIONS;
+  const norms = new Float32Array(totalVectorCount());
+  for (let vectorIndex = 0; vectorIndex < norms.length; vectorIndex += 1) {
+    const offset = vectorIndex * STORED_EMBEDDING_DIMENSIONS;
     let magnitude = 0;
     for (let dimension = 0; dimension < STORED_EMBEDDING_DIMENSIONS; dimension += 1) {
       const value = bytes[offset + dimension] ?? 0;
       magnitude += value * value;
     }
-    norms[termIndex] = Math.sqrt(magnitude);
+    norms[vectorIndex] = Math.sqrt(magnitude);
   }
   vectorNormCache = norms;
   return norms;
 }
 
 function assertVectorIndex(index: number): void {
-  if (!Number.isInteger(index) || index < 0 || index >= getStoredEmbeddingTerms().length) {
+  if (!Number.isInteger(index) || index < 0 || index >= totalVectorCount()) {
     throw new Error(\`Stored Decrypto embedding index out of range: \${index}\`);
   }
 }
@@ -479,6 +552,10 @@ export function getStoredTargetEmbeddingInputs(): Readonly<Record<string, string
 
 export function getStoredEmbeddingIndex(term: string): number | undefined {
   return termIndexMap().get(term);
+}
+
+export function getStoredTargetEmbeddingIndex(term: string): number | undefined {
+  return targetIndexMap().get(term);
 }
 
 export function hasStoredEmbeddingTerm(term: string): boolean {
@@ -514,7 +591,7 @@ export function assertStoredEmbeddingAssetsAvailable(): StoredEmbeddingAssetStat
 
   const vectorPath = assetPath(STORED_EMBEDDING_ASSET_FILES.vectors);
   const vectorBytes = statSync(vectorPath).size;
-  const expectedVectorBytes = termsPayload.terms.length * STORED_EMBEDDING_DIMENSIONS;
+  const expectedVectorBytes = totalVectorCount() * STORED_EMBEDDING_DIMENSIONS;
   if (vectorBytes !== expectedVectorBytes) {
     throw new Error(
       \`Generated Decrypto embedding vector asset has \${vectorBytes} bytes; expected \${expectedVectorBytes}.\`,
@@ -552,12 +629,24 @@ export function storedEmbeddingCosineByIndex(leftIndex: number, rightIndex: numb
   return dot / (leftNorm * rightNorm);
 }
 
+export function storedTargetEmbeddingCosineByIndex(guessIndex: number, targetIndex: number): number {
+  return storedEmbeddingCosineByIndex(guessIndex, targetVectorIndex(targetIndex));
+}
+
 export function storedEmbeddingCosineByTerm(leftTerm: string, rightTerm: string): number | undefined {
   const leftIndex = getStoredEmbeddingIndex(leftTerm);
   const rightIndex = getStoredEmbeddingIndex(rightTerm);
   return leftIndex === undefined || rightIndex === undefined
     ? undefined
     : storedEmbeddingCosineByIndex(leftIndex, rightIndex);
+}
+
+export function storedTargetEmbeddingCosineByTerm(guessTerm: string, targetTerm: string): number | undefined {
+  const guessIndex = getStoredEmbeddingIndex(guessTerm);
+  const targetIndex = getStoredTargetEmbeddingIndex(targetTerm);
+  return guessIndex === undefined || targetIndex === undefined
+    ? undefined
+    : storedTargetEmbeddingCosineByIndex(guessIndex, targetIndex);
 }
 
 function dequantizedNormalizedVector(index: number): Float32Array {
@@ -586,6 +675,10 @@ export function referenceDequantizedCosineByIndex(leftIndex: number, rightIndex:
   }
   return dot;
 }
+
+export function referenceDequantizedTargetCosineByIndex(guessIndex: number, targetIndex: number): number {
+  return referenceDequantizedCosineByIndex(guessIndex, targetVectorIndex(targetIndex));
+}
 `;
 }
 
@@ -593,20 +686,23 @@ async function main() {
   const options = generationOptions();
   const commonWordResult = await commonEnglishTerms(options);
   const commonTerms = commonWordResult.terms;
-  const { targetTerms, supplementalTerms, allTerms, embeddingItems, targetEmbeddingInputs } = uniqueEmbeddingItems(commonTerms);
+  const { targetTerms, supplementalTerms, guessTerms, guessItems, targetItems, targetEmbeddingInputs } =
+    uniqueEmbeddingItems(commonTerms, options.vocabularyWordLimit);
   console.info(
-    `Preparing ${allTerms.length} terms (${targetTerms.length} Decrypto targets, ${supplementalTerms.length} supplemental terms, ${commonTerms.length} filtered common words).`,
+    `Preparing ${guessTerms.length} guess terms and ${targetTerms.length} Decrypto target vectors (${supplementalTerms.length} supplemental terms, ${commonTerms.length} filtered common words).`,
   );
 
-  const embeddings = await createEmbeddings(embeddingItems, options.model, options.truncateDim);
+  const guessEmbeddings = await createEmbeddings(guessItems, options.model, options.dimensions, options.batchSize);
+  const targetEmbeddings = await createEmbeddings(targetItems, options.model, options.dimensions, options.batchSize);
+  const embeddings = new Map([...guessEmbeddings, ...targetEmbeddings]);
   const firstVector = embeddings.values().next().value as readonly number[] | undefined;
   const dimensionsFromResponse = firstVector?.length ?? 0;
   if (dimensionsFromResponse === 0) throw new Error('Generated embeddings were empty.');
 
   const metadata: EmbeddingMetadata = {
-    provider: 'sentence-transformers',
+    provider: 'openai',
     model: options.model,
-    vocabularySize: allTerms.length,
+    vocabularySize: guessTerms.length,
     targetVocabularySize: targetTerms.length,
     generatedAt: new Date().toISOString(),
     source: {
@@ -615,20 +711,20 @@ async function main() {
       filterSettings: commonWordResult.stats,
       forcedTargetTerms: targetTerms.length,
       forcedSupplementalTerms: supplementalTerms.length,
+      guessEmbeddingInput:
+        'Guess terms are embedded directly from the submitted/display word text after normalized vocabulary lookup.',
       targetEmbeddingInput:
-        'Decrypto target terms are stored by normalized display word, but embedded from getEmbeddingInput(card); exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs.',
+        'Decrypto target terms are embedded directly from the card displayWord; exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs.',
     },
     embedding: {
       dimensions: dimensionsFromResponse,
       normalized: true,
-      truncateDimension: options.truncateDim > 0 ? options.truncateDim : null,
+      requestedDimensions: options.dimensions,
       dimensionalityReduction:
-        options.truncateDim > 0
-          ? 'SentenceTransformer.encode truncate_dim option'
-          : 'none; full model output dimensions are stored',
+        'OpenAI embeddings API dimensions parameter; vectors are normalized locally before int8 quantization',
       quantization: `int8/${QUANTIZATION_SCALE}`,
       runtimeVectorFormat:
-        'keywordEmbeddings.int8.bin loaded lazily as an Int8Array; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized',
+        'keywordEmbeddings.int8.bin loaded lazily as an Int8Array; guess vectors are stored first, target vectors second; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized',
     },
     assets: {
       vectors: VECTOR_ASSET_FILE,
@@ -636,9 +732,9 @@ async function main() {
       metadata: METADATA_ASSET_FILE,
     },
     scoring: {
-      rawCosine: 'cosine approximation over normalized Sentence Transformers embeddings after int8 quantization',
+      rawCosine: 'cosine approximation over normalized OpenAI embeddings after int8 quantization',
       transformation:
-        'raw cosine is linearly calibrated from stored target-word distribution floor/ceiling, clamped to 0..1, multiplied by a target-neighbor rank weight, then capped below 1 for non-exact embedding matches; non-neighbor unrelated words can intentionally score 0',
+        'runtime tiebreaker scoring compares each guess vector to the corresponding target display-word vector, calibrates raw cosine against generated target-word cosine distribution, and caps non-exact matches below 1',
     },
   };
 
@@ -649,10 +745,12 @@ async function main() {
   await mkdir(dirname(outputPath), { recursive: true });
   const calibration = calibrationFor(targetTerms, embeddings);
   await writeFile(outputPath, generatedSource(metadata, calibration));
-  await writeFile(vectorPath, encodedVectorBytes(allTerms, embeddings));
-  await writeFile(termsPath, `${JSON.stringify({ terms: allTerms, targetTerms, targetEmbeddingInputs }, null, 2)}\n`);
+  await writeFile(vectorPath, encodedVectorBytes(guessTerms, targetTerms, embeddings));
+  await writeFile(termsPath, `${JSON.stringify({ terms: guessTerms, targetTerms, targetEmbeddingInputs }, null, 2)}\n`);
   await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
-  console.info(`Wrote ${allTerms.length} stored embedding loader to ${outputPath}.`);
+  console.info(
+    `Wrote ${guessTerms.length} stored guess embeddings and ${targetTerms.length} target embeddings to ${outputPath}.`,
+  );
   console.info(`Wrote int8 embedding matrix to ${vectorPath}.`);
   console.info(`Wrote embedding terms to ${termsPath}.`);
   console.info(`Wrote embedding metadata to ${metadataPath}.`);

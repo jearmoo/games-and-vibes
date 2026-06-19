@@ -42,6 +42,13 @@ createGameServer<DecryptoRoom>({
 
   registerGameHandlers,
 
+  connectionCallbacks: {
+    onHostReassign: (room, oldHostId) => {
+      if (!room.settings.offlineAwareness) return undefined;
+      return room.getActivePlayers().find((player) => player.connected && player.id !== oldHostId)?.id;
+    },
+  },
+
   onRoomRestored: (room, io) => {
     scheduleClueTimer(room, io);
   },

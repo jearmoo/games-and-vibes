@@ -23,6 +23,7 @@ export default function LobbyScreen() {
   const roomCode = useGameStore((s) => s.roomCode);
   const players = useGameStore((s) => s.room?.players ?? []);
   const hostId = useGameStore((s) => s.room?.hostId ?? null);
+  const offlineAwareness = useGameStore((s) => s.room?.settings.offlineAwareness ?? true);
   const host = useIsHost();
   const me = useMyPlayer();
   const red = useTeamPlayers('red');
@@ -41,7 +42,9 @@ export default function LobbyScreen() {
     });
   }, [shareUrl]);
 
-  const canStart = red.filter((p) => p.connected).length >= 2 && blue.filter((p) => p.connected).length >= 2;
+  const redEligibleCount = offlineAwareness ? red.filter((p) => p.connected).length : red.length;
+  const blueEligibleCount = offlineAwareness ? blue.filter((p) => p.connected).length : blue.length;
+  const canStart = redEligibleCount >= 2 && blueEligibleCount >= 2;
 
   const handleStart = () => {
     if (!canStart || starting) return;
@@ -90,6 +93,7 @@ export default function LobbyScreen() {
           myId={me?.id ?? null}
           canKick={host}
           onKick={setConfirmKickId}
+          showOfflineStatus={offlineAwareness}
         />
         <TeamColumn
           team="blue"
@@ -98,14 +102,21 @@ export default function LobbyScreen() {
           myId={me?.id ?? null}
           canKick={host}
           onKick={setConfirmKickId}
+          showOfflineStatus={offlineAwareness}
         />
       </div>
+
+      <OfflineAwarenessControl enabled={offlineAwareness} host={host} />
 
       <div className="glass-card rounded-2xl border border-white/10 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-gray-400 text-xs tracking-widest uppercase">Players</div>
-            <div className="text-gray-500 text-xs mt-1">Decrypto needs at least 2 players on each channel.</div>
+            <div className="text-gray-500 text-xs mt-1">
+              {offlineAwareness
+                ? 'Decrypto needs 2 online players on each channel.'
+                : 'Decrypto needs 2 players on each channel.'}
+            </div>
           </div>
           <div className="text-right font-display text-white tracking-wider">
             {players.length}
@@ -125,7 +136,13 @@ export default function LobbyScreen() {
                 : 'bg-surface-raised text-gray-600 border border-white/5'
             }`}
           >
-            {!canStart ? 'Need 2 per team' : starting ? 'Starting...' : 'Start Game'}
+            {!canStart
+              ? offlineAwareness
+                ? 'Need 2 online per team'
+                : 'Need 2 per team'
+              : starting
+                ? 'Starting...'
+                : 'Start Game'}
           </button>
         ) : (
           <div className="w-full py-4 text-center text-gray-500 text-sm tracking-wider">Waiting for host...</div>
@@ -146,6 +163,39 @@ export default function LobbyScreen() {
         />
       )}
       {helpOpen && <HowToPlayPanel onClose={() => setHelpOpen(false)} />}
+    </div>
+  );
+}
+
+function OfflineAwarenessControl({ enabled, host }: { enabled: boolean; host: boolean }) {
+  return (
+    <div className="glass-card rounded-2xl border border-white/10 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-gray-400 text-xs tracking-widest uppercase">Offline awareness</div>
+          <div className="text-gray-500 text-xs mt-1">
+            {enabled ? 'Visible offline status' : 'Hidden offline status'}
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          disabled={!host}
+          onClick={() => useGameStore.getState().setOfflineAwareness(!enabled)}
+          className={`relative h-8 w-14 rounded-full border transition-all active:scale-[0.97] ${
+            enabled
+              ? 'border-cyan-300/40 bg-cyan-400/20 shadow-[0_0_18px_rgba(34,211,238,0.18)]'
+              : 'border-white/10 bg-surface-raised'
+          } ${host ? 'cursor-pointer hover:bg-surface-hover' : 'cursor-not-allowed opacity-60'}`}
+        >
+          <span
+            className={`absolute left-0 top-1 h-6 w-6 rounded-full transition-transform duration-200 ${
+              enabled ? 'translate-x-6 bg-cyan-200' : 'translate-x-1 bg-gray-500'
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -231,6 +281,7 @@ function TeamColumn({
   myId,
   canKick,
   onKick,
+  showOfflineStatus,
 }: {
   team: TeamId;
   players: DecryptoPlayerDTO[];
@@ -238,16 +289,20 @@ function TeamColumn({
   myId: string | null;
   canKick: boolean;
   onKick: (id: string) => void;
+  showOfflineStatus: boolean;
 }) {
   const meta = TEAM_META[team];
   const mine = players.some((p) => p.id === myId);
+  const onlineCount = players.filter((p) => p.connected).length;
 
   return (
     <div className={`glass-card rounded-2xl border ${meta.border} ${mine ? meta.glow : ''} p-4 min-h-[16rem]`}>
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
           <div className={`font-display text-xl tracking-wider ${meta.text}`}>{meta.label}</div>
-          <div className="text-gray-500 text-xs">{players.length} players</div>
+          <div className="text-gray-500 text-xs">
+            {showOfflineStatus ? `${onlineCount}/${players.length} online` : `${players.length} players`}
+          </div>
         </div>
         {!mine && (
           <button
@@ -275,6 +330,11 @@ function TeamColumn({
               {p.id === hostId && (
                 <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/20 leading-none">
                   HOST
+                </span>
+              )}
+              {showOfflineStatus && !p.connected && (
+                <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-gray-500/15 text-gray-400 border border-white/10 leading-none">
+                  OFFLINE
                 </span>
               )}
               {canKick && p.id !== hostId && (

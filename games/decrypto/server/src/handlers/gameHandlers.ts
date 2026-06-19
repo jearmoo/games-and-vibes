@@ -10,6 +10,7 @@ import {
   type PostGuessSharePayload,
   type RegenerateKeywordPayload,
   type ReleaseWordsPayload,
+  type SetOfflineAwarenessPayload,
   type SetWordLockPayload,
   type SetTiebreakerVocabularyModePayload,
   type SubmitCluesPayload,
@@ -128,6 +129,19 @@ export function registerGameHandlers(ctx: SocketContext<DecryptoRoom>) {
     });
   });
 
+  socket.on(DecryptoEvent.SetOfflineAwareness, (payload: SetOfflineAwarenessPayload) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    const result = room.setOfflineAwareness(playerId, payload?.enabled);
+    if (!result.ok) {
+      socket.emit('room:error', { message: result.message });
+      return;
+    }
+    emitGameState(room, io);
+  });
+
   socket.on(DecryptoEvent.SaveClues, (payload: SubmitCluesPayload) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
@@ -232,6 +246,19 @@ export function registerGameHandlers(ctx: SocketContext<DecryptoRoom>) {
       return;
     }
     if (room.phase === DecryptoPhase.GAME_OVER) metrics.gameCompleted();
+    emitGameState(room, io);
+  });
+
+  socket.on(DecryptoEvent.UnlockTiebreaker, () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    const result = room.unlockTiebreaker(playerId);
+    if (!result.ok) {
+      socket.emit('room:error', { message: result.message });
+      return;
+    }
     emitGameState(room, io);
   });
 

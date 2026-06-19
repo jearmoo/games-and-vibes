@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TeamId, TiebreakerVocabularyMode } from '@games/decrypto-shared';
-import { useGameStore, useIsHost } from '../store';
+import { useGameStore, useIsHost, useMyPlayer } from '../store';
 import { ClueBank, ScoreStrip, SignalHistory, TEAM_STYLES, TeamBadge, otherTeam } from './shared';
 
 const GUESS_SLOTS = [0, 1, 2, 3];
@@ -34,6 +34,7 @@ export default function TieBreakerScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
   const isHost = useIsHost();
+  const me = useMyPlayer();
   const myTeam = privateState?.team;
   const targetTeam = myTeam ? otherTeam(myTeam) : undefined;
   const [guesses, setGuesses] = useState(['', '', '', '']);
@@ -43,6 +44,8 @@ export default function TieBreakerScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const submitted = !!(myTeam && room?.tiebreaker?.submissions[myTeam]?.submitted);
+  const otherSubmitted = !!(targetTeam && room?.tiebreaker?.submissions[targetTeam]?.submitted);
+  const canUnlockTiebreaker = submitted && !otherSubmitted;
   const vocabularyMode = room?.tiebreaker?.vocabularyMode ?? room?.settings.tiebreakerVocabularyMode ?? 'english';
   const hasAnySubmission = !!(
     room?.tiebreaker?.submissions.red.submitted || room?.tiebreaker?.submissions.blue.submitted
@@ -89,17 +92,30 @@ export default function TieBreakerScreen() {
 
   return (
     <div className="min-h-full flex flex-col px-5 py-5 gap-5 animate-fade-in overflow-y-auto max-w-5xl mx-auto w-full">
-      <div className="relative min-h-24 text-center">
+      <div className="relative min-h-28 text-center sm:min-h-24">
+        <div className="absolute left-0 top-0 max-w-[7.5rem] text-left sm:max-w-[10rem]">
+          <div className="truncate text-[10px] font-medium leading-tight text-gray-300">{me?.name ?? 'Spectator'}</div>
+          {isHost && <div className="mt-0.5 text-[8px] tracking-[0.22em] text-fuchsia-300 uppercase">Host</div>}
+        </div>
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
           aria-label="Open tiebreaker settings"
           title="Tiebreaker settings"
-          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-lg text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+          className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
         >
-          ⚙
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+            <path
+              d="M9.67 4.14a2.36 2.36 0 0 1 4.66 0 2.36 2.36 0 0 0 3.32 1.91 2.36 2.36 0 0 1 2.33 4.03 2.36 2.36 0 0 0 0 3.84 2.36 2.36 0 0 1-2.33 4.03 2.36 2.36 0 0 0-3.32 1.91 2.36 2.36 0 0 1-4.66 0 2.36 2.36 0 0 0-3.32-1.91 2.36 2.36 0 0 1-2.33-4.03 2.36 2.36 0 0 0 0-3.84 2.36 2.36 0 0 1 2.33-4.03 2.36 2.36 0 0 0 3.32-1.91Z"
+              stroke="currentColor"
+              strokeWidth="1.65"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.65" />
+          </svg>
         </button>
-        <div className="mx-auto max-w-[calc(100%-3rem)]">
+        <div className="mx-auto max-w-[calc(100%-1rem)] pt-9 sm:max-w-[calc(100%-3rem)] sm:pt-0">
           <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Sudden decode</div>
           <div className="font-display text-4xl tracking-wider text-white">Tiebreaker</div>
           <div className="mt-2 text-sm text-gray-400">
@@ -119,6 +135,7 @@ export default function TieBreakerScreen() {
               targetTeam={targetTeam}
               guesses={guesses}
               submitted={submitted}
+              canUnlock={canUnlockTiebreaker}
               submitting={submitting}
               canSubmit={canSubmit}
               attemptedSubmit={attemptedSubmit}
@@ -134,6 +151,7 @@ export default function TieBreakerScreen() {
               }}
               onFocusSlot={setFocusedSlot}
               onSubmit={handleSubmit}
+              onUnlock={() => useGameStore.getState().unlockTiebreaker()}
             />
           ) : (
             <div className="glass-card rounded-2xl border border-white/10 p-5 text-center text-gray-400">
@@ -276,17 +294,22 @@ function VocabularySettingsPanel({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {options.map((option) => {
             const active = option.mode === mode;
+            const interactive = isHost && !locked;
+            const optionClass = interactive
+              ? active
+                ? 'border-white/25 bg-white/12 text-white shadow-inner shadow-white/5'
+                : 'border-white/10 bg-black/20 text-gray-400 hover:bg-white/5 hover:text-gray-200'
+              : active
+                ? 'pointer-events-none border-white/20 bg-white/10 text-white shadow-inner shadow-white/5'
+                : 'pointer-events-none border-white/10 bg-black/20 text-gray-500';
             return (
               <button
                 key={option.mode}
                 type="button"
                 onClick={() => setMode(option.mode)}
-                disabled={!isHost || locked}
-                className={`rounded-xl border px-3 py-3 text-left transition-all ${
-                  active
-                    ? 'border-white/25 bg-white/12 text-white shadow-inner shadow-white/5'
-                    : 'border-white/10 bg-black/20 text-gray-400 hover:bg-white/5 hover:text-gray-200'
-                } disabled:cursor-not-allowed disabled:hover:bg-black/20 disabled:hover:text-gray-400`}
+                disabled={!interactive}
+                aria-pressed={active}
+                className={`rounded-xl border px-3 py-3 text-left transition-all disabled:cursor-not-allowed ${optionClass}`}
               >
                 <div className="font-display text-xs tracking-wider uppercase">{option.label}</div>
                 <div className="mt-0.5 text-[10px] text-gray-500">{option.caption}</div>
@@ -310,6 +333,7 @@ function TiebreakerForm({
   targetTeam,
   guesses,
   submitted,
+  canUnlock,
   submitting,
   canSubmit,
   attemptedSubmit,
@@ -321,11 +345,13 @@ function TiebreakerForm({
   onChange,
   onFocusSlot,
   onSubmit,
+  onUnlock,
 }: {
   myTeam: TeamId;
   targetTeam: TeamId;
   guesses: string[];
   submitted: boolean;
+  canUnlock: boolean;
   submitting: boolean;
   canSubmit: boolean;
   attemptedSubmit: boolean;
@@ -337,10 +363,13 @@ function TiebreakerForm({
   onChange: (index: number, value: string) => void;
   onFocusSlot: (index: number | null) => void;
   onSubmit: () => void;
+  onUnlock: () => void;
 }) {
   const myStyle = TEAM_STYLES[myTeam];
   const targetStyle = TEAM_STYLES[targetTeam];
   const blurTimerRef = useRef<number | null>(null);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const suppressSubmitUntilRef = useRef(0);
   const suggestionListOpen = suggestionsBySlot.some((suggestions) => suggestions.length > 0);
 
   useEffect(
@@ -356,9 +385,37 @@ function TiebreakerForm({
     blurTimerRef.current = null;
   };
 
+  const focusInput = (slot: number) => {
+    window.requestAnimationFrame(() => {
+      const input = inputRefs.current[slot];
+      if (!input || document.activeElement === input) return;
+      input.focus({ preventScroll: true });
+    });
+  };
+
   const activateSlot = (slot: number) => {
     clearBlurTimer();
     onFocusSlot(slot);
+    focusInput(slot);
+  };
+
+  const handleGuessChange = (slot: number, value: string) => {
+    clearBlurTimer();
+    onFocusSlot(slot);
+    onChange(slot, value);
+  };
+
+  const chooseSuggestion = (slot: number, word: string) => {
+    clearBlurTimer();
+    suppressSubmitUntilRef.current = Date.now() + 450;
+    onChange(slot, word);
+    onFocusSlot(null);
+    focusInput(slot);
+  };
+
+  const handleSubmitClick = () => {
+    if (suggestionListOpen || Date.now() < suppressSubmitUntilRef.current) return;
+    onSubmit();
   };
 
   const scheduleDeactivateSlot = () => {
@@ -374,27 +431,40 @@ function TiebreakerForm({
       <div className={`glass-card rounded-2xl border ${myStyle.border} p-5 text-center`}>
         <div className={`font-display text-2xl tracking-wider ${myStyle.text}`}>Tiebreaker locked</div>
         <div className="mt-2 text-gray-400">Waiting for the other team to submit.</div>
+        {canUnlock && (
+          <button
+            type="button"
+            onClick={onUnlock}
+            className="mt-4 rounded-xl border border-white/10 bg-surface-raised px-4 py-2 font-display text-xs tracking-wider text-gray-300 uppercase transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+          >
+            Unlock
+          </button>
+        )}
       </div>
     );
   }
 
   return (
     <div
-      className={`glass-card relative overflow-visible rounded-2xl border ${myStyle.border} p-4 space-y-4 ${
+      className={`glass-card relative overflow-visible rounded-xl border ${myStyle.border} p-3 space-y-3 sm:rounded-2xl sm:p-4 sm:space-y-4 ${
         suggestionListOpen ? 'z-[80]' : 'z-10'
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Keyword guesses</div>
-          <div className="font-display text-2xl tracking-wider text-white">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <div className="mb-0.5 text-[9px] tracking-[0.22em] text-gray-500 uppercase sm:mb-1 sm:text-[10px] sm:tracking-[0.3em]">
+            Keyword guesses
+          </div>
+          <div className="truncate font-display text-xl tracking-wider text-white sm:text-2xl">
             {myStyle.label} guesses {targetStyle.label}
           </div>
         </div>
-        <TeamBadge team={myTeam} />
+        <div className="shrink-0 text-xs sm:text-sm">
+          <TeamBadge team={myTeam} />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
         {GUESS_SLOTS.map((slot) => {
           const guess = guesses[slot].trim().toLowerCase();
           const formatInvalid = guess.length > 0 && !SINGLE_WORD_GUESS.test(guess);
@@ -409,55 +479,73 @@ function TiebreakerForm({
           return (
             <div
               key={slot}
-              className={`relative overflow-visible rounded-xl border ${targetStyle.border} ${targetStyle.bg} p-3 ${
+              onPointerDown={(event) => {
+                if ((event.target as HTMLElement).closest('button')) return;
+                activateSlot(slot);
+              }}
+              className={`relative overflow-visible rounded-lg border ${targetStyle.border} ${targetStyle.bg} p-2 sm:rounded-xl sm:p-3 ${
                 suggestions.length > 0 ? 'z-50' : 'z-0'
               }`}
             >
-              <span className={`font-display text-lg ${targetStyle.text}`}>{slot + 1}</span>
-              <div className="relative mt-2">
-                <input
-                  value={guesses[slot]}
-                  onChange={(event) => onChange(slot, event.target.value)}
-                  onPointerDown={() => activateSlot(slot)}
-                  onFocus={() => activateSlot(slot)}
-                  onBlur={scheduleDeactivateSlot}
-                  maxLength={TIEBREAKER_MAX_GUESS_LENGTH}
-                  autoCapitalize="none"
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-label={`${targetStyle.label} keyword ${slot + 1}`}
-                  className={`game-input w-full rounded-xl px-3 py-2 text-white placeholder-gray-600 ${
-                    showFormatError || showUnknownError ? 'border-red-400/60' : ''
-                  }`}
-                  placeholder={vocabularyMode === 'word-bank' ? 'word bank word' : 'one word'}
-                />
-                {suggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-white/15 bg-gray-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
-                    {suggestions.map((word) => (
-                      <button
-                        key={word}
-                        type="button"
-                        onPointerDown={(event) => {
-                          event.preventDefault();
-                          clearBlurTimer();
-                          onChange(slot, word);
-                          onFocusSlot(null);
-                        }}
-                        onClick={() => {
-                          clearBlurTimer();
-                          onChange(slot, word);
-                          onFocusSlot(null);
-                        }}
-                        className="block w-full px-3 py-2 text-left text-sm text-gray-100 transition-colors hover:bg-white/10 active:bg-white/15"
-                      >
-                        {word}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="flex items-center gap-1.5 sm:block">
+                <span
+                  className={`flex h-8 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-black/20 font-display text-base sm:block sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-lg ${targetStyle.text}`}
+                >
+                  {slot + 1}
+                </span>
+                <div className="relative min-w-0 flex-1 sm:mt-2">
+                  <input
+                    ref={(element) => {
+                      inputRefs.current[slot] = element;
+                    }}
+                    value={guesses[slot]}
+                    onChange={(event) => handleGuessChange(slot, event.target.value)}
+                    onPointerDown={() => activateSlot(slot)}
+                    onFocus={() => activateSlot(slot)}
+                    onBlur={scheduleDeactivateSlot}
+                    maxLength={TIEBREAKER_MAX_GUESS_LENGTH}
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label={`${targetStyle.label} keyword ${slot + 1}`}
+                    className={`game-input w-full rounded-lg px-2 py-1.5 text-base text-white placeholder-gray-600 sm:rounded-xl sm:px-3 sm:py-2 ${
+                      showFormatError || showUnknownError ? 'border-red-400/60' : ''
+                    }`}
+                    placeholder="Enter word"
+                  />
+                  {suggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-white/15 bg-gray-950/95 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                      {suggestions.map((word) => (
+                        <button
+                          key={word}
+                          type="button"
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            chooseSuggestion(slot, word);
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            chooseSuggestion(slot, word);
+                          }}
+                          className="block w-full px-3 py-2 text-left text-sm text-gray-100 transition-colors hover:bg-white/10 active:bg-white/15"
+                        >
+                          {word}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              {showUnknownError && <div className="mt-2 text-[11px] text-red-200">{unknownMessage}</div>}
-              {showFormatError && <div className="mt-2 text-[11px] text-red-200">Use 3-18 letters.</div>}
+              {showUnknownError && (
+                <div className="mt-1.5 text-[10px] leading-tight text-red-200 sm:mt-2 sm:text-[11px]">
+                  {unknownMessage}
+                </div>
+              )}
+              {showFormatError && (
+                <div className="mt-1.5 text-[10px] leading-tight text-red-200 sm:mt-2 sm:text-[11px]">
+                  Use 3-18 letters.
+                </div>
+              )}
             </div>
           );
         })}
@@ -465,9 +553,9 @@ function TiebreakerForm({
 
       <button
         type="button"
-        onClick={onSubmit}
-        disabled={!canSubmit}
-        className="btn-success w-full py-4 rounded-2xl text-white font-display tracking-wider disabled:opacity-30 disabled:shadow-none active:scale-[0.97] transition-all"
+        onClick={handleSubmitClick}
+        disabled={!canSubmit || suggestionListOpen}
+        className="btn-success w-full rounded-xl py-3 font-display tracking-wider text-white transition-all active:scale-[0.97] disabled:opacity-30 disabled:shadow-none sm:rounded-2xl sm:py-4"
       >
         {submitting ? 'Submitting...' : vocabularyReady ? 'Submit Tiebreaker' : 'Loading Words...'}
       </button>

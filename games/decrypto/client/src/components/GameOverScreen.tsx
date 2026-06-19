@@ -11,6 +11,16 @@ import { ClueBank, ScoreStrip, SignalHistory, TEAM_STYLES, otherTeam } from './s
 
 const TEAMS: TeamId[] = ['red', 'blue'];
 
+function sentenceCaseGuess(guess: string): string {
+  const normalized = guess.trim().toLowerCase();
+  if (!normalized) return '';
+  return `${normalized[0].toUpperCase()}${normalized.slice(1)}`;
+}
+
+function formatSimilarityScore(score?: number): string {
+  return `${((score ?? 0) * 100).toFixed(0)}%`;
+}
+
 export default function GameOverScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
@@ -278,15 +288,26 @@ function TiebreakerResultPanel({ result }: { result: TiebreakerResult }) {
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1 sm:mt-3 sm:flex sm:flex-wrap sm:gap-1.5">
-                {teamResult.guesses.map((guess, index) => (
-                  <span
-                    key={`${team}-${guess}-${index}`}
-                    title={`${index + 1}. ${guess}`}
-                    className="min-w-0 truncate rounded-md border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] text-gray-200 sm:rounded-lg sm:px-2 sm:py-1 sm:text-[11px]"
-                  >
-                    {index + 1}. {guess}
-                  </span>
-                ))}
+                {teamResult.guesses.map((guess, index) => {
+                  const displayGuess = sentenceCaseGuess(guess);
+                  const score = formatSimilarityScore(teamResult.slotScores[index]);
+                  return (
+                    <span
+                      key={`${team}-${guess}-${index}`}
+                      title={`${index + 1}. ${displayGuess} - ${score}`}
+                      className="min-w-0 rounded-md border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] text-gray-200 sm:rounded-lg sm:px-2 sm:py-1 sm:text-[11px]"
+                    >
+                      <span className="flex min-w-0 items-center justify-between gap-1.5">
+                        <span className="min-w-0 truncate">
+                          {index + 1}. {displayGuess}
+                        </span>
+                        <span className="shrink-0 font-display text-[9px] tracking-wider text-gray-400 sm:text-[10px]">
+                          {score}
+                        </span>
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           );

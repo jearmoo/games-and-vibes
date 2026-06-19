@@ -45,8 +45,10 @@ export interface GameStore {
   unlockClues: () => void;
   postGuessShare: (args: { team: TeamId; kind: GuessKind; code: Code }) => void;
   submitGuess: (args: { team: TeamId; kind: GuessKind; code: Code }) => void;
+  setOfflineAwareness: (enabled: boolean) => void;
   setTiebreakerVocabularyMode: (mode: TiebreakerVocabularyMode) => void;
   submitTiebreaker: (guesses: string[]) => void;
+  unlockTiebreaker: () => void;
   requestTiebreakerRepeat: () => void;
   takeWin: () => void;
   releaseWords: (args: { team: TeamId }) => void;
@@ -113,11 +115,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   submitGuess: ({ team, kind, code }) => {
     socket.emit(DecryptoEvent.SubmitGuess, { team, kind, code });
   },
+  setOfflineAwareness: (enabled) => {
+    socket.emit(DecryptoEvent.SetOfflineAwareness, { enabled });
+  },
   setTiebreakerVocabularyMode: (mode) => {
     socket.emit(DecryptoEvent.SetTiebreakerVocabularyMode, { mode });
   },
   submitTiebreaker: (guesses) => {
     socket.emit(DecryptoEvent.SubmitTiebreaker, { guesses });
+  },
+  unlockTiebreaker: () => {
+    socket.emit(DecryptoEvent.UnlockTiebreaker);
   },
   requestTiebreakerRepeat: () => {
     socket.emit(DecryptoEvent.RequestTiebreakerRepeat);

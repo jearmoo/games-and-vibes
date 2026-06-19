@@ -241,6 +241,7 @@ describe('connectionHandlers', () => {
   let io: MockIO;
   let rooms: RoomManager<TestRoom>;
   let metrics: MetricsCollector;
+  let ctx: { setPlayerId: (id: string | null) => void };
 
   beforeEach(() => {
     const mock = createMockSocketContext<TestRoom>(socketOpts);
@@ -248,6 +249,7 @@ describe('connectionHandlers', () => {
     io = mock.io;
     rooms = mock.rooms;
     metrics = mock.metrics;
+    ctx = mock.ctx;
 
     registerLobbyHandlers(mock.ctx, {
       buildGameState: (_room, _playerId) => null,
@@ -287,5 +289,84 @@ describe('connectionHandlers', () => {
       expect(host.connected).toBe(false);
       expect(host.disconnectedAt).toBeDefined();
     }
+  });
+
+  it('does not reassign host when the host only disconnects', () => {
+    socket.trigger('room:create', { playerName: 'Host' });
+    const { roomCode, playerId: hostId } = socket.getLastEmitted('room:created')![0] as any;
+    socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+
+    const room = rooms.getRoom(roomCode)!;
+    const bob = room.getPlayerByName('Bob')!;
+    expect(bob.connected).toBe(true);
+
+    ctx.setPlayerId(hostId);
+    socket.trigger('disconnect');
+
+    expect(room.hostId).toBe(hostId);
+    expect(room.getPlayer(hostId)?.connected).toBe(false);
+    expect(io.getRoomEvent(roomCode, 'room:host-updated')).toHaveLength(0);
+  });
+
+  it('can reassign host on disconnect when a game opts in', () => {
+    const mock = createMockSocketContext<TestRoom>(socketOpts);
+    registerLobbyHandlers(mock.ctx, {
+      buildGameState: (_room, _playerId) => null,
+    });
+    registerConnectionHandlers(mock.ctx, {
+      onHostReassign: (room, oldHostId) =>
+        room.getActivePlayers().find((player) => player.connected && player.id !== oldHostId)?.id,
+    });
+
+    mock.socket.trigger('room:create', { playerName: 'Host' });
+    const { roomCode, playerId: hostId } = mock.socket.getLastEmitted('room:created')![0] as any;
+    mock.socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+
+    const room = mock.rooms.getRoom(roomCode)!;
+    const bob = room.getPlayerByName('Bob')!;
+
+    mock.ctx.setPlayerId(hostId);
+    mock.socket.trigger('disconnect');
+
+    expect(room.hostId).toBe(bob.id);
+    const hostUpdated = mock.io.getRoomEvent(roomCode, 'room:host-updated').at(-1)![0] as any;
+    expect(hostUpdated.hostId).toBe(bob.id);
+    mock.rooms.destroy();
+    mock.metrics.destroy();
+  });
+
+  it('reassigns host when the host leaves the lobby', () => {
+    socket.trigger('room:create', { playerName: 'Host' });
+    const { roomCode, playerId: hostId } = socket.getLastEmitted('room:created')![0] as any;
+    socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+
+    const room = rooms.getRoom(roomCode)!;
+    const bob = room.getPlayerByName('Bob')!;
+
+    ctx.setPlayerId(hostId);
+    socket.trigger('room:leave');
+
+    expect(room.hostId).toBe(bob.id);
+    expect(room.getPlayer(hostId)).toBeUndefined();
+    const leftEvent = io.getRoomEvent(roomCode, 'room:player-left').at(-1)![0] as any;
+    expect(leftEvent.hostId).toBe(bob.id);
+  });
+
+  it('reassigns host when the host leaves during an active game', () => {
+    socket.trigger('room:create', { playerName: 'Host' });
+    const { roomCode, playerId: hostId } = socket.getLastEmitted('room:created')![0] as any;
+    socket.trigger('room:join', { roomCode, playerName: 'Bob' });
+
+    const room = rooms.getRoom(roomCode)!;
+    const bob = room.getPlayerByName('Bob')!;
+    room.gameActive = true;
+
+    ctx.setPlayerId(hostId);
+    socket.trigger('room:leave');
+
+    expect(room.hostId).toBe(bob.id);
+    expect(room.getPlayer(hostId)?.removed).toBe(true);
+    const leftEvent = io.getRoomEvent(roomCode, 'room:player-left').at(-1)![0] as any;
+    expect(leftEvent.hostId).toBe(bob.id);
   });
 });

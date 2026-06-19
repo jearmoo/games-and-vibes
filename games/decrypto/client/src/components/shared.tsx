@@ -135,6 +135,16 @@ export function clueListLabel(clues: ClueContent[]): string {
   return clues.map(clueLabel).join(' / ');
 }
 
+function sentenceCaseGuess(guess: string): string {
+  const normalized = guess.trim().toLowerCase();
+  if (!normalized) return '';
+  return `${normalized[0].toUpperCase()}${normalized.slice(1)}`;
+}
+
+function formatSimilarityScore(score?: number): string {
+  return `${((score ?? 0) * 100).toFixed(0)}%`;
+}
+
 export function possessiveName(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`;
 }
@@ -837,15 +847,24 @@ function TiebreakerHistoryEntry({ result, attemptNumber }: { result: TiebreakerR
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1">
-                {teamResult.guesses.map((guess, index) => (
-                  <span
-                    key={`${team}-${guess}-${index}`}
-                    className="min-w-0 truncate rounded-md border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] text-gray-200"
-                    title={`${index + 1}. ${guess}`}
-                  >
-                    {index + 1}. {guess}
-                  </span>
-                ))}
+                {teamResult.guesses.map((guess, index) => {
+                  const displayGuess = sentenceCaseGuess(guess);
+                  const score = formatSimilarityScore(teamResult.slotScores[index]);
+                  return (
+                    <span
+                      key={`${team}-${guess}-${index}`}
+                      className="min-w-0 rounded-md border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] text-gray-200"
+                      title={`${index + 1}. ${displayGuess} - ${score}`}
+                    >
+                      <span className="flex min-w-0 items-center justify-between gap-1">
+                        <span className="min-w-0 truncate">
+                          {index + 1}. {displayGuess}
+                        </span>
+                        <span className="shrink-0 font-display text-[9px] tracking-wider text-gray-400">{score}</span>
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           );

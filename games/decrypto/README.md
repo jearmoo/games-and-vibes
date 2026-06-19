@@ -13,31 +13,36 @@ pnpm run dev:decrypto
 
 ## Keyword Embeddings
 
-The tiebreaker scorer uses stored Sentence Transformers vectors when they are available, then falls back to the lightweight local scorer for terms that have not been generated yet. Generate vectors for the Decrypto dictionary plus common English words with:
+The tiebreaker scorer uses precomputed OpenAI embeddings. Runtime gameplay does not call the OpenAI API. Generate vectors for the tiebreaker guess vocabulary and Decrypto target words with:
 
 ```bash
 pnpm --filter @games/decrypto-server setup:embeddings
+export OPENAI_API_KEY=...
 pnpm --filter @games/decrypto-server generate:embeddings
 ```
 
-By default this uses `sentence-transformers/all-MiniLM-L6-v2`, stores the model's full 384-dimensional normalized embeddings, quantizes them as `int8/127` for repo size, iterates the full English `wordfreq` `best` wordlist, and stores up to 150,000 filtered candidate words plus all Decrypto target words and a small supplemental list for common playtest misses such as `teapot`. Filters keep lowercase alphabetic words from 3-18 letters, remove stopwords/function words, require Zipf frequency >= 1.5, and de-duplicate the result. Profanity and adult terms are not specially excluded. The production runtime keeps the matrix in `keywordEmbeddings.int8.bin` and computes cosine directly with `dot(qA, qB) / (norm(qA) * norm(qB))`, caching only one small norm per vocabulary term instead of materializing a full `Float32Array` matrix.
+By default this uses `text-embedding-3-large` with 384 requested dimensions, normalizes vectors locally, quantizes them as `int8/127`, iterates the full English `wordfreq` `best` wordlist, and stores up to 150,000 filtered candidate guess words plus all Decrypto display words and a small supplemental list for common playtest misses such as `teapot`. Filters keep lowercase alphabetic words from 3-18 letters, remove stopwords/function words, require Zipf frequency >= 1.5, and de-duplicate the result. Profanity and adult terms are not specially excluded.
+
+The binary asset stores guess vectors first and target-word vectors second. Guess terms and Decrypto targets are both embedded directly from their display word text. Production scoring keeps the matrix in `keywordEmbeddings.int8.bin` and computes cosine directly with `dot(qA, qB) / (norm(qA) * norm(qB))`, caching only one small norm per vector instead of materializing a full `Float32Array` matrix.
 
 Tiebreaker guesses are single words only and must exist in the generated vocabulary. Unknown words are rejected with a friendly validation error instead of being silently scored as zero.
 
 Generation can be configured with environment variables or script flags:
 
 ```bash
+OPENAI_API_KEY=... \
 DECRYPTO_EMBEDDING_VOCAB_SIZE=150000 \
+OPENAI_EMBEDDING_DIMENSIONS=384 \
 EMBEDDING_ZIPF_FREQUENCY_FLOOR=1.5 \
 EMBEDDING_WORDFREQ_WORDLIST=best \
 pnpm --filter @games/decrypto-server generate:embeddings
 
-pnpm --filter @games/decrypto-server generate:embeddings -- --word-limit=150000 --zipf-floor=1.5 --wordfreq-wordlist=best
+pnpm --filter @games/decrypto-server generate:embeddings -- --word-limit=150000 --dimensions=384 --zipf-floor=1.5 --wordfreq-wordlist=best
 ```
 
 By default `EMBEDDING_SOURCE_POOL_SIZE` / `--source-pool-size` is `0`, which means scan the full wordfreq list. Set it only when you intentionally want a capped source scan.
 
-For Raspberry Pi deployments under memory pressure, regenerate a smaller embedding asset while keeping the same filters:
+For Raspberry Pi deployments under memory pressure, regenerate a smaller embedding asset while keeping the same model and filters:
 
 ```bash
 DECRYPTO_EMBEDDING_VOCAB_SIZE=75000 pnpm --filter @games/decrypto-server generate:embeddings
@@ -52,9 +57,9 @@ To tighten the OOV gate during playtesting, regenerate with a smaller candidate 
 pnpm --filter @games/decrypto-server generate:embeddings -- --word-limit=40000 --source-pool-size=150000 --zipf-floor=2.8
 ```
 
-Other knobs: `SENTENCE_TRANSFORMER_MODEL`, `SENTENCE_TRANSFORMER_TRUNCATE_DIM`, `EMBEDDING_MIN_WORD_LENGTH`, and `EMBEDDING_MAX_WORD_LENGTH`. `SENTENCE_TRANSFORMER_TRUNCATE_DIM` / `--truncate-dim` defaults to `0`, which means no dimensionality reduction; set it only if we intentionally want to compare a smaller embedding file against the full 384-dimensional baseline.
+Other knobs: `OPENAI_EMBEDDING_MODEL`, `OPENAI_EMBEDDING_DIMENSIONS`, `DECRYPTO_EMBEDDING_BATCH_SIZE`, `EMBEDDING_MIN_WORD_LENGTH`, and `EMBEDDING_MAX_WORD_LENGTH`.
 
-The stored tiebreaker score is not raw cosine. Raw MiniLM cosine is linearly calibrated from generated target-word floor/ceiling values, clamped to 0-1, then multiplied by a target-neighbor rank weight. Non-exact embedding matches are capped below 100%, so only exact word guesses can display as perfect. This keeps semantically close guesses high while unrelated guesses that are not near the target can intentionally score 0.
+The stored tiebreaker score is not raw cosine. Raw OpenAI embedding cosine is linearly calibrated from generated target-word floor/ceiling values and clamped to 0-1. Non-exact embedding matches are capped below 100%, so only exact word guesses can display as perfect.
 
 ## Rules Implemented
 

@@ -96,6 +96,7 @@ const DEFAULT_SETTINGS: DecryptoSettings = {
   maxIntercepts: 2,
   maxMiscommunications: 2,
   tiebreakerVocabularyMode: 'english',
+  offlineAwareness: true,
 };
 
 const EMPTY_SCORES: ScoreBoard = {
@@ -476,6 +477,14 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     for (const [id, player] of this.players) {
       if (player.removed) this.players.delete(id);
     }
+    const currentHost = this.players.get(this.hostId);
+    if (!currentHost || (this.settings.offlineAwareness && !currentHost.connected)) {
+      const nextHost =
+        Array.from(this.players.values()).find((player) => player.connected && player.id !== this.hostId) ??
+        currentHost ??
+        this.players.values().next().value;
+      if (nextHost) this.hostId = nextHost.id;
+    }
     this.phase = DecryptoPhase.LOBBY;
     this.scores = cloneScores(EMPTY_SCORES);
     this.keywords = pickKeywordSets();
@@ -555,10 +564,13 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   }
 
   canStart(): boolean {
-    return (
-      this.getTeamPlayers('red').filter((p) => p.connected).length >= 2 &&
-      this.getTeamPlayers('blue').filter((p) => p.connected).length >= 2
-    );
+    return TEAMS.every((team) => {
+      const teamPlayers = this.getTeamPlayers(team);
+      const eligiblePlayers = this.settings.offlineAwareness
+        ? teamPlayers.filter((player) => player.connected)
+        : teamPlayers;
+      return eligiblePlayers.length >= 2;
+    });
   }
 
   startGame(): ActionResult {
@@ -901,6 +913,24 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     return { ok: true };
   }
 
+  unlockTiebreaker(playerId: string): ActionResult {
+    if (this.phase !== DecryptoPhase.TIEBREAKER) {
+      return { ok: false, message: 'There is no tiebreaker to unlock.' };
+    }
+    const player = this.players.get(playerId);
+    if (!player?.team) return { ok: false, message: 'Join a team before unlocking tiebreaker guesses.' };
+    if (!this.tiebreakerSubmissions[player.team]) {
+      return { ok: false, message: 'Your team has not submitted tiebreaker guesses.' };
+    }
+    if (this.tiebreakerSubmissions[otherTeam(player.team)]) {
+      return { ok: false, message: 'Tiebreaker guesses are locked once both teams submit.' };
+    }
+
+    delete this.tiebreakerSubmissions[player.team];
+    this.touch();
+    return { ok: true };
+  }
+
   setTiebreakerVocabularyMode(playerId: string, mode: unknown): ActionResult {
     if (playerId !== this.hostId) {
       return { ok: false, message: 'Only the host can change the tiebreaker word pool.' };
@@ -916,6 +946,23 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     }
     if (this.settings.tiebreakerVocabularyMode !== mode) {
       this.settings.tiebreakerVocabularyMode = mode;
+      this.touch();
+    }
+    return { ok: true };
+  }
+
+  setOfflineAwareness(playerId: string, enabled: unknown): ActionResult {
+    if (playerId !== this.hostId) {
+      return { ok: false, message: 'Only the host can change offline awareness.' };
+    }
+    if (this.phase !== DecryptoPhase.LOBBY) {
+      return { ok: false, message: 'Offline awareness can only be changed in the lobby.' };
+    }
+    if (typeof enabled !== 'boolean') {
+      return { ok: false, message: 'Choose a valid offline awareness setting.' };
+    }
+    if (this.settings.offlineAwareness !== enabled) {
+      this.settings.offlineAwareness = enabled;
       this.touch();
     }
     return { ok: true };
@@ -1039,8 +1086,13 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   }
 
   private pickEncryptor(team: TeamId): DecryptoPlayer {
-    const players = this.getTeamPlayers(team).filter((p) => p.connected);
-    const candidates = players.length > 0 ? players : this.getTeamPlayers(team);
+    const teamPlayers = this.getTeamPlayers(team);
+    const connectedPlayers = teamPlayers.filter((p) => p.connected);
+    const candidates = this.settings.offlineAwareness
+      ? connectedPlayers.length > 0
+        ? connectedPlayers
+        : teamPlayers
+      : teamPlayers;
     if (candidates.length === 0) {
       logger.warn('game', 'No players available for encryptor; falling back to host', { room: this.code, team });
       const host = this.players.get(this.hostId);

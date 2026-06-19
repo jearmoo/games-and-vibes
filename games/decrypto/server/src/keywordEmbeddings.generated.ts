@@ -19,18 +19,18 @@ type StoredEmbeddingAssetStatus = {
   expectedVectorBytes: number;
 };
 
-export const STORED_EMBEDDING_PROVIDER = 'sentence-transformers';
-export const STORED_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2';
+export const STORED_EMBEDDING_PROVIDER = 'openai';
+export const STORED_EMBEDDING_MODEL = 'text-embedding-3-large';
 export const STORED_EMBEDDING_DIMENSIONS = 384;
 export const STORED_EMBEDDING_NORMALIZED = true;
 export const STORED_EMBEDDING_QUANTIZATION = 'int8/127';
-export const STORED_EMBEDDINGS_GENERATED_AT = '2026-06-18T20:11:26.501Z';
+export const STORED_EMBEDDINGS_GENERATED_AT = '2026-06-19T02:04:52.693Z';
 export const STORED_EMBEDDING_METADATA = {
-  provider: 'sentence-transformers',
-  model: 'sentence-transformers/all-MiniLM-L6-v2',
+  provider: 'openai',
+  model: 'text-embedding-3-large',
   vocabularySize: 150000,
   targetVocabularySize: 440,
-  generatedAt: '2026-06-18T20:11:26.501Z',
+  generatedAt: '2026-06-19T02:04:52.693Z',
   source: {
     library: 'wordfreq',
     language: 'en',
@@ -59,17 +59,20 @@ export const STORED_EMBEDDING_METADATA = {
     },
     forcedTargetTerms: 440,
     forcedSupplementalTerms: 1,
+    guessEmbeddingInput:
+      'Guess terms are embedded directly from the submitted/display word text after normalized vocabulary lookup.',
     targetEmbeddingInput:
-      'Decrypto target terms are stored by normalized display word, but embedded from getEmbeddingInput(card); exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs.',
+      'Decrypto target terms are embedded directly from the card displayWord; exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs.',
   },
   embedding: {
     dimensions: 384,
     normalized: true,
-    truncateDimension: null,
-    dimensionalityReduction: 'none; full model output dimensions are stored',
+    requestedDimensions: 384,
+    dimensionalityReduction:
+      'OpenAI embeddings API dimensions parameter; vectors are normalized locally before int8 quantization',
     quantization: 'int8/127',
     runtimeVectorFormat:
-      'keywordEmbeddings.int8.bin loaded lazily as an Int8Array; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized',
+      'keywordEmbeddings.int8.bin loaded lazily as an Int8Array; guess vectors are stored first, target vectors second; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized',
   },
   assets: {
     vectors: 'keywordEmbeddings.int8.bin',
@@ -77,9 +80,9 @@ export const STORED_EMBEDDING_METADATA = {
     metadata: 'keywordEmbeddings.metadata.generated.json',
   },
   scoring: {
-    rawCosine: 'cosine approximation over normalized Sentence Transformers embeddings after int8 quantization',
+    rawCosine: 'cosine approximation over normalized OpenAI embeddings after int8 quantization',
     transformation:
-      'raw cosine is linearly calibrated from stored target-word distribution floor/ceiling, clamped to 0..1, multiplied by a target-neighbor rank weight, then capped below 1 for non-exact embedding matches; non-neighbor unrelated words can intentionally score 0',
+      'runtime tiebreaker scoring compares each guess vector to the corresponding target display-word vector, calibrates raw cosine against generated target-word cosine distribution, and caps non-exact matches below 1',
   },
 } as const;
 export const STORED_EMBEDDING_ASSET_FILES = {
@@ -87,11 +90,12 @@ export const STORED_EMBEDDING_ASSET_FILES = {
   terms: 'keywordTerms.generated.json',
   metadata: 'keywordEmbeddings.metadata.generated.json',
 } as const;
-export const STORED_EMBEDDING_SCORE_FLOOR = 0.669848;
-export const STORED_EMBEDDING_SCORE_CEILING = 0.851303;
+export const STORED_EMBEDDING_SCORE_FLOOR = 0.204105;
+export const STORED_EMBEDDING_SCORE_CEILING = 0.453805;
 
 let termsPayloadCache: StoredTermsPayload | undefined;
 let termIndexCache: Map<string, number> | undefined;
+let targetIndexCache: Map<string, number> | undefined;
 let vectorBytesCache: Int8Array | undefined;
 let vectorNormCache: Float32Array | undefined;
 
@@ -118,10 +122,24 @@ function termIndexMap(): Map<string, number> {
   return termIndexCache;
 }
 
+function targetIndexMap(): Map<string, number> {
+  targetIndexCache ??= new Map(loadTermsPayload().targetTerms.map((term, index) => [term, index]));
+  return targetIndexCache;
+}
+
+function totalVectorCount(): number {
+  const termsPayload = loadTermsPayload();
+  return termsPayload.terms.length + termsPayload.targetTerms.length;
+}
+
+function targetVectorIndex(targetIndex: number): number {
+  return getStoredEmbeddingTerms().length + targetIndex;
+}
+
 function vectorBytes(): Int8Array {
   if (vectorBytesCache) return vectorBytesCache;
   const buffer = readFileSync(assetPath(STORED_EMBEDDING_ASSET_FILES.vectors));
-  const expectedLength = getStoredEmbeddingTerms().length * STORED_EMBEDDING_DIMENSIONS;
+  const expectedLength = totalVectorCount() * STORED_EMBEDDING_DIMENSIONS;
   if (buffer.byteLength !== expectedLength) {
     throw new Error(
       `Generated Decrypto embedding vector asset has ${buffer.byteLength} bytes; expected ${expectedLength}.`,
@@ -134,23 +152,22 @@ function vectorBytes(): Int8Array {
 function vectorNorms(): Float32Array {
   if (vectorNormCache) return vectorNormCache;
   const bytes = vectorBytes();
-  const terms = getStoredEmbeddingTerms();
-  const norms = new Float32Array(terms.length);
-  for (let termIndex = 0; termIndex < terms.length; termIndex += 1) {
-    const offset = termIndex * STORED_EMBEDDING_DIMENSIONS;
+  const norms = new Float32Array(totalVectorCount());
+  for (let vectorIndex = 0; vectorIndex < norms.length; vectorIndex += 1) {
+    const offset = vectorIndex * STORED_EMBEDDING_DIMENSIONS;
     let magnitude = 0;
     for (let dimension = 0; dimension < STORED_EMBEDDING_DIMENSIONS; dimension += 1) {
       const value = bytes[offset + dimension] ?? 0;
       magnitude += value * value;
     }
-    norms[termIndex] = Math.sqrt(magnitude);
+    norms[vectorIndex] = Math.sqrt(magnitude);
   }
   vectorNormCache = norms;
   return norms;
 }
 
 function assertVectorIndex(index: number): void {
-  if (!Number.isInteger(index) || index < 0 || index >= getStoredEmbeddingTerms().length) {
+  if (!Number.isInteger(index) || index < 0 || index >= totalVectorCount()) {
     throw new Error(`Stored Decrypto embedding index out of range: ${index}`);
   }
 }
@@ -169,6 +186,10 @@ export function getStoredTargetEmbeddingInputs(): Readonly<Record<string, string
 
 export function getStoredEmbeddingIndex(term: string): number | undefined {
   return termIndexMap().get(term);
+}
+
+export function getStoredTargetEmbeddingIndex(term: string): number | undefined {
+  return targetIndexMap().get(term);
 }
 
 export function hasStoredEmbeddingTerm(term: string): boolean {
@@ -204,7 +225,7 @@ export function assertStoredEmbeddingAssetsAvailable(): StoredEmbeddingAssetStat
 
   const vectorPath = assetPath(STORED_EMBEDDING_ASSET_FILES.vectors);
   const vectorBytes = statSync(vectorPath).size;
-  const expectedVectorBytes = termsPayload.terms.length * STORED_EMBEDDING_DIMENSIONS;
+  const expectedVectorBytes = totalVectorCount() * STORED_EMBEDDING_DIMENSIONS;
   if (vectorBytes !== expectedVectorBytes) {
     throw new Error(
       `Generated Decrypto embedding vector asset has ${vectorBytes} bytes; expected ${expectedVectorBytes}.`,
@@ -242,12 +263,24 @@ export function storedEmbeddingCosineByIndex(leftIndex: number, rightIndex: numb
   return dot / (leftNorm * rightNorm);
 }
 
+export function storedTargetEmbeddingCosineByIndex(guessIndex: number, targetIndex: number): number {
+  return storedEmbeddingCosineByIndex(guessIndex, targetVectorIndex(targetIndex));
+}
+
 export function storedEmbeddingCosineByTerm(leftTerm: string, rightTerm: string): number | undefined {
   const leftIndex = getStoredEmbeddingIndex(leftTerm);
   const rightIndex = getStoredEmbeddingIndex(rightTerm);
   return leftIndex === undefined || rightIndex === undefined
     ? undefined
     : storedEmbeddingCosineByIndex(leftIndex, rightIndex);
+}
+
+export function storedTargetEmbeddingCosineByTerm(guessTerm: string, targetTerm: string): number | undefined {
+  const guessIndex = getStoredEmbeddingIndex(guessTerm);
+  const targetIndex = getStoredTargetEmbeddingIndex(targetTerm);
+  return guessIndex === undefined || targetIndex === undefined
+    ? undefined
+    : storedTargetEmbeddingCosineByIndex(guessIndex, targetIndex);
 }
 
 function dequantizedNormalizedVector(index: number): Float32Array {
@@ -275,4 +308,8 @@ export function referenceDequantizedCosineByIndex(leftIndex: number, rightIndex:
     dot += (left[dimension] ?? 0) * (right[dimension] ?? 0);
   }
   return dot;
+}
+
+export function referenceDequantizedTargetCosineByIndex(guessIndex: number, targetIndex: number): number {
+  return referenceDequantizedCosineByIndex(guessIndex, targetVectorIndex(targetIndex));
 }

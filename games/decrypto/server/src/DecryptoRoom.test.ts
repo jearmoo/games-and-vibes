@@ -4,19 +4,18 @@ import { DecryptoRoom } from './DecryptoRoom.js';
 import {
   assertStoredEmbeddingAssetsAvailable,
   getStoredEmbeddingIndex,
+  getStoredTargetEmbeddingIndex,
   getStoredTargetEmbeddingInputs,
   getStoredTargetEmbeddingTerms,
-  referenceDequantizedCosineByIndex,
+  referenceDequantizedTargetCosineByIndex,
   STORED_EMBEDDING_DIMENSIONS,
   STORED_EMBEDDING_METADATA,
-  STORED_EMBEDDING_SCORE_FLOOR,
-  storedEmbeddingCosineByIndex,
   storedEmbeddingInt8Norm,
+  storedTargetEmbeddingCosineByIndex,
 } from './keywordEmbeddings.generated.js';
 import { getTiebreakerVocabulary, isKnownTiebreakerGuess, semanticSimilarityDetails } from './semanticSimilarity.js';
 import {
   getCardByDisplayWord,
-  getEmbeddingInput,
   getKeywordVocabulary,
   KEYWORD_CARDS,
   KEYWORDS,
@@ -74,6 +73,12 @@ function storedIndex(term: string): number {
   return index!;
 }
 
+function storedTargetIndex(term: string): number {
+  const index = getStoredTargetEmbeddingIndex(term);
+  expect(index).not.toBeUndefined();
+  return index!;
+}
+
 function targetRankFor(
   guessTerm: string,
   targetTerm: string,
@@ -81,22 +86,10 @@ function targetRankFor(
 ): number | undefined {
   const guessIndex = storedIndex(guessTerm);
   const scores = getStoredTargetEmbeddingTerms()
-    .map((term) => ({ term, score: scorer(guessIndex, storedIndex(term)) }))
+    .map((term) => ({ term, score: scorer(guessIndex, storedTargetIndex(term)) }))
     .sort((a, b) => b.score - a.score);
   const rank = scores.findIndex((entry) => entry.term === targetTerm);
   return rank === -1 ? undefined : rank + 1;
-}
-
-function maxStoredTargetCosine(words: readonly string[]): number {
-  let maxScore = 0;
-  for (let left = 0; left < words.length; left += 1) {
-    for (let right = left + 1; right < words.length; right += 1) {
-      const leftIndex = storedIndex(normalizeCardKey(words[left]!));
-      const rightIndex = storedIndex(normalizeCardKey(words[right]!));
-      maxScore = Math.max(maxScore, storedEmbeddingCosineByIndex(leftIndex, rightIndex));
-    }
-  }
-  return maxScore;
 }
 
 function lockBothClueSets(room: DecryptoRoom) {
@@ -189,36 +182,18 @@ describe('DecryptoRoom', () => {
     for (const card of KEYWORD_CARDS) {
       expect(card.displayWord.trim()).not.toBe('');
       expect(card.category.trim()).not.toBe('');
-      expect(card.embeddingText.trim()).not.toBe('');
     }
   });
 
-  it('uses disambiguating embedding inputs for proper nouns and ambiguous cards', () => {
-    const requiredGlosses = [
-      ['Sherlock', 'fictional detective'],
-      ['Cleopatra', 'ancient Egyptian queen'],
-      ['Einstein', 'famous physicist'],
-      ['OpenAI', 'artificial intelligence research company'],
-      ['Apple', 'technology company'],
-      ['Amazon', 'e-commerce'],
-      ['Bond', 'fictional spy'],
-    ] as const;
-
-    for (const [displayWord, expectedGloss] of requiredGlosses) {
+  it('uses display words directly for target embedding inputs', () => {
+    for (const displayWord of ['Sherlock', 'Cleopatra', 'Einstein', 'OpenAI', 'Apple', 'Amazon', 'Bond']) {
       const card = getCardByDisplayWord(displayWord);
       expect(card).toBeDefined();
-      expect(card!.embeddingText).toContain(expectedGloss);
-      expect(card!.embeddingText).not.toBe(displayWord);
-
-      const embeddingInput = getEmbeddingInput(card!);
-      expect(embeddingInput).toContain(`Word: ${displayWord}.`);
-      expect(embeddingInput).toContain(`Category: ${card!.category}.`);
-      expect(embeddingInput).toContain(card!.embeddingText);
-      expect(embeddingInput).not.toBe(displayWord);
+      expect(card!.displayWord).toBe(displayWord);
     }
 
-    expect(getStoredTargetEmbeddingInputs().sherlock).toContain('Sherlock Holmes, the fictional detective');
-    expect(getStoredTargetEmbeddingInputs().openai).toContain('OpenAI, artificial intelligence research company');
+    expect(getStoredTargetEmbeddingInputs().sherlock).toBe('Sherlock');
+    expect(getStoredTargetEmbeddingInputs().openai).toBe('OpenAI');
   });
 
   it('keeps card metadata out of gameplay keyword state', () => {
@@ -226,7 +201,6 @@ describe('DecryptoRoom', () => {
 
     expect(room.keywords.red).toHaveLength(4);
     expect(room.keywords.red.every((word) => typeof word === 'string')).toBe(true);
-    expect(room.keywords.red.every((word) => !word.includes('Meaning:'))).toBe(true);
     expect(room.keywords.blue.every((word) => getCardByDisplayWord(word)?.displayWord === word)).toBe(true);
 
     const redPrivate = room.getPrivateStateFor('p1');
@@ -234,22 +208,38 @@ describe('DecryptoRoom', () => {
     expect(redPrivate.keywords?.every((word) => typeof word === 'string')).toBe(true);
   });
 
-  it('deals display-word keyword sets using stored target embeddings to avoid close concepts', () => {
+  it('deals random display-word keyword sets without duplicates', () => {
     const deal = pickKeywordSets();
+    const allWords = [...deal.red, ...deal.blue];
 
     for (const words of [deal.red, deal.blue]) {
       expect(words).toHaveLength(4);
       expect(new Set(words.map(normalizeCardKey)).size).toBe(4);
       expect(words.every((word) => getCardByDisplayWord(word)?.displayWord === word)).toBe(true);
-      expect(maxStoredTargetCosine(words)).toBeLessThan(STORED_EMBEDDING_SCORE_FLOOR);
     }
+    expect(new Set(allWords.map(normalizeCardKey)).size).toBe(8);
   });
 
-  it('scores tiebreaker semantic guesses with calibrated target-rank weighting', () => {
+  it('scores tiebreaker semantic guesses with OpenAI guess-to-target embeddings', () => {
     const close = semanticSimilarityDetails('lightning', 'thunder');
     const medium = semanticSimilarityDetails('chef', 'scientist');
     const unrelated = semanticSimilarityDetails('apple', 'volcano');
+    const tornadoSynonym = semanticSimilarityDetails('twister', 'Tornado');
+    const tornadoUnrelated = semanticSimilarityDetails('apple', 'Tornado');
     const oov = semanticSimilarityDetails('zzzznotaword', 'volcano');
+    const displayWordSimilarityExamples = [
+      semanticSimilarityDetails('dawn', 'Sunrise'),
+      semanticSimilarityDetails('killer', 'Assassin'),
+      semanticSimilarityDetails('wizard', 'Witch'),
+      semanticSimilarityDetails('twister', 'Tornado'),
+      semanticSimilarityDetails('monster', 'Medusa'),
+      semanticSimilarityDetails('tile', 'Domino'),
+      semanticSimilarityDetails('fall', 'Autumn'),
+      semanticSimilarityDetails('triathlon', 'Marathon'),
+      semanticSimilarityDetails('master', 'Yoda'),
+      semanticSimilarityDetails('dot', 'Pixel'),
+      semanticSimilarityDetails('goddess', 'Athena'),
+    ];
     const strongNonExactScores = [
       semanticSimilarityDetails('coffee', 'tea'),
       semanticSimilarityDetails('eagle', 'falcon'),
@@ -270,30 +260,44 @@ describe('DecryptoRoom', () => {
     });
     expect(assetStatus.vectorBytes).toBe(assetStatus.expectedVectorBytes);
     expect(STORED_EMBEDDING_DIMENSIONS).toBe(384);
-    expect(STORED_EMBEDDING_METADATA.embedding.truncateDimension).toBeNull();
-    expect(STORED_EMBEDDING_METADATA.embedding.dimensionalityReduction).toContain('none');
+    expect(STORED_EMBEDDING_METADATA.provider).toBe('openai');
+    expect(STORED_EMBEDDING_METADATA.model).toBe('text-embedding-3-large');
+    expect(STORED_EMBEDDING_METADATA.embedding.requestedDimensions).toBe(384);
+    expect(STORED_EMBEDDING_METADATA.embedding.dimensionalityReduction).toContain('dimensions parameter');
     expect(STORED_EMBEDDING_METADATA.embedding.runtimeVectorFormat).toContain('no full Float32 matrix');
+    expect(STORED_EMBEDDING_METADATA.embedding.runtimeVectorFormat).toContain('guess vectors are stored first');
     expect(storedEmbeddingInt8Norm(thunderIndex)).toBeGreaterThan(0);
 
     expect(close.method).toBe('stored-embedding');
-    expect(close.score).toBeGreaterThan(0.85);
+    expect(close.score).toBeGreaterThan(0.5);
     expect(close.score).toBeLessThan(1);
     if (close.method === 'stored-embedding') {
-      expect(close.rawCosine).toBeGreaterThan(0.5);
-      expect(close.neighborRank).toBeLessThanOrEqual(8);
-      expect(close.rankWeight).toBe(1);
+      expect(close.neighborRank).toBeLessThanOrEqual(20);
     }
 
     expect(medium.method).toBe('stored-embedding');
-    expect(medium.score).toBeGreaterThan(0.35);
-    expect(medium.score).toBeLessThan(0.85);
+    expect(medium.score).toBeGreaterThanOrEqual(0);
+    expect(medium.score).toBeLessThan(close.score);
 
     expect(unrelated.method).toBe('stored-embedding');
-    expect(unrelated.score).toBe(0);
-    if (unrelated.method === 'stored-embedding') {
-      expect(unrelated.rawCosine).toBeGreaterThan(0);
-      expect(unrelated.rankWeight).toBe(0);
-    }
+    expect(unrelated.score).toBeLessThan(close.score);
+
+    expect(tornadoSynonym.method).toBe('stored-embedding');
+    expect(tornadoSynonym.score).toBeGreaterThan(0.5);
+    expect(tornadoSynonym.score).toBeLessThan(1);
+    expect(tornadoUnrelated.method).toBe('stored-embedding');
+    expect(tornadoUnrelated.score).toBeLessThan(tornadoSynonym.score);
+
+    expect(
+      displayWordSimilarityExamples.every(
+        (details) => details.method === 'stored-embedding' && details.score > unrelated.score,
+      ),
+    ).toBe(true);
+    const displayWordSimilarityAverage =
+      displayWordSimilarityExamples.reduce((sum, details) => sum + details.score, 0) /
+      displayWordSimilarityExamples.length;
+    expect(displayWordSimilarityAverage).toBeGreaterThan(unrelated.score + 0.45);
+    expect(displayWordSimilarityAverage).toBeLessThan(1);
 
     expect(oov).toMatchObject({
       method: 'out-of-vocabulary',
@@ -306,27 +310,27 @@ describe('DecryptoRoom', () => {
     expect(strongNonExactScores.every((details) => details.method === 'stored-embedding' && details.score < 1)).toBe(
       true,
     );
-    expect(strongNonExactAverage).toBeGreaterThan(0.85);
-    expect(strongNonExactAverage).toBeLessThan(0.95);
+    expect(strongNonExactAverage).toBeGreaterThan(0.45);
+    expect(strongNonExactAverage).toBeLessThan(1);
   });
 
   it('keeps int8 dot-product scoring aligned with dequantized normalized scoring', () => {
     const cases = [
       ['lightning', 'thunder'],
       ['asteroid', 'satellite'],
-      ['banana', 'orbit'],
+      ['banana', 'volcano'],
       ['rocket', 'satellite'],
     ] as const;
 
     for (const [guess, target] of cases) {
       const guessIndex = storedIndex(guess);
-      const targetIndex = storedIndex(target);
-      const quantizedScore = storedEmbeddingCosineByIndex(guessIndex, targetIndex);
-      const referenceScore = referenceDequantizedCosineByIndex(guessIndex, targetIndex);
+      const targetIndex = storedTargetIndex(target);
+      const quantizedScore = storedTargetEmbeddingCosineByIndex(guessIndex, targetIndex);
+      const referenceScore = referenceDequantizedTargetCosineByIndex(guessIndex, targetIndex);
 
       expect(Math.abs(quantizedScore - referenceScore)).toBeLessThan(0.000001);
-      expect(targetRankFor(guess, target, storedEmbeddingCosineByIndex)).toBe(
-        targetRankFor(guess, target, referenceDequantizedCosineByIndex),
+      expect(targetRankFor(guess, target, storedTargetEmbeddingCosineByIndex)).toBe(
+        targetRankFor(guess, target, referenceDequantizedTargetCosineByIndex),
       );
     }
   });
@@ -345,6 +349,147 @@ describe('DecryptoRoom', () => {
     addPlayer(room, 'p4', 'Bo', 'blue');
     expect(room.startGame().ok).toBe(true);
     expect(room.phase).toBe(DecryptoPhase.WORDS);
+  });
+
+  it('requires online players to start when offline awareness is on', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+
+    const redOffline = room.players.get('p2');
+    expect(redOffline).toBeDefined();
+    redOffline!.connected = false;
+
+    expect(room.canStart()).toBe(false);
+    expect(room.startGame()).toEqual({
+      ok: false,
+      message: 'Need 2 players on each team.',
+    });
+  });
+
+  it('allows word setup to start with an offline roster member when offline awareness is off', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+    expect(room.setOfflineAwareness('p1', false).ok).toBe(true);
+
+    const redOffline = room.players.get('p2');
+    expect(redOffline).toBeDefined();
+    redOffline!.connected = false;
+
+    expect(room.canStart()).toBe(true);
+    expect(room.startGame().ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.WORDS);
+  });
+
+  it('keeps offline roster members in clue-giver rotation when offline awareness is off', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+    expect(room.setOfflineAwareness('p1', false).ok).toBe(true);
+
+    const redOffline = room.players.get('p2');
+    expect(redOffline).toBeDefined();
+    redOffline!.connected = false;
+
+    expect(room.startGame().ok).toBe(true);
+    lockWords(room);
+    expect(room.roundTurns?.red.encryptorId).toBe('p1');
+
+    resolveCurrentRound(room);
+    expect(room.roundTurns?.red.encryptorId).toBe('p2');
+  });
+
+  it('only lets the host change offline awareness in the lobby', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+
+    expect(room.setOfflineAwareness('p2', false)).toEqual({
+      ok: false,
+      message: 'Only the host can change offline awareness.',
+    });
+    expect(room.setOfflineAwareness('p1', false).ok).toBe(true);
+    expect(room.settings.offlineAwareness).toBe(false);
+
+    expect(room.startGame().ok).toBe(true);
+    expect(room.setOfflineAwareness('p1', true)).toEqual({
+      ok: false,
+      message: 'Offline awareness can only be changed in the lobby.',
+    });
+  });
+
+  it('keeps an offline host as host when returning to lobby with offline awareness off', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+    expect(room.setOfflineAwareness('p1', false).ok).toBe(true);
+    expect(room.startGame().ok).toBe(true);
+
+    const host = room.players.get('p1');
+    expect(host).toBeDefined();
+    host!.connected = false;
+    host!.disconnectedAt = Date.now();
+    room.phase = DecryptoPhase.GAME_OVER;
+
+    room.resetToLobby();
+
+    expect(room.hostId).toBe('p1');
+    expect(room.getPlayer('p1')?.connected).toBe(false);
+    expect(room.phase).toBe(DecryptoPhase.LOBBY);
+  });
+
+  it('reassigns an offline host when returning to lobby with offline awareness on', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+    expect(room.startGame().ok).toBe(true);
+
+    const host = room.players.get('p1');
+    expect(host).toBeDefined();
+    host!.connected = false;
+    host!.disconnectedAt = Date.now();
+    room.phase = DecryptoPhase.GAME_OVER;
+
+    room.resetToLobby();
+
+    expect(room.hostId).not.toBe('p1');
+    expect(room.getPlayer(room.hostId)?.connected).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.LOBBY);
+  });
+
+  it('chooses a new host when the previous host was removed before returning to lobby', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+    expect(room.startGame().ok).toBe(true);
+
+    const host = room.players.get('p1');
+    expect(host).toBeDefined();
+    host!.connected = false;
+    host!.removed = true;
+    room.phase = DecryptoPhase.GAME_OVER;
+
+    room.resetToLobby();
+
+    expect(room.hostId).not.toBe('p1');
+    expect(room.getPlayer('p1')).toBeUndefined();
+    expect(room.getPlayer(room.hostId)?.removed).not.toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.LOBBY);
   });
 
   it('regenerates unlocked team words after start and blocks regeneration after lock', () => {
@@ -644,6 +789,7 @@ describe('DecryptoRoom', () => {
     expect(room.getFinalGameState()?.winner).toBe('red');
     expect(room.getFinalGameState()?.reason).toBe('tiebreaker-exact');
     expect(room.getFinalGameState()?.tiebreaker?.results.red.exactMatches).toBe(4);
+    expect(room.getFinalGameState()?.tiebreaker?.results.red.similarityScore).toBe(1);
     expect(room.getFinalGameState()?.tiebreaker?.results.blue.exactMatches).toBe(2);
   });
 
@@ -697,6 +843,32 @@ describe('DecryptoRoom', () => {
       message: 'Word not recognized. Try a more common word.',
     });
     expect(room.getPublicTiebreakerState()?.submissions.red.submitted).toBe(false);
+  });
+
+  it('lets a team unlock tiebreaker guesses before the other team submits', () => {
+    const room = startReadyRoom();
+    room.keywords = {
+      red: ['machine', 'festival', 'satellite', 'thunder'],
+      blue: ['tower', 'jungle', 'river', 'orbit'],
+    };
+
+    createInterceptionTie(room);
+
+    expect(room.unlockTiebreaker('p1')).toEqual({
+      ok: false,
+      message: 'Your team has not submitted tiebreaker guesses.',
+    });
+    expect(room.submitTiebreaker('p1', ['tower', 'jungle', 'river', 'orbit']).ok).toBe(true);
+    expect(room.getPublicTiebreakerState()?.submissions.red.submitted).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.TIEBREAKER);
+
+    expect(room.unlockTiebreaker('p1').ok).toBe(true);
+    expect(room.getPublicTiebreakerState()?.submissions.red.submitted).toBe(false);
+    expect(room.phase).toBe(DecryptoPhase.TIEBREAKER);
+
+    expect(room.submitTiebreaker('p1', ['tower', 'jungle', 'river', 'orbit']).ok).toBe(true);
+    expect(room.submitTiebreaker('p3', ['machine', 'festival', 'satellite', 'thunder']).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.GAME_OVER);
   });
 
   it('uses vector similarity when exact tiebreaker matches are tied', () => {
