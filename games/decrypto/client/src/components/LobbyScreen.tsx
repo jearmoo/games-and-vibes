@@ -66,91 +66,87 @@ export default function LobbyScreen() {
     <div className="h-full flex flex-col animate-fade-in">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-3 px-4 pb-28 pt-4 sm:gap-4 sm:px-5 sm:pt-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Room code</div>
-          <div className="font-display text-4xl tracking-[0.3em] text-white decrypto-title">
-            {roomCode}
-          </div>
-          <div className="mt-1 flex h-4 items-center gap-3">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="text-cyan-300/80 text-xs transition-colors hover:text-cyan-200"
-            >
-              {copied ? 'Copied!' : 'Copy link'}
-            </button>
-            <RoomQrButton
-              roomCode={roomCode}
-              shareUrl={shareUrl}
-              className="text-cyan-300/80 text-xs transition-colors hover:text-cyan-200"
-            />
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <LeaveRoomButton
-            className="text-gray-500 hover:text-white text-xs tracking-wider transition-colors px-3 py-1.5 border border-white/5 rounded-lg"
-          >
-            Leave
-          </LeaveRoomButton>
-          <div className="flex items-center gap-2">
-            {me && (
-              <div className="text-right leading-tight">
-                <span className="text-gray-400 text-xs">Playing as </span>
-                <span className="text-white text-sm font-semibold">{me.name}</span>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Room code</div>
+              <div className="font-display text-4xl tracking-[0.3em] text-white decrypto-title">{roomCode}</div>
+              <div className="mt-1 flex h-4 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="text-cyan-300/80 text-xs transition-colors hover:text-cyan-200"
+                >
+                  {copied ? 'Copied!' : 'Copy link'}
+                </button>
+                <RoomQrButton
+                  roomCode={roomCode}
+                  shareUrl={shareUrl}
+                  className="text-cyan-300/80 text-xs transition-colors hover:text-cyan-200"
+                />
               </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setHelpOpen(true)}
-              aria-label="How to play Decrypto"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-surface-raised font-display text-base text-gray-300 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
-            >
-              ?
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <OfflineAwarenessControl enabled={offlineAwareness} host={host} />
-
-      <div className="grid grid-cols-2 gap-2 sm:gap-4">
-        <TeamColumn
-          team="red"
-          players={red}
-          hostId={hostId}
-          myId={me?.id ?? null}
-          canKick={host}
-          onKick={setConfirmKickId}
-          showOfflineStatus={offlineAwareness}
-        />
-        <TeamColumn
-          team="blue"
-          players={blue}
-          hostId={hostId}
-          myId={me?.id ?? null}
-          canKick={host}
-          onKick={setConfirmKickId}
-          showOfflineStatus={offlineAwareness}
-        />
-      </div>
-
-      <div className="glass-card rounded-2xl border border-white/10 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-gray-400 text-xs tracking-widest uppercase">Players</div>
-            <div className="text-gray-500 text-xs mt-1">
-              {offlineAwareness
-                ? 'Decrypto needs 2 online players on each channel.'
-                : 'Decrypto needs 2 players on each channel.'}
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <LeaveRoomButton className="text-gray-500 hover:text-white text-xs tracking-wider transition-colors px-3 py-1.5 border border-white/5 rounded-lg">
+                Leave
+              </LeaveRoomButton>
+              <div className="flex items-center gap-2">
+                {me && (
+                  <div className="text-right leading-tight">
+                    <span className="text-gray-400 text-xs">Playing as </span>
+                    <span className="text-white text-sm font-semibold">{me.name}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                  aria-label="How to play Decrypto"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-surface-raised font-display text-base text-gray-300 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+                >
+                  ?
+                </button>
+              </div>
             </div>
           </div>
-          <div className="text-right font-display text-white tracking-wider">
-            {players.length}
-            <span className="text-gray-500 text-xs font-sans ml-1">joined</span>
+
+          <OfflineAwarenessControl enabled={offlineAwareness} host={host} />
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+            <TeamColumn
+              team="red"
+              players={red}
+              hostId={hostId}
+              myId={me?.id ?? null}
+              canKick={host}
+              onKick={setConfirmKickId}
+              showOfflineStatus={offlineAwareness}
+            />
+            <TeamColumn
+              team="blue"
+              players={blue}
+              hostId={hostId}
+              myId={me?.id ?? null}
+              canKick={host}
+              onKick={setConfirmKickId}
+              showOfflineStatus={offlineAwareness}
+            />
           </div>
-        </div>
-      </div>
+
+          <div className="glass-card rounded-2xl border border-white/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-gray-400 text-xs tracking-widest uppercase">Players</div>
+                <div className="text-gray-500 text-xs mt-1">
+                  {offlineAwareness
+                    ? 'Decrypto needs 2 online players on each channel.'
+                    : 'Decrypto needs 2 players on each channel.'}
+                </div>
+              </div>
+              <div className="text-right font-display text-white tracking-wider">
+                {players.length}
+                <span className="text-gray-500 text-xs font-sans ml-1">joined</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

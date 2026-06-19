@@ -50,51 +50,51 @@ export default function RevealScreen() {
       <GameHeader roundLabel={`R${reveals[0].round}`} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-5 px-5 pt-5 pb-0">
-      <div className="text-center">
-        <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Transmission revealed</div>
-        <div className="font-display text-4xl tracking-wider text-white">
-          Round {reveals[0].round} {reveals.length === 2 ? 'results' : 'transmission'}
-        </div>
-      </div>
+          <div className="text-center">
+            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Transmission revealed</div>
+            <div className="font-display text-4xl tracking-wider text-white">
+              Round {reveals[0].round} {reveals.length === 2 ? 'results' : 'transmission'}
+            </div>
+          </div>
 
-      <ScoreStrip scores={room.scores} />
+          <ScoreStrip scores={room.scores} />
 
-      {clinchedOutcome && <ClinchedWinPanel outcome={clinchedOutcome} />}
+          {clinchedOutcome && <ClinchedWinPanel outcome={clinchedOutcome} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {reveals.map((reveal) => (
-          <RevealCard key={`${reveal.round}-${reveal.team}`} reveal={reveal} />
-        ))}
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {reveals.map((reveal) => (
+              <RevealCard key={`${reveal.round}-${reveal.team}`} reveal={reveal} />
+            ))}
+          </div>
 
-      <ClueBank
-        myTeam={privateState?.team}
-        keywords={privateState?.keywords}
-        history={room.clueHistory}
-        compactMobile
-      />
-      <SignalHistory history={room.clueHistory} limit={6} />
-
-      <div className="sticky bottom-0 z-30 -mx-5 mt-auto border-t border-white/10 bg-surface/85 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-        {clinchedOutcome ? (
-          <ClinchedActionBar
-            outcome={clinchedOutcome}
+          <ClueBank
             myTeam={privateState?.team}
-            continuing={continuing}
-            takingWin={takingWin}
-            onContinue={handleContinue}
-            onTakeWin={handleTakeWin}
+            keywords={privateState?.keywords}
+            history={room.clueHistory}
+            compactMobile
           />
-        ) : (
-          <button
-            onClick={handleContinue}
-            disabled={continuing}
-            className="btn-decrypto w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
-          >
-            {continuing ? 'Continuing...' : 'Continue'}
-          </button>
-        )}
-      </div>
+          <SignalHistory history={room.clueHistory} limit={6} />
+
+          <div className="sticky bottom-0 z-30 -mx-5 mt-auto border-t border-white/10 bg-surface/85 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+            {clinchedOutcome ? (
+              <ClinchedActionBar
+                outcome={clinchedOutcome}
+                myTeam={privateState?.team}
+                continuing={continuing}
+                takingWin={takingWin}
+                onContinue={handleContinue}
+                onTakeWin={handleTakeWin}
+              />
+            ) : (
+              <button
+                onClick={handleContinue}
+                disabled={continuing}
+                className="btn-decrypto w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
+              >
+                {continuing ? 'Continuing...' : 'Continue'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

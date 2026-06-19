@@ -85,73 +85,73 @@ export default function GameOverScreen() {
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-4 px-5 pb-28 pt-2 sm:gap-5 sm:pt-4">
-      {gameOverDetailsOpen && (
-        <div className="sm:hidden">
-          <div className="rounded-lg border border-white/10 bg-black/15 p-2">
-            <div className="mb-2 font-display text-base tracking-wider text-white">Game over</div>
-            <MobileScoreSummary scores={room.scores} players={room.players} />
+          {gameOverDetailsOpen && (
+            <div className="sm:hidden">
+              <div className="rounded-lg border border-white/10 bg-black/15 p-2">
+                <div className="mb-2 font-display text-base tracking-wider text-white">Game over</div>
+                <MobileScoreSummary scores={room.scores} players={room.players} />
+              </div>
+            </div>
+          )}
+          <div className="text-center pb-3 pt-1 sm:py-4">
+            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Channel closed</div>
+            <div className={`font-display text-5xl tracking-[0.18em] ${winnerStyle?.text ?? 'text-white'}`}>
+              {winningTeam ? `${winnerStyle?.label} wins` : 'Game tied'}
+            </div>
+            {winningPlayers.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {winningPlayers.map((player) => (
+                  <span
+                    key={player.id}
+                    className={`rounded-lg border ${winnerStyle?.border} ${winnerStyle?.bg} px-2.5 py-1 text-sm font-semibold text-white`}
+                  >
+                    {player.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="text-gray-300 text-sm tracking-wider mt-3">{reason}</div>
           </div>
-        </div>
-      )}
-      <div className="text-center pb-3 pt-1 sm:py-4">
-        <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Channel closed</div>
-        <div className={`font-display text-5xl tracking-[0.18em] ${winnerStyle?.text ?? 'text-white'}`}>
-          {winningTeam ? `${winnerStyle?.label} wins` : 'Game tied'}
-        </div>
-        {winningPlayers.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            {winningPlayers.map((player) => (
-              <span
-                key={player.id}
-                className={`rounded-lg border ${winnerStyle?.border} ${winnerStyle?.bg} px-2.5 py-1 text-sm font-semibold text-white`}
-              >
-                {player.name}
-              </span>
-            ))}
+
+          <ScoreStrip scores={room.scores} />
+
+          <WordReleasePanel
+            myTeam={privateState?.team}
+            releasedWords={room.finalState?.releasedWords}
+            releasingTeam={releasingTeam}
+            onRelease={handleReleaseWords}
+          />
+
+          {finalState.tiebreaker && <TiebreakerResultPanel result={finalState.tiebreaker} />}
+
+          {showTiebreakerRepeat && (
+            <TiebreakerRepeatPanel
+              myTeam={privateState?.team}
+              repeat={room.tiebreaker!.repeat!}
+              requesting={requestingRepeat}
+              onRequest={handleRequestRepeat}
+            />
+          )}
+
+          <ClueBank
+            myTeam={privateState?.team ?? winningTeam ?? 'red'}
+            keywords={privateState?.keywords}
+            history={room.clueHistory}
+            finalKeywords={room.finalState?.keywords}
+            compactMobile
+          />
+
+          <SignalHistory history={room.clueHistory} includeIntercept />
+
+          <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-4xl -translate-x-1/2 border-t border-white/10 bg-surface/85 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="btn-decrypto w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
+            >
+              {resetting ? 'Resetting...' : 'Back to Lobby'}
+            </button>
           </div>
-        )}
-        <div className="text-gray-300 text-sm tracking-wider mt-3">{reason}</div>
-      </div>
-
-      <ScoreStrip scores={room.scores} />
-
-      <WordReleasePanel
-        myTeam={privateState?.team}
-        releasedWords={room.finalState?.releasedWords}
-        releasingTeam={releasingTeam}
-        onRelease={handleReleaseWords}
-      />
-
-      {finalState.tiebreaker && <TiebreakerResultPanel result={finalState.tiebreaker} />}
-
-      {showTiebreakerRepeat && (
-        <TiebreakerRepeatPanel
-          myTeam={privateState?.team}
-          repeat={room.tiebreaker!.repeat!}
-          requesting={requestingRepeat}
-          onRequest={handleRequestRepeat}
-        />
-      )}
-
-      <ClueBank
-        myTeam={privateState?.team ?? winningTeam ?? 'red'}
-        keywords={privateState?.keywords}
-        history={room.clueHistory}
-        finalKeywords={room.finalState?.keywords}
-        compactMobile
-      />
-
-      <SignalHistory history={room.clueHistory} includeIntercept />
-
-      <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-4xl -translate-x-1/2 border-t border-white/10 bg-surface/85 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-        <button
-          onClick={handleReset}
-          disabled={resetting}
-          className="btn-decrypto w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
-        >
-          {resetting ? 'Resetting...' : 'Back to Lobby'}
-        </button>
-      </div>
         </div>
       </div>
     </div>
@@ -319,7 +319,9 @@ function TiebreakerTeamResultCard({
     >
       <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
-          <div className={`font-display tracking-wider ${enlarged ? 'text-3xl' : 'text-base sm:text-lg'} ${style.text}`}>
+          <div
+            className={`font-display tracking-wider ${enlarged ? 'text-3xl' : 'text-base sm:text-lg'} ${style.text}`}
+          >
             {style.label}
           </div>
           <div className={`truncate text-gray-400 ${enlarged ? 'mt-1 text-sm' : 'text-[10px] sm:text-[11px]'}`}>
@@ -357,7 +359,9 @@ function TiebreakerTeamResultCard({
             enlarged ? 'px-3 py-3 sm:rounded-xl sm:px-4' : 'px-1.5 py-1 sm:rounded-lg sm:px-2.5 sm:py-2'
           }`}
         >
-          <div className={`tracking-widest text-gray-500 uppercase ${enlarged ? 'text-[10px]' : 'text-[8px] sm:text-[10px]'}`}>
+          <div
+            className={`tracking-widest text-gray-500 uppercase ${enlarged ? 'text-[10px]' : 'text-[8px] sm:text-[10px]'}`}
+          >
             Exact
           </div>
           <div className={`font-display text-white ${enlarged ? 'text-3xl' : 'text-base sm:text-xl'}`}>
@@ -369,7 +373,9 @@ function TiebreakerTeamResultCard({
             enlarged ? 'px-3 py-3 sm:rounded-xl sm:px-4' : 'px-1.5 py-1 sm:rounded-lg sm:px-2.5 sm:py-2'
           }`}
         >
-          <div className={`tracking-widest text-gray-500 uppercase ${enlarged ? 'text-[10px]' : 'text-[8px] sm:text-[10px]'}`}>
+          <div
+            className={`tracking-widest text-gray-500 uppercase ${enlarged ? 'text-[10px]' : 'text-[8px] sm:text-[10px]'}`}
+          >
             <span className={enlarged ? 'hidden' : 'sm:hidden'}>Sim</span>
             <span className={enlarged ? '' : 'hidden sm:inline'}>Similarity</span>
           </div>

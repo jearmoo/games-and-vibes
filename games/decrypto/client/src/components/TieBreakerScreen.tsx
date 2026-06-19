@@ -99,100 +99,100 @@ export default function TieBreakerScreen() {
       <GameHeader roleOverride="Tiebreaker" roundLabel="" />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex min-h-full w-full max-w-5xl mx-auto flex-col gap-4 px-5 pb-5 pt-2 sm:gap-5 sm:pt-4">
-      <div className="relative min-h-20 text-center sm:min-h-24">
-        {isHost && (
-          <div className="absolute left-0 top-0 text-[8px] tracking-[0.22em] text-fuchsia-300 uppercase">Host</div>
-        )}
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Open tiebreaker settings"
-          title="Tiebreaker settings"
-          className="absolute right-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97] sm:top-0"
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-            <path
-              d="M9.67 4.14a2.36 2.36 0 0 1 4.66 0 2.36 2.36 0 0 0 3.32 1.91 2.36 2.36 0 0 1 2.33 4.03 2.36 2.36 0 0 0 0 3.84 2.36 2.36 0 0 1-2.33 4.03 2.36 2.36 0 0 0-3.32 1.91 2.36 2.36 0 0 1-4.66 0 2.36 2.36 0 0 0-3.32-1.91 2.36 2.36 0 0 1-2.33-4.03 2.36 2.36 0 0 0 0-3.84 2.36 2.36 0 0 1 2.33-4.03 2.36 2.36 0 0 0 3.32-1.91Z"
-              stroke="currentColor"
-              strokeWidth="1.65"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.65" />
-          </svg>
-        </button>
-        <div className="mx-auto max-w-[calc(100%-5rem)] pt-1 sm:max-w-[calc(100%-3rem)] sm:pt-0">
-          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Sudden decode</div>
-          <div className="font-display text-4xl tracking-wider text-white">Tiebreaker</div>
-          <div className="mt-2 text-sm text-gray-400">
-            Guess the opposing team's four keywords from the signal history.
-          </div>
-        </div>
-      </div>
-
-      <ScoreStrip scores={room.scores} />
-      <SubmissionStrip submissions={room.tiebreaker?.submissions} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">
-        <div className={`relative min-w-0 space-y-4 ${suggestionListOpen ? 'z-[70]' : 'z-0'}`}>
-          {myTeam && targetTeam ? (
-            <TiebreakerForm
-              myTeam={myTeam}
-              targetTeam={targetTeam}
-              guesses={guesses}
-              submitted={submitted}
-              canUnlock={canUnlockTiebreaker}
-              submitting={submitting}
-              canSubmit={canSubmit}
-              attemptedSubmit={attemptedSubmit}
-              focusedSlot={focusedSlot}
-              vocabularyReady={vocabulary.length > 0}
-              vocabularyMode={vocabularyMode}
-              vocabularySet={vocabularySet}
-              suggestionsBySlot={suggestionsBySlot}
-              onChange={(index, value) => {
-                const next = [...guesses];
-                next[index] = value.replace(/[^A-Za-z]/g, '').slice(0, TIEBREAKER_MAX_GUESS_LENGTH);
-                setGuesses(next);
-              }}
-              onFocusSlot={setFocusedSlot}
-              onSubmit={handleSubmit}
-              onUnlock={() => {
-                setSubmitting(false);
-                useGameStore.getState().unlockTiebreaker();
-              }}
-            />
-          ) : (
-            <div className="glass-card rounded-2xl border border-white/10 p-5 text-center text-gray-400">
-              Spectators can watch the tiebreaker resolve.
+          <div className="relative min-h-20 text-center sm:min-h-24">
+            {isHost && (
+              <div className="absolute left-0 top-0 text-[8px] tracking-[0.22em] text-fuchsia-300 uppercase">Host</div>
+            )}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Open tiebreaker settings"
+              title="Tiebreaker settings"
+              className="absolute right-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97] sm:top-0"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                <path
+                  d="M9.67 4.14a2.36 2.36 0 0 1 4.66 0 2.36 2.36 0 0 0 3.32 1.91 2.36 2.36 0 0 1 2.33 4.03 2.36 2.36 0 0 0 0 3.84 2.36 2.36 0 0 1-2.33 4.03 2.36 2.36 0 0 0-3.32 1.91 2.36 2.36 0 0 1-4.66 0 2.36 2.36 0 0 0-3.32-1.91 2.36 2.36 0 0 1-2.33-4.03 2.36 2.36 0 0 0 0-3.84 2.36 2.36 0 0 1 2.33-4.03 2.36 2.36 0 0 0 3.32-1.91Z"
+                  stroke="currentColor"
+                  strokeWidth="1.65"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.65" />
+              </svg>
+            </button>
+            <div className="mx-auto max-w-[calc(100%-5rem)] pt-1 sm:max-w-[calc(100%-3rem)] sm:pt-0">
+              <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Sudden decode</div>
+              <div className="font-display text-4xl tracking-wider text-white">Tiebreaker</div>
+              <div className="mt-2 text-sm text-gray-400">
+                Guess the opposing team's four keywords from the signal history.
+              </div>
             </div>
+          </div>
+
+          <ScoreStrip scores={room.scores} />
+          <SubmissionStrip submissions={room.tiebreaker?.submissions} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">
+            <div className={`relative min-w-0 space-y-4 ${suggestionListOpen ? 'z-[70]' : 'z-0'}`}>
+              {myTeam && targetTeam ? (
+                <TiebreakerForm
+                  myTeam={myTeam}
+                  targetTeam={targetTeam}
+                  guesses={guesses}
+                  submitted={submitted}
+                  canUnlock={canUnlockTiebreaker}
+                  submitting={submitting}
+                  canSubmit={canSubmit}
+                  attemptedSubmit={attemptedSubmit}
+                  focusedSlot={focusedSlot}
+                  vocabularyReady={vocabulary.length > 0}
+                  vocabularyMode={vocabularyMode}
+                  vocabularySet={vocabularySet}
+                  suggestionsBySlot={suggestionsBySlot}
+                  onChange={(index, value) => {
+                    const next = [...guesses];
+                    next[index] = value.replace(/[^A-Za-z]/g, '').slice(0, TIEBREAKER_MAX_GUESS_LENGTH);
+                    setGuesses(next);
+                  }}
+                  onFocusSlot={setFocusedSlot}
+                  onSubmit={handleSubmit}
+                  onUnlock={() => {
+                    setSubmitting(false);
+                    useGameStore.getState().unlockTiebreaker();
+                  }}
+                />
+              ) : (
+                <div className="glass-card rounded-2xl border border-white/10 p-5 text-center text-gray-400">
+                  Spectators can watch the tiebreaker resolve.
+                </div>
+              )}
+
+              <ClueBank
+                myTeam={privateState?.team}
+                keywords={privateState?.keywords}
+                history={room.clueHistory}
+                compactMobile
+              />
+            </div>
+
+            <SignalHistory
+              history={room.clueHistory}
+              tiebreakerHistory={room.tiebreaker?.history}
+              sticky
+              includeIntercept
+            />
+          </div>
+
+          {settingsOpen && (
+            <VocabularySettingsPanel
+              mode={vocabularyMode}
+              isHost={isHost}
+              locked={hasAnySubmission}
+              vocabularySize={vocabulary.length}
+              onClose={() => setSettingsOpen(false)}
+            />
           )}
-
-          <ClueBank
-            myTeam={privateState?.team}
-            keywords={privateState?.keywords}
-            history={room.clueHistory}
-            compactMobile
-          />
-        </div>
-
-        <SignalHistory
-          history={room.clueHistory}
-          tiebreakerHistory={room.tiebreaker?.history}
-          sticky
-          includeIntercept
-        />
-      </div>
-
-      {settingsOpen && (
-        <VocabularySettingsPanel
-          mode={vocabularyMode}
-          isHost={isHost}
-          locked={hasAnySubmission}
-          vocabularySize={vocabulary.length}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
         </div>
       </div>
     </div>

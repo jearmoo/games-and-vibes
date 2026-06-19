@@ -79,10 +79,7 @@ export default function TurnScreen() {
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
-      <GameHeader
-        dropdownOpen={roundDetailsOpen}
-        onDropdownOpenChange={setRoundDetailsOpen}
-      />
+      <GameHeader dropdownOpen={roundDetailsOpen} onDropdownOpenChange={setRoundDetailsOpen} />
       {clueTimer && <FixedClueTimer endTime={clueTimer.expiresAt} duration={clueTimer.durationSeconds} />}
       <div
         className={`grid min-h-0 flex-1 w-full max-w-6xl mx-auto grid-cols-1 lg:grid-cols-[1fr_21rem] gap-2 overflow-y-auto px-3 pb-4 sm:gap-4 sm:px-5 sm:pb-5 ${

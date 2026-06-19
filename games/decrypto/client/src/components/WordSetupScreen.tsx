@@ -57,11 +57,7 @@ export default function WordSetupScreen() {
   );
 }
 
-function SetupDetailsCard({
-  wordLocks,
-}: {
-  wordLocks: Record<TeamId, boolean>;
-}) {
+function SetupDetailsCard({ wordLocks }: { wordLocks: Record<TeamId, boolean> }) {
   return (
     <div className="glass-card rounded-2xl border border-white/10 p-4">
       <div>

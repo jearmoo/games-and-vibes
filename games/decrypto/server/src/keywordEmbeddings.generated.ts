@@ -24,67 +24,72 @@ export const STORED_EMBEDDING_MODEL = 'text-embedding-3-large';
 export const STORED_EMBEDDING_DIMENSIONS = 384;
 export const STORED_EMBEDDING_NORMALIZED = true;
 export const STORED_EMBEDDING_QUANTIZATION = 'int8/127';
-export const STORED_EMBEDDINGS_GENERATED_AT = "2026-06-19T09:14:36.988Z";
+export const STORED_EMBEDDINGS_GENERATED_AT = '2026-06-19T09:14:36.988Z';
 export const STORED_EMBEDDING_METADATA = {
-  "provider": "openai",
-  "model": "text-embedding-3-large",
-  "vocabularySize": 36822,
-  "targetVocabularySize": 440,
-  "generatedAt": "2026-06-19T09:14:36.988Z",
-  "source": {
-    "library": "wordfreq",
-    "language": "en",
-    "filterSettings": {
-      "requestedLimit": 150000,
-      "sourcePoolSize": null,
-      "wordfreqWordlist": "best",
-      "fullWordlist": true,
-      "scanned": 164527,
-      "accepted": 150000,
-      "zipfFrequencyFloor": 1.5,
-      "minLength": 3,
-      "maxLength": 18,
-      "alphabeticOnly": true,
-      "allowHyphen": false,
-      "lowercaseOnly": true,
-      "profanityAdultTermsExcluded": false,
-      "stopwordCount": 325,
-      "rejected": {
-        "format": 13482,
-        "length": 755,
-        "stopword": 290,
-        "frequency": 0,
-        "duplicate": 0
-      }
+  provider: 'openai',
+  model: 'text-embedding-3-large',
+  vocabularySize: 36822,
+  targetVocabularySize: 440,
+  generatedAt: '2026-06-19T09:14:36.988Z',
+  source: {
+    library: 'wordfreq',
+    language: 'en',
+    filterSettings: {
+      requestedLimit: 150000,
+      sourcePoolSize: null,
+      wordfreqWordlist: 'best',
+      fullWordlist: true,
+      scanned: 164527,
+      accepted: 150000,
+      zipfFrequencyFloor: 1.5,
+      minLength: 3,
+      maxLength: 18,
+      alphabeticOnly: true,
+      allowHyphen: false,
+      lowercaseOnly: true,
+      profanityAdultTermsExcluded: false,
+      stopwordCount: 325,
+      rejected: {
+        format: 13482,
+        length: 755,
+        stopword: 290,
+        frequency: 0,
+        duplicate: 0,
+      },
     },
-    "forcedTargetTerms": 440,
-    "forcedSupplementalTerms": 1,
-    "guessEmbeddingInput": "Guess terms are embedded directly from the submitted/display word text after normalized vocabulary lookup.",
-    "targetEmbeddingInput": "Decrypto target terms are embedded directly from the card displayWord; exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs.",
-    "reviewedVocabulary": {
-      "sourceFile": "vocab_kept.csv",
-      "keptTerms": 36822,
-      "originalTerms": 150000,
-      "missingReviewedTerms": 0
-    }
+    forcedTargetTerms: 440,
+    forcedSupplementalTerms: 1,
+    guessEmbeddingInput:
+      'Guess terms are embedded directly from the submitted/display word text after normalized vocabulary lookup.',
+    targetEmbeddingInput:
+      'Decrypto target terms are embedded directly from the card displayWord; exact target input strings are in keywordTerms.generated.json targetEmbeddingInputs.',
+    reviewedVocabulary: {
+      sourceFile: 'vocab_kept.csv',
+      keptTerms: 36822,
+      originalTerms: 150000,
+      missingReviewedTerms: 0,
+    },
   },
-  "embedding": {
-    "dimensions": 384,
-    "normalized": true,
-    "requestedDimensions": 384,
-    "dimensionalityReduction": "OpenAI embeddings API dimensions parameter; vectors are normalized locally before int8 quantization",
-    "quantization": "int8/127",
-    "runtimeVectorFormat": "keywordEmbeddings.int8.bin loaded lazily as an Int8Array; guess vectors are stored first, target vectors second; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized"
+  embedding: {
+    dimensions: 384,
+    normalized: true,
+    requestedDimensions: 384,
+    dimensionalityReduction:
+      'OpenAI embeddings API dimensions parameter; vectors are normalized locally before int8 quantization',
+    quantization: 'int8/127',
+    runtimeVectorFormat:
+      'keywordEmbeddings.int8.bin loaded lazily as an Int8Array; guess vectors are stored first, target vectors second; cosine uses int8 dot product divided by precomputed int8 norms, with no full Float32 matrix materialized',
   },
-  "assets": {
-    "vectors": "keywordEmbeddings.int8.bin",
-    "terms": "keywordTerms.generated.json",
-    "metadata": "keywordEmbeddings.metadata.generated.json"
+  assets: {
+    vectors: 'keywordEmbeddings.int8.bin',
+    terms: 'keywordTerms.generated.json',
+    metadata: 'keywordEmbeddings.metadata.generated.json',
   },
-  "scoring": {
-    "rawCosine": "cosine approximation over normalized OpenAI embeddings after int8 quantization",
-    "transformation": "runtime tiebreaker scoring maps raw cosine with a conservative fixed piecewise curve, applies guarded hard rank floors for strong high-rank matches, softly boosts broad medium associations toward a target score, and caps/penalizes weak or nonspecific matches by target rank"
-  }
+  scoring: {
+    rawCosine: 'cosine approximation over normalized OpenAI embeddings after int8 quantization',
+    transformation:
+      'runtime tiebreaker scoring maps raw cosine with a conservative fixed piecewise curve, applies guarded hard rank floors for strong high-rank matches, softly boosts broad medium associations toward a target score, and caps/penalizes weak or nonspecific matches by target rank',
+  },
 } as const;
 export const STORED_EMBEDDING_ASSET_FILES = {
   vectors: 'keywordEmbeddings.int8.bin',
