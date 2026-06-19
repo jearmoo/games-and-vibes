@@ -12,6 +12,8 @@ queue is drained, converging to the latest requested commit.
 
 import json
 import logging
+import os
+import signal
 import subprocess
 import sys
 import threading
@@ -26,7 +28,10 @@ DEPLOY_SCRIPT = SCRIPT_DIR / 'deploy.py'
 LOG_FILE = SCRIPT_DIR / 'deploy.log'
 PORT = 9877
 MAX_DEPLOY_CYCLES = 5
-DEPLOY_TIMEOUT = 300  # seconds
+# Watchdog for the deploy.py subprocess. Kept above deploy.py's own
+# DEPLOY_TIMEOUT (900s) so deploy.py reaps its docker child first; this is only
+# a backstop for a wedged deploy.py itself.
+DEPLOY_TIMEOUT = 1200  # seconds
 RESPONSE_TIMEOUT = 60  # max seconds before responding to HTTP request
 
 # --- Logging ---
@@ -92,14 +97,18 @@ def run_deploy(sha: str, output_lines: list[str]) -> int:
     Returns the exit code.
     """
     logger.info('Invoking deploy.py for %s', sha[:12])
+    # start_new_session puts deploy.py and any docker compose grandchildren in a
+    # dedicated process group, so a timeout kill takes the whole tree down
+    # instead of orphaning a `docker compose up` that wedges on the compose lock.
+    proc = subprocess.Popen(
+        [sys.executable, '-u', str(DEPLOY_SCRIPT), sha],
+        cwd=REPO_DIR,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
     try:
-        proc = subprocess.Popen(
-            [sys.executable, '-u', str(DEPLOY_SCRIPT), sha],
-            cwd=REPO_DIR,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
         for line in proc.stdout:
             stripped = line.rstrip('\n')
             output_lines.append(stripped)
@@ -107,11 +116,14 @@ def run_deploy(sha: str, output_lines: list[str]) -> int:
         proc.wait(timeout=DEPLOY_TIMEOUT)
         return proc.returncode
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        msg = f'deploy.py timed out after {DEPLOY_TIMEOUT}s'
+        msg = f'deploy.py timed out after {DEPLOY_TIMEOUT}s; killing process group'
         logger.error(msg)
         output_lines.append(msg)
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
         return -1
 
 

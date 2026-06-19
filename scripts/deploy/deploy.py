@@ -13,6 +13,7 @@ Exit codes: 0 = success or skipped, non-zero = failure.
 
 import logging
 import os
+import signal
 import subprocess
 import sys
 from logging.handlers import RotatingFileHandler
@@ -30,7 +31,11 @@ IMAGES = [
     'decrypto',
     'games-landing',
 ]
-DEPLOY_TIMEOUT = 280  # seconds
+# Generous enough for a cold full-monorepo rebuild on the Pi. Must stay below
+# listener.py's own watchdog timeout so this script reaps its own docker child
+# (killing the whole process group) before the listener force-kills us — which
+# is what used to orphan a hung `docker compose up` holding the compose lock.
+DEPLOY_TIMEOUT = 900  # seconds
 
 # --- Logging (shared log file with listener) ---
 
@@ -46,21 +51,42 @@ logger.addHandler(file_handler)
 
 # --- Helpers ---
 
-def run_cmd(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
-    """Run a command, log and print its output, return the result."""
-    result = subprocess.run(
+def run_cmd(cmd: list[str], timeout: float | None = None, **kwargs) -> subprocess.CompletedProcess:
+    """Run a command, log and print its output, return the result.
+
+    The child is launched in its own process group (``start_new_session``) so
+    that on timeout we can kill the *entire* group, not just the immediate
+    process. ``docker compose`` spawns helpers and can otherwise survive a bare
+    kill — that orphan was what hung holding the compose lock. On timeout we
+    return a non-zero result (code 124) rather than raising, so the caller logs
+    a clean failure instead of an unhandled traceback.
+    """
+    proc = subprocess.Popen(
         cmd,
         cwd=kwargs.pop('cwd', REPO_DIR),
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        start_new_session=True,
         **kwargs,
     )
-    if result.stdout:
-        for line in result.stdout.strip().splitlines():
+    try:
+        stdout, _ = proc.communicate(timeout=timeout)
+        returncode = proc.returncode
+    except subprocess.TimeoutExpired:
+        logger.error('Command timed out after %ss; killing process group: %s', timeout, ' '.join(cmd))
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        stdout, _ = proc.communicate()
+        returncode = 124  # conventional exit code for "timed out"
+
+    if stdout:
+        for line in stdout.strip().splitlines():
             logger.info('  %s', line)
             print(f'  {line}', flush=True)
-    return result
+    return subprocess.CompletedProcess(cmd, returncode, stdout=stdout, stderr=None)
 
 
 def is_ancestor(older: str, newer: str) -> bool | None:
