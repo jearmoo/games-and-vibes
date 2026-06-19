@@ -34,7 +34,7 @@ export default function LeaveRoomButton({
       {confirming && (
         <ConfirmModal
           title="Leave Room?"
-          message="You can rejoin with the same name or create a new room."
+          message="You'll be removed from the room. You can rejoin with the same name or create a new room."
           confirmLabel="Leave"
           cancelLabel="Stay"
           confirmClass="btn-decrypto"
