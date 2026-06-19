@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type PointerEvent,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { Timer } from '@games/client-core';
 import {
   CODE_DIGITS,
@@ -6,10 +15,8 @@ import {
   type ClueContent,
   type Code,
   type CodeDigit,
-  type DecryptoPlayerDTO,
   type GuessKind,
   type PublicTeamTurnState,
-  type ScoreBoard,
   type TeamId,
 } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
@@ -17,8 +24,8 @@ import {
   ClueBank,
   ClueView,
   CodeDisplay,
-  DisclosureChevron,
   KeywordPanel,
+  MobileScoreSummary,
   ScoreStrip,
   SignalHistory,
   TEAM_STYLES,
@@ -30,6 +37,7 @@ import {
   otherTeam,
   possessiveName,
 } from './shared';
+import GameHeader from './GameHeader';
 
 function createEmptyClues(): ClueContent[] {
   return [createTextClue(), createTextClue(), createTextClue()];
@@ -40,6 +48,8 @@ export default function TurnScreen() {
   const privateState = useGameStore((s) => s.privateState);
   const [clues, setClues] = useState<ClueContent[]>(createEmptyClues);
   const [submitting, setSubmitting] = useState(false);
+  const [roundDetailsOpen, setRoundDetailsOpen] = useState(false);
+  const [wordsHidden, setWordsHidden] = useState(false);
 
   const turn = room?.turn;
   const myTeam = privateState?.team;
@@ -51,6 +61,10 @@ export default function TurnScreen() {
     setSubmitting(false);
   }, [turnKey]);
 
+  useEffect(() => {
+    setRoundDetailsOpen(false);
+  }, [room?.phase, turn?.round]);
+
   if (!room || !turn) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 font-display tracking-wider">
@@ -61,28 +75,59 @@ export default function TurnScreen() {
 
   const phase = room.phase;
   const clueTimer = phase === DecryptoPhase.CLUE ? turn.clueTimer : undefined;
+  const phaseLabel = phase === DecryptoPhase.CLUE ? 'Transmit signal' : 'Decode transmissions';
 
   return (
-    <div
-      className={`h-full flex flex-col px-5 pb-5 gap-4 animate-fade-in overflow-y-auto max-w-6xl mx-auto w-full ${
-        clueTimer ? 'pt-32 sm:pt-36' : 'pt-5'
-      }`}
-    >
+    <div className="h-full flex flex-col animate-fade-in">
+      <GameHeader
+        dropdownOpen={roundDetailsOpen}
+        onDropdownOpenChange={setRoundDetailsOpen}
+      />
       {clueTimer && <FixedClueTimer endTime={clueTimer.expiresAt} duration={clueTimer.durationSeconds} />}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">
-        <div className="space-y-4 min-w-0">
+      <div
+        className={`grid min-h-0 flex-1 w-full max-w-6xl mx-auto grid-cols-1 lg:grid-cols-[1fr_21rem] gap-2 overflow-y-auto px-3 pb-4 sm:gap-4 sm:px-5 sm:pb-5 ${
+          clueTimer ? 'pt-16 sm:pt-28' : 'pt-1 sm:pt-5'
+        }`}
+      >
+        {roundDetailsOpen && (
+          <div className="sm:hidden">
+            <div className="rounded-lg border border-white/10 bg-black/15 p-2">
+              <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
+              <MobileScoreSummary scores={room.scores} players={room.players} />
+            </div>
+          </div>
+        )}
+        <div className="space-y-2 min-w-0 sm:space-y-4">
           <HeaderPanel />
-          <KeywordPanel team={privateState?.team} keywords={privateState?.keywords} />
+          <KeywordPanel
+            team={privateState?.team}
+            keywords={privateState?.keywords}
+            wordsHidden={wordsHidden}
+            setWordsHidden={setWordsHidden}
+          />
 
           {phase === DecryptoPhase.CLUE ? (
-            <CluePhase clues={clues} setClues={setClues} submitting={submitting} setSubmitting={setSubmitting} />
+            <CluePhase
+              clues={clues}
+              setClues={setClues}
+              submitting={submitting}
+              setSubmitting={setSubmitting}
+              wordsHidden={wordsHidden}
+              setWordsHidden={setWordsHidden}
+            />
           ) : (
             <GuessPhase />
           )}
         </div>
 
-        <div className="space-y-4">
-          <ClueBank myTeam={privateState?.team} keywords={privateState?.keywords} history={room.clueHistory} />
+        <div className="space-y-2 sm:space-y-4">
+          <ClueBank
+            myTeam={privateState?.team}
+            keywords={privateState?.keywords}
+            history={room.clueHistory}
+            wordsHidden={wordsHidden}
+            setWordsHidden={setWordsHidden}
+          />
           <HistoryPanel />
         </div>
       </div>
@@ -93,127 +138,40 @@ export default function TurnScreen() {
 function HeaderPanel() {
   const room = useGameStore((s) => s.room)!;
   const turn = room.turn!;
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const phaseLabel = room.phase === DecryptoPhase.CLUE ? 'Simultaneous clues' : 'Decode transmissions';
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [room.phase, turn.round]);
+  const phaseLabel = room.phase === DecryptoPhase.CLUE ? 'Transmit signal' : 'Decode transmissions';
 
   return (
-    <>
-      <div className="glass-card overflow-hidden rounded-xl border border-white/10 p-1.5 sm:hidden">
-        <button
-          type="button"
-          onClick={() => setMobileOpen((value) => !value)}
-          aria-expanded={mobileOpen}
-          className="group flex h-8 w-full items-center justify-between gap-2 rounded-lg px-2 text-left transition-[background-color,box-shadow] hover:bg-white/5 active:bg-white/5 active:shadow-[inset_0_2px_10px_rgba(0,0,0,0.35)]"
-        >
-          <span className="font-display text-sm tracking-wider text-white transition-transform duration-150 group-active:translate-y-px">
-            Round {turn.round}
-          </span>
-          <span className="sr-only">{mobileOpen ? 'Collapse round details' : 'Expand round details'}</span>
-          <span className="transition-transform duration-150 group-active:translate-y-px">
-            <DisclosureChevron open={mobileOpen} />
-          </span>
-        </button>
-        <div
-          aria-hidden={!mobileOpen}
-          className={`grid transition-[grid-template-rows,opacity] duration-[200ms] ease-out ${
-            mobileOpen
-              ? 'visible grid-rows-[1fr] opacity-100'
-              : 'invisible pointer-events-none grid-rows-[0fr] opacity-0'
-          }`}
-        >
-          <div
-            className={`min-h-0 overflow-hidden transition-transform duration-[200ms] ease-out ${
-              mobileOpen ? 'translate-y-0' : '-translate-y-3'
-            }`}
-          >
-            <div className="mt-1.5 rounded-lg border border-white/10 bg-black/15 p-2">
-              <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
-              <MobileScoreSummary scores={room.scores} players={room.players} />
-            </div>
+    <div className="glass-card hidden rounded-2xl border border-white/10 p-4 sm:block">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Round {turn.round}</div>
+          <div className="font-display text-3xl tracking-wider text-white">{phaseLabel}</div>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
+            {(['red', 'blue'] as TeamId[]).map((team) => {
+              const teamTurn = turn.teams[team];
+              const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
+              return (
+                <span key={team} className={`rounded-lg border ${TEAM_STYLES[team].border} px-2 py-1`}>
+                  <span className={TEAM_STYLES[team].text}>{TEAM_STYLES[team].label}</span>
+                  <span className="text-gray-500"> by </span>
+                  <span className="text-white">{encryptor?.name ?? 'Unknown'}</span>
+                  {teamTurn.clueLocked && <span className="text-emerald-300"> locked</span>}
+                </span>
+              );
+            })}
           </div>
         </div>
-      </div>
-
-      <div className="glass-card hidden rounded-2xl border border-white/10 p-4 sm:block">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Round {turn.round}</div>
-            <div className="font-display text-3xl tracking-wider text-white">{phaseLabel}</div>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
-              {(['red', 'blue'] as TeamId[]).map((team) => {
-                const teamTurn = turn.teams[team];
-                const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
-                return (
-                  <span key={team} className={`rounded-lg border ${TEAM_STYLES[team].border} px-2 py-1`}>
-                    <span className={TEAM_STYLES[team].text}>{TEAM_STYLES[team].label}</span>
-                    <span className="text-gray-500"> by </span>
-                    <span className="text-white">{encryptor?.name ?? 'Unknown'}</span>
-                    {teamTurn.clueLocked && <span className="text-emerald-300"> locked</span>}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-          <div className="w-full min-w-0">
-            <ScoreStrip scores={room.scores} />
-          </div>
+        <div className="w-full min-w-0">
+          <ScoreStrip scores={room.scores} />
         </div>
       </div>
-    </>
-  );
-}
-
-function MobileScoreSummary({ scores, players }: { scores: ScoreBoard; players: DecryptoPlayerDTO[] }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {(['red', 'blue'] as TeamId[]).map((team) => {
-        const style = TEAM_STYLES[team];
-        const teamPlayers = players.filter((player) => player.team === team);
-        return (
-          <div key={team} className={`min-w-0 rounded-xl border ${style.border} ${style.bg} px-3 py-2`}>
-            <div className={`font-display tracking-wider ${style.text}`}>{style.label}</div>
-            <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-              <div>
-                <span className="block text-gray-500 uppercase tracking-widest">Ints</span>
-                <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
-                <span className="text-gray-600"> /2</span>
-              </div>
-              <div>
-                <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Miscoms</span>
-                <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
-                <span className="text-gray-600"> /2</span>
-              </div>
-            </div>
-            <div className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-snug text-gray-300">
-              {teamPlayers.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {teamPlayers.map((player) => (
-                    <span
-                      key={player.id}
-                      className="min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 text-gray-300"
-                    >
-                      {player.name}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-gray-600">No players</span>
-              )}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
 
 function FixedClueTimer({ endTime, duration }: { endTime: number; duration: number }) {
   return (
-    <div className="fixed left-1/2 top-3 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-amber-300/25 bg-surface/92 p-3 shadow-[0_16px_45px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <div className="fixed left-1/2 top-14 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl border border-amber-300/25 bg-surface/92 p-3 shadow-[0_16px_45px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:top-16">
       <div className="mb-2 text-center text-[10px] tracking-[0.3em] text-amber-200 uppercase">Clue timer</div>
       <Timer endTime={endTime} duration={duration} />
     </div>
@@ -225,11 +183,15 @@ function CluePhase({
   setClues,
   submitting,
   setSubmitting,
+  wordsHidden,
+  setWordsHidden,
 }: {
   clues: ClueContent[];
   setClues: (clues: ClueContent[]) => void;
   submitting: boolean;
   setSubmitting: (submitting: boolean) => void;
+  wordsHidden: boolean;
+  setWordsHidden: Dispatch<SetStateAction<boolean>>;
 }) {
   const room = useGameStore((s) => s.room)!;
   const privateState = useGameStore((s) => s.privateState);
@@ -238,6 +200,7 @@ function CluePhase({
   const isEncryptor = privateState?.isEncryptor ?? false;
   const locked = myTurn?.clueLocked ?? false;
   const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
+  const [drawingDrafts, setDrawingDrafts] = useState<Record<number, string>>({});
 
   useEffect(() => {
     setSubmitting(false);
@@ -264,15 +227,35 @@ function CluePhase({
     );
   }
 
-  const updateClue = (index: number, clue: ClueContent) => {
+  const setDrawingDraft = (index: number, dataUrl: string) => {
+    setDrawingDrafts((drafts) => {
+      if (!dataUrl) {
+        if (!(index in drafts)) return drafts;
+        const next = { ...drafts };
+        delete next[index];
+        return next;
+      }
+      if (drafts[index] === dataUrl) return drafts;
+      return { ...drafts, [index]: dataUrl };
+    });
+  };
+
+  const updateClue = (index: number, clue: ClueContent, { persist = true }: { persist?: boolean } = {}) => {
     const next = [...clues];
     next[index] = clue;
     setClues(next);
-    if (!locked) useGameStore.getState().saveClues(next);
+    if (!locked && persist) useGameStore.getState().saveClues(next);
   };
 
   const handleLock = () => {
     if (submitting || clues.some((clue) => !clueHasContent(clue))) return;
+    setDrawingDrafts((drafts) => {
+      const next = { ...drafts };
+      clues.forEach((clue, index) => {
+        if (clue.kind === 'text') delete next[index];
+      });
+      return next;
+    });
     setSubmitting(true);
     useGameStore.getState().submitClues(clues);
     setTimeout(() => setSubmitting(false), 5000);
@@ -301,21 +284,31 @@ function CluePhase({
           {privateState?.code?.map((digit, index) => {
             const clue = clues[index] ?? createTextClue();
             const textMode = clue.kind === 'text';
+            const savedDrawing = clue.kind === 'drawing' ? clue.dataUrl : (drawingDrafts[index] ?? '');
             return (
               <div key={`${digit}-${index}`} className="block">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-gray-400 text-xs tracking-widest uppercase">
                     Clue {index + 1} for #{digit}
                   </span>
-                  <span className="text-gray-500 text-xs truncate">
-                    {privateState.keywords?.[digit - 1] ?? 'Keyword'}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setWordsHidden((hidden) => !hidden)}
+                    className="min-w-0 max-w-[9rem] truncate rounded-md px-1.5 py-0.5 text-right text-xs text-gray-500 transition hover:bg-white/5 hover:text-gray-200 active:scale-95"
+                    aria-label={wordsHidden ? 'Show keyword' : 'Hide keyword'}
+                    title={wordsHidden ? 'Show keyword' : 'Hide keyword'}
+                  >
+                    {wordsHidden ? '••••••' : (privateState.keywords?.[digit - 1] ?? 'Keyword')}
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <button
                     type="button"
                     disabled={locked}
-                    onClick={() => updateClue(index, createTextClue(textMode ? clue.text : ''))}
+                    onClick={() => {
+                      if (clue.kind === 'drawing') setDrawingDraft(index, clue.dataUrl);
+                      updateClue(index, createTextClue(textMode ? clue.text : ''), { persist: !savedDrawing });
+                    }}
                     className={`py-2 rounded-xl border text-xs font-semibold tracking-wider transition-all disabled:opacity-40 ${
                       textMode
                         ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
@@ -328,7 +321,7 @@ function CluePhase({
                     type="button"
                     disabled={locked}
                     onClick={() => {
-                      updateClue(index, { kind: 'drawing', dataUrl: clue.kind === 'drawing' ? clue.dataUrl : '' });
+                      updateClue(index, { kind: 'drawing', dataUrl: savedDrawing });
                       setDrawingIndex(index);
                     }}
                     className={`py-2 rounded-xl border text-xs font-semibold tracking-wider transition-all disabled:opacity-40 ${
@@ -343,7 +336,9 @@ function CluePhase({
                 {textMode ? (
                   <input
                     value={clue.text}
-                    onChange={(event) => updateClue(index, createTextClue(event.target.value))}
+                    onChange={(event) =>
+                      updateClue(index, createTextClue(event.target.value), { persist: !drawingDrafts[index] })
+                    }
                     maxLength={32}
                     disabled={locked}
                     className="game-input w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 disabled:opacity-50"
@@ -389,6 +384,7 @@ function CluePhase({
         <DrawingClueModal
           initialDataUrl={editingDrawing.dataUrl}
           onSave={(dataUrl) => {
+            setDrawingDraft(drawingIndex, dataUrl);
             updateClue(drawingIndex, { kind: 'drawing', dataUrl });
             setDrawingIndex(null);
           }}

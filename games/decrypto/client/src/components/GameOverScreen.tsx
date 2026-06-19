@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   GameEndReason,
   GameWinner,
   PublicTiebreakerRepeatState,
   TeamId,
   TiebreakerResult,
+  TiebreakerTeamResult,
 } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
-import { ClueBank, ScoreStrip, SignalHistory, TEAM_STYLES, otherTeam } from './shared';
+import { ClueBank, MobileScoreSummary, ScoreStrip, SignalHistory, TEAM_STYLES, otherTeam } from './shared';
+import GameHeader from './GameHeader';
 
 const TEAMS: TeamId[] = ['red', 'blue'];
 
@@ -29,6 +32,7 @@ export default function GameOverScreen() {
   const [resetting, setResetting] = useState(false);
   const [releasingTeam, setReleasingTeam] = useState<TeamId | null>(null);
   const [requestingRepeat, setRequestingRepeat] = useState(false);
+  const [gameOverDetailsOpen, setGameOverDetailsOpen] = useState(false);
 
   if (!room || !finalState || !winner) {
     return (
@@ -72,8 +76,24 @@ export default function GameOverScreen() {
   };
 
   return (
-    <div className="min-h-full flex flex-col px-5 pt-5 pb-28 gap-5 animate-fade-in overflow-y-auto max-w-4xl mx-auto w-full">
-      <div className="text-center py-4">
+    <div className="h-full flex flex-col animate-fade-in">
+      <GameHeader
+        roleOverride="Game Over"
+        roundLabel=""
+        dropdownOpen={gameOverDetailsOpen}
+        onDropdownOpenChange={setGameOverDetailsOpen}
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-4 px-5 pb-28 pt-2 sm:gap-5 sm:pt-4">
+      {gameOverDetailsOpen && (
+        <div className="sm:hidden">
+          <div className="rounded-lg border border-white/10 bg-black/15 p-2">
+            <div className="mb-2 font-display text-base tracking-wider text-white">Game over</div>
+            <MobileScoreSummary scores={room.scores} players={room.players} />
+          </div>
+        </div>
+      )}
+      <div className="text-center pb-3 pt-1 sm:py-4">
         <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Channel closed</div>
         <div className={`font-display text-5xl tracking-[0.18em] ${winnerStyle?.text ?? 'text-white'}`}>
           {winningTeam ? `${winnerStyle?.label} wins` : 'Game tied'}
@@ -131,6 +151,8 @@ export default function GameOverScreen() {
         >
           {resetting ? 'Resetting...' : 'Back to Lobby'}
         </button>
+      </div>
+        </div>
       </div>
     </div>
   );
@@ -231,89 +253,210 @@ function getReasonText(
 }
 
 function TiebreakerResultPanel({ result }: { result: TiebreakerResult }) {
+  const [expandedTeam, setExpandedTeam] = useState<TeamId | null>(null);
+
   return (
-    <section className="glass-card rounded-xl border border-white/10 p-2.5 sm:rounded-2xl sm:p-4">
-      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3">
-        <div className="min-w-0">
-          <div className="text-[9px] tracking-[0.22em] text-gray-500 uppercase sm:text-[10px] sm:tracking-[0.3em]">
-            Tiebreaker result
+    <>
+      <section className="glass-card rounded-xl border border-white/10 p-2.5 sm:rounded-2xl sm:p-4">
+        <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3">
+          <div className="min-w-0">
+            <div className="text-[9px] tracking-[0.22em] text-gray-500 uppercase sm:text-[10px] sm:tracking-[0.3em]">
+              Tiebreaker result
+            </div>
+            <div className="mt-1 hidden text-xs text-gray-400 sm:block">
+              Exact matches first, similarity only if exact matches tie.
+            </div>
           </div>
-          <div className="mt-1 hidden text-xs text-gray-400 sm:block">
-            Exact matches first, similarity only if exact matches tie.
+          <div className="shrink-0 rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] tracking-widest text-gray-500 uppercase sm:bg-transparent sm:px-0 sm:py-0 sm:text-[10px]">
+            <span className="sm:hidden">±</span>
+            <span className="hidden sm:inline">Threshold </span>
+            {(result.similarityThreshold * 100).toFixed(0)}%
           </div>
         </div>
-        <div className="shrink-0 rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] tracking-widest text-gray-500 uppercase sm:bg-transparent sm:px-0 sm:py-0 sm:text-[10px]">
-          <span className="sm:hidden">±</span>
-          <span className="hidden sm:inline">Threshold </span>
-          {(result.similarityThreshold * 100).toFixed(0)}%
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+          {TEAMS.map((team) => (
+            <button
+              key={team}
+              type="button"
+              onClick={() => setExpandedTeam(team)}
+              className="min-w-0 rounded-lg text-left transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 active:scale-[0.98]"
+              aria-label={`Open ${TEAM_STYLES[team].label} tiebreaker result`}
+            >
+              <TiebreakerTeamResultCard result={result.results[team]} winner={result.winner} />
+            </button>
+          ))}
+        </div>
+      </section>
+      {expandedTeam && (
+        <TiebreakerResultModal
+          result={result.results[expandedTeam]}
+          winner={result.winner}
+          onClose={() => setExpandedTeam(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function TiebreakerTeamResultCard({
+  result,
+  winner,
+  enlarged = false,
+  onClose,
+}: {
+  result: TiebreakerTeamResult;
+  winner: GameWinner;
+  enlarged?: boolean;
+  onClose?: () => void;
+}) {
+  const style = TEAM_STYLES[result.team];
+  const won = winner === result.team;
+  return (
+    <div
+      className={`min-w-0 rounded-lg border ${style.border} ${style.bg} ${
+        enlarged ? 'p-4 sm:rounded-2xl sm:p-5' : 'p-2 sm:rounded-xl sm:p-3'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0">
+          <div className={`font-display tracking-wider ${enlarged ? 'text-3xl' : 'text-base sm:text-lg'} ${style.text}`}>
+            {style.label}
+          </div>
+          <div className={`truncate text-gray-400 ${enlarged ? 'mt-1 text-sm' : 'text-[10px] sm:text-[11px]'}`}>
+            <span className={enlarged ? 'hidden' : 'sm:hidden'}>vs {TEAM_STYLES[result.targetTeam].label}</span>
+            <span className={enlarged ? '' : 'hidden sm:inline'}>
+              Guessed {TEAM_STYLES[result.targetTeam].label}'s words
+            </span>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-start gap-1.5">
+          {won && (
+            <span
+              className={`rounded-md border border-emerald-300/20 bg-emerald-400/10 tracking-widest text-emerald-300 uppercase ${
+                enlarged ? 'px-2 py-1 text-[10px]' : 'px-1.5 py-0.5 text-[8px] sm:text-[10px]'
+              }`}
+            >
+              Won
+            </span>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close tiebreaker result"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-xl leading-none text-gray-400 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+            >
+              &times;
+            </button>
+          )}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-        {TEAMS.map((team) => {
-          const style = TEAM_STYLES[team];
-          const teamResult = result.results[team];
-          const won = result.winner === team;
+      <div className={`grid grid-cols-2 gap-1 ${enlarged ? 'mt-4 text-sm sm:gap-3' : 'mt-2 text-xs sm:mt-3 sm:gap-2'}`}>
+        <div
+          className={`rounded-md border border-white/10 bg-black/20 ${
+            enlarged ? 'px-3 py-3 sm:rounded-xl sm:px-4' : 'px-1.5 py-1 sm:rounded-lg sm:px-2.5 sm:py-2'
+          }`}
+        >
+          <div className={`tracking-widest text-gray-500 uppercase ${enlarged ? 'text-[10px]' : 'text-[8px] sm:text-[10px]'}`}>
+            Exact
+          </div>
+          <div className={`font-display text-white ${enlarged ? 'text-3xl' : 'text-base sm:text-xl'}`}>
+            {result.exactMatches}/4
+          </div>
+        </div>
+        <div
+          className={`rounded-md border border-white/10 bg-black/20 ${
+            enlarged ? 'px-3 py-3 sm:rounded-xl sm:px-4' : 'px-1.5 py-1 sm:rounded-lg sm:px-2.5 sm:py-2'
+          }`}
+        >
+          <div className={`tracking-widest text-gray-500 uppercase ${enlarged ? 'text-[10px]' : 'text-[8px] sm:text-[10px]'}`}>
+            <span className={enlarged ? 'hidden' : 'sm:hidden'}>Sim</span>
+            <span className={enlarged ? '' : 'hidden sm:inline'}>Similarity</span>
+          </div>
+          <div className={`font-display text-white ${enlarged ? 'text-3xl' : 'text-base sm:text-xl'}`}>
+            {(result.similarityScore * 100).toFixed(0)}%
+          </div>
+        </div>
+      </div>
+      <div
+        className={`grid grid-cols-2 gap-1 ${
+          enlarged ? 'mt-4 sm:grid-cols-4 sm:gap-2' : 'mt-2 sm:mt-3 sm:flex sm:flex-wrap sm:gap-1.5'
+        }`}
+      >
+        {result.guesses.map((guess, index) => {
+          const displayGuess = sentenceCaseGuess(guess);
+          const score = formatSimilarityScore(result.slotScores[index]);
           return (
-            <div
-              key={team}
-              className={`min-w-0 rounded-lg border ${style.border} ${style.bg} p-2 sm:rounded-xl sm:p-3`}
+            <span
+              key={`${result.team}-${guess}-${index}`}
+              title={`${index + 1}. ${displayGuess} - ${score}`}
+              className={`min-w-0 rounded-md border border-white/10 bg-black/25 text-gray-200 ${
+                enlarged
+                  ? 'px-2.5 py-2 text-sm sm:rounded-xl sm:px-3'
+                  : 'px-1.5 py-0.5 text-[10px] sm:rounded-lg sm:px-2 sm:py-1 sm:text-[11px]'
+              }`}
             >
-              <div className="flex items-start justify-between gap-2 sm:gap-3">
-                <div className="min-w-0">
-                  <div className={`font-display text-base tracking-wider sm:text-lg ${style.text}`}>{style.label}</div>
-                  <div className="truncate text-[10px] text-gray-400 sm:text-[11px]">
-                    <span className="sm:hidden">vs {TEAM_STYLES[teamResult.targetTeam].label}</span>
-                    <span className="hidden sm:inline">Guessed {TEAM_STYLES[teamResult.targetTeam].label}'s words</span>
-                  </div>
-                </div>
-                {won && (
-                  <span className="shrink-0 rounded-md border border-emerald-300/20 bg-emerald-400/10 px-1.5 py-0.5 text-[8px] tracking-widest text-emerald-300 uppercase sm:text-[10px]">
-                    Won
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-1 text-xs sm:mt-3 sm:gap-2">
-                <div className="rounded-md border border-white/10 bg-black/20 px-1.5 py-1 sm:rounded-lg sm:px-2.5 sm:py-2">
-                  <div className="text-[8px] tracking-widest text-gray-500 uppercase sm:text-[10px]">Exact</div>
-                  <div className="font-display text-base text-white sm:text-xl">{teamResult.exactMatches}/4</div>
-                </div>
-                <div className="rounded-md border border-white/10 bg-black/20 px-1.5 py-1 sm:rounded-lg sm:px-2.5 sm:py-2">
-                  <div className="text-[8px] tracking-widest text-gray-500 uppercase sm:text-[10px]">
-                    <span className="sm:hidden">Sim</span>
-                    <span className="hidden sm:inline">Similarity</span>
-                  </div>
-                  <div className="font-display text-base text-white sm:text-xl">
-                    {(teamResult.similarityScore * 100).toFixed(0)}%
-                  </div>
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-1 sm:mt-3 sm:flex sm:flex-wrap sm:gap-1.5">
-                {teamResult.guesses.map((guess, index) => {
-                  const displayGuess = sentenceCaseGuess(guess);
-                  const score = formatSimilarityScore(teamResult.slotScores[index]);
-                  return (
-                    <span
-                      key={`${team}-${guess}-${index}`}
-                      title={`${index + 1}. ${displayGuess} - ${score}`}
-                      className="min-w-0 rounded-md border border-white/10 bg-black/25 px-1.5 py-0.5 text-[10px] text-gray-200 sm:rounded-lg sm:px-2 sm:py-1 sm:text-[11px]"
-                    >
-                      <span className="flex min-w-0 items-center justify-between gap-1.5">
-                        <span className="min-w-0 truncate">
-                          {index + 1}. {displayGuess}
-                        </span>
-                        <span className="shrink-0 font-display text-[9px] tracking-wider text-gray-400 sm:text-[10px]">
-                          {score}
-                        </span>
-                      </span>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
+              <span className="flex min-w-0 items-center justify-between gap-1.5">
+                <span className="min-w-0 truncate">
+                  {index + 1}. {displayGuess}
+                </span>
+                <span
+                  className={`shrink-0 font-display tracking-wider text-gray-400 ${
+                    enlarged ? 'text-xs' : 'text-[9px] sm:text-[10px]'
+                  }`}
+                >
+                  {score}
+                </span>
+              </span>
+            </span>
           );
         })}
       </div>
-    </section>
+    </div>
+  );
+}
+
+function TiebreakerResultModal({
+  result,
+  winner,
+  onClose,
+}: {
+  result: TiebreakerTeamResult;
+  winner: GameWinner;
+  onClose: () => void;
+}) {
+  const style = TEAM_STYLES[result.team];
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${style.label} tiebreaker result`}
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+      <div
+        className="relative w-full max-w-2xl rounded-2xl shadow-[0_24px_90px_rgba(0,0,0,0.58)] animate-fade-in"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <TiebreakerTeamResultCard result={result} winner={winner} enlarged onClose={onClose} />
+      </div>
+    </div>,
+    document.body,
   );
 }
 

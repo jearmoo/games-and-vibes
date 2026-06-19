@@ -734,7 +734,7 @@ async function main() {
     scoring: {
       rawCosine: 'cosine approximation over normalized OpenAI embeddings after int8 quantization',
       transformation:
-        'runtime tiebreaker scoring compares each guess vector to the corresponding target display-word vector, calibrates raw cosine against generated target-word cosine distribution, and caps non-exact matches below 1',
+        'runtime tiebreaker scoring maps raw cosine with a conservative fixed piecewise curve, applies guarded hard rank floors for strong high-rank matches, softly boosts broad medium associations toward a target score, and caps/penalizes weak or nonspecific matches by target rank',
     },
   };
 

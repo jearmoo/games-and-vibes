@@ -13,6 +13,7 @@ import {
   otherTeam,
   possessiveName,
 } from './shared';
+import GameHeader from './GameHeader';
 
 export default function RevealScreen() {
   const room = useGameStore((s) => s.room);
@@ -45,7 +46,10 @@ export default function RevealScreen() {
   };
 
   return (
-    <div className="h-full flex flex-col px-5 pt-5 pb-0 gap-5 animate-fade-in overflow-y-auto max-w-4xl mx-auto w-full">
+    <div className="h-full flex flex-col animate-fade-in">
+      <GameHeader roundLabel={`R${reveals[0].round}`} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-5 px-5 pt-5 pb-0">
       <div className="text-center">
         <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Transmission revealed</div>
         <div className="font-display text-4xl tracking-wider text-white">
@@ -90,6 +94,8 @@ export default function RevealScreen() {
             {continuing ? 'Continuing...' : 'Continue'}
           </button>
         )}
+      </div>
+        </div>
       </div>
     </div>
   );

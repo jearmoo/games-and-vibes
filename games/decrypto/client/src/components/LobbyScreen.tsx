@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useState } from 'react';
 import { ConfirmModal, RoomQrButton } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useTeamPlayers, type DecryptoPlayerDTO, type TeamId } from '../store';
+import LeaveRoomButton from './LeaveRoomButton';
+import { HowToPlayPanel } from './shared';
 
 const TEAM_META: Record<TeamId, { label: string; border: string; text: string; glow: string }> = {
   red: {
@@ -53,40 +54,67 @@ export default function LobbyScreen() {
     setTimeout(() => setStarting(false), 5000);
   };
 
+  const startLabel = !canStart
+    ? offlineAwareness
+      ? 'Need 2 online per team'
+      : 'Need 2 per team'
+    : starting
+      ? 'Starting...'
+      : 'Start Game';
+
   return (
-    <div className="h-full flex flex-col p-5 gap-4 animate-fade-in overflow-y-auto max-w-4xl mx-auto w-full">
+    <div className="h-full flex flex-col animate-fade-in">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-3 px-4 pb-28 pt-4 sm:gap-4 sm:px-5 sm:pt-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Room code</div>
-          <button
-            onClick={handleCopy}
-            className="font-display text-4xl tracking-[0.3em] text-white hover:opacity-90 transition-opacity decrypto-title"
-            title="Tap to copy link"
-          >
+          <div className="font-display text-4xl tracking-[0.3em] text-white decrypto-title">
             {roomCode}
-          </button>
-          <div className="text-cyan-300/80 text-xs mt-1 h-4">{copied ? 'Link copied!' : 'Tap code to copy link'}</div>
+          </div>
+          <div className="mt-1 flex h-4 items-center gap-3">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="text-cyan-300/80 text-xs transition-colors hover:text-cyan-200"
+            >
+              {copied ? 'Copied!' : 'Copy link'}
+            </button>
+            <RoomQrButton
+              roomCode={roomCode}
+              shareUrl={shareUrl}
+              className="text-cyan-300/80 text-xs transition-colors hover:text-cyan-200"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <RoomQrButton roomCode={roomCode} shareUrl={shareUrl} />
-          <button
-            type="button"
-            onClick={() => setHelpOpen(true)}
-            aria-label="How to play Decrypto"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-surface-raised font-display text-base text-gray-300 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
-          >
-            ?
-          </button>
-          <button
-            onClick={() => useGameStore.getState().leaveRoom()}
+        <div className="flex flex-col items-end gap-2">
+          <LeaveRoomButton
             className="text-gray-500 hover:text-white text-xs tracking-wider transition-colors px-3 py-1.5 border border-white/5 rounded-lg"
           >
             Leave
-          </button>
+          </LeaveRoomButton>
+          <div className="flex items-center gap-2">
+            {me && (
+              <div className="text-right leading-tight">
+                <span className="text-gray-400 text-xs">Playing as </span>
+                <span className="text-white text-sm font-semibold">{me.name}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              aria-label="How to play Decrypto"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-surface-raised font-display text-base text-gray-300 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+            >
+              ?
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <OfflineAwarenessControl enabled={offlineAwareness} host={host} />
+
+      <div className="grid grid-cols-2 gap-2 sm:gap-4">
         <TeamColumn
           team="red"
           players={red}
@@ -107,8 +135,6 @@ export default function LobbyScreen() {
         />
       </div>
 
-      <OfflineAwarenessControl enabled={offlineAwareness} host={host} />
-
       <div className="glass-card rounded-2xl border border-white/10 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -125,8 +151,10 @@ export default function LobbyScreen() {
           </div>
         </div>
       </div>
+        </div>
+      </div>
 
-      <div className="mt-auto">
+      <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-4xl -translate-x-1/2 border-t border-white/10 bg-surface/85 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl sm:px-5">
         {host ? (
           <button
             onClick={handleStart}
@@ -137,13 +165,7 @@ export default function LobbyScreen() {
                 : 'bg-surface-raised text-gray-600 border border-white/5'
             }`}
           >
-            {!canStart
-              ? offlineAwareness
-                ? 'Need 2 online per team'
-                : 'Need 2 per team'
-              : starting
-                ? 'Starting...'
-                : 'Start Game'}
+            {startLabel}
           </button>
         ) : (
           <div className="w-full py-4 text-center text-gray-500 text-sm tracking-wider">Waiting for host...</div>
@@ -170,11 +192,11 @@ export default function LobbyScreen() {
 
 function OfflineAwarenessControl({ enabled, host }: { enabled: boolean; host: boolean }) {
   return (
-    <div className="glass-card rounded-2xl border border-white/10 p-4">
+    <div className="glass-card rounded-xl border border-white/10 p-3 sm:rounded-2xl sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-gray-400 text-xs tracking-widest uppercase">Offline awareness</div>
-          <div className="text-gray-500 text-xs mt-1">
+          <div className="text-[11px] tracking-widest text-gray-400 uppercase sm:text-xs">Offline awareness</div>
+          <div className="mt-0.5 text-[11px] text-gray-500 sm:mt-1 sm:text-xs">
             {enabled ? 'Visible offline status' : 'Hidden offline status'}
           </div>
         </div>
@@ -191,87 +213,13 @@ function OfflineAwarenessControl({ enabled, host }: { enabled: boolean; host: bo
           } ${host ? 'cursor-pointer hover:bg-surface-hover' : 'cursor-not-allowed opacity-60'}`}
         >
           <span
-            className={`absolute left-0 top-1 h-6 w-6 rounded-full transition-transform duration-200 ${
-              enabled ? 'translate-x-6 bg-cyan-200' : 'translate-x-1 bg-gray-500'
+            className={`absolute left-px top-px h-7 w-7 rounded-full transition-transform duration-200 ${
+              enabled ? 'translate-x-6 bg-cyan-200' : 'translate-x-0 bg-gray-500'
             }`}
           />
         </button>
       </div>
     </div>
-  );
-}
-
-function HowToPlayPanel({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="How to play Decrypto"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-md" />
-      <div
-        className="relative w-full max-w-md rounded-2xl border border-white/10 bg-surface/95 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.55)] animate-fade-in"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">How to play</div>
-            <div className="font-display text-2xl tracking-wider text-white">Decrypto</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close how to play"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-xl leading-none text-gray-400 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div className="space-y-3 text-sm leading-relaxed text-gray-300">
-          <p>
-            Each team has 4 secret keywords. Your team gives clues that point to three of those words in a hidden order.
-          </p>
-          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-            <div className="mb-1 text-[10px] tracking-[0.25em] text-gray-500 uppercase">Round flow</div>
-            <p>
-              The encryptor sees a 3-number code, gives three clues, then teammates guess the order. From round 2 on,
-              the other team also tries to intercept your code.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
-              <div className="font-display tracking-wider text-emerald-200">Win</div>
-              <p className="mt-1 text-xs text-gray-300">Intercept 2 enemy transmissions.</p>
-            </div>
-            <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-3">
-              <div className="font-display tracking-wider text-rose-200">Avoid</div>
-              <p className="mt-1 text-xs text-gray-300">2 team miscommunications.</p>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">
-            Round 1 has no intercept. Clues can be typed or drawn, but keep them clear enough for your team and vague
-            enough to hide your keywords.
-          </p>
-        </div>
-      </div>
-    </div>,
-    document.body,
   );
 }
 
@@ -297,29 +245,31 @@ function TeamColumn({
   const onlineCount = players.filter((p) => p.connected).length;
 
   return (
-    <div className={`glass-card rounded-2xl border ${meta.border} ${mine ? meta.glow : ''} p-4 min-h-[16rem]`}>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div>
-          <div className={`font-display text-xl tracking-wider ${meta.text}`}>{meta.label}</div>
-          <div className="text-gray-500 text-xs">
+    <div
+      className={`glass-card rounded-xl border ${meta.border} ${mine ? meta.glow : ''} min-h-[9.5rem] p-2.5 sm:min-h-[16rem] sm:rounded-2xl sm:p-4`}
+    >
+      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-4 sm:items-center sm:gap-3">
+        <div className="min-w-0">
+          <div className={`truncate font-display text-base tracking-wider sm:text-xl ${meta.text}`}>{meta.label}</div>
+          <div className="text-[10px] text-gray-500 sm:text-xs">
             {showOfflineStatus ? `${onlineCount}/${players.length} online` : `${players.length} players`}
           </div>
         </div>
         {!mine && (
           <button
             onClick={() => useGameStore.getState().joinTeam(team)}
-            className="px-3 py-2 rounded-xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-white text-xs font-semibold tracking-wider transition-all active:scale-[0.97]"
+            className="rounded-lg border border-white/10 bg-surface-raised px-2 py-1.5 text-[10px] font-semibold tracking-wider text-white transition-all hover:bg-surface-hover active:scale-[0.97] sm:rounded-xl sm:px-3 sm:py-2 sm:text-xs"
           >
             Join
           </button>
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         {players.map((p) => (
           <div
             key={p.id}
-            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm ${
+            className={`flex items-center justify-between gap-1.5 rounded-lg px-2 py-1.5 text-xs sm:gap-2 sm:px-3 sm:py-2 sm:text-sm ${
               p.id === myId ? 'bg-white/5 text-white font-semibold' : 'bg-black/10 text-gray-300'
             }`}
           >
@@ -329,19 +279,19 @@ function TeamColumn({
             </span>
             <span className="flex items-center gap-2 shrink-0">
               {p.id === hostId && (
-                <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/20 leading-none">
+                <span className="rounded border border-amber-400/20 bg-amber-500/20 px-1 py-0.5 text-[8px] font-semibold leading-none tracking-wide text-amber-300 sm:px-1.5 sm:text-[9px]">
                   HOST
                 </span>
               )}
               {showOfflineStatus && !p.connected && (
-                <span className="text-[9px] font-semibold tracking-wide px-1.5 py-0.5 rounded bg-gray-500/15 text-gray-400 border border-white/10 leading-none">
+                <span className="rounded border border-white/10 bg-gray-500/15 px-1 py-0.5 text-[8px] font-semibold leading-none tracking-wide text-gray-400 sm:px-1.5 sm:text-[9px]">
                   OFFLINE
                 </span>
               )}
               {canKick && p.id !== hostId && (
                 <button
                   onClick={() => onKick(p.id)}
-                  className="text-gray-500 hover:text-rose-300 transition-colors text-base leading-none px-1"
+                  className="px-0.5 text-sm leading-none text-gray-500 transition-colors hover:text-rose-300 sm:px-1 sm:text-base"
                   title={`Kick ${p.name}`}
                 >
                   &times;
@@ -350,7 +300,9 @@ function TeamColumn({
             </span>
           </div>
         ))}
-        {players.length === 0 && <div className="text-gray-600 text-sm py-8 text-center">No operators yet.</div>}
+        {players.length === 0 && (
+          <div className="py-5 text-center text-xs text-gray-600 sm:py-8 sm:text-sm">No operators yet.</div>
+        )}
       </div>
     </div>
   );
