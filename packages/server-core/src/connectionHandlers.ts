@@ -6,7 +6,7 @@ import { logger } from './logger.js';
 export interface ConnectionCallbacks<T extends BaseRoom> {
   /** Called when a player disconnects during an active game. Use for game-specific cleanup. */
   onPlayerDisconnect?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
-  /** Called when host needs reassignment. Return new host id or undefined. */
+  /** Called when host needs reassignment. Return undefined to keep the current host. */
   onHostReassign?: (room: T, oldHostId: string) => string | undefined;
   /** Called before a player leaves, for cleaning up extra socket rooms (e.g., team rooms). */
   onBeforePlayerLeave?: (room: T, playerId: string, socket: Socket) => void;
@@ -44,19 +44,25 @@ export function registerConnectionHandlers<T extends BaseRoom>(
       callbacks.onPlayerDisconnect(room, playerId, io);
     }
 
-    // Host reassignment
     if (room.hostId === playerId) {
-      const newHost = Array.from(room.players.values()).find((p) => p.connected && p.id !== playerId);
-      if (newHost) {
+      const newHostId =
+        callbacks?.onHostReassign?.(room, playerId) ??
+        (callbacks?.onHostReassign
+          ? undefined
+          : room.getActivePlayers().find((activePlayer) => activePlayer.connected && activePlayer.id !== playerId)?.id);
+      const newHost = newHostId ? room.getPlayer(newHostId) : undefined;
+      if (newHost && !newHost.removed && newHost.id !== playerId) {
         room.hostId = newHost.id;
         io.to(room.code).emit('room:host-updated', { hostId: newHost.id });
-        logger.info('conn', 'Host auto-reassigned', {
+        logger.info('conn', 'Host reassigned after disconnect', {
           room: room.code,
           oldHost: player.name,
           newHost: newHost.name,
         });
       }
     }
+
+    room.touch();
   });
 }
 
@@ -78,9 +84,9 @@ function handleLeave<T extends BaseRoom>(ctx: SocketContext<T>, callbacks?: Conn
   if (activePlayers.length === 0) {
     rooms.deleteRoom(room.code);
     logger.info('room', 'Room deleted (empty)', { room: room.code });
-  } else if (!softRemoved) {
+  } else {
     if (room.hostId === playerId) {
-      const nextHost = activePlayers.find((p) => p.connected);
+      const nextHost = activePlayers.find((p) => p.connected) ?? activePlayers[0];
       if (nextHost) room.hostId = nextHost.id;
     }
     io.to(room.code).emit('room:player-left', {

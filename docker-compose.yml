@@ -121,6 +121,31 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  decrypto:
+    build:
+      context: .
+      dockerfile: games/decrypto/Dockerfile
+      args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    env_file: .env
+    container_name: decrypto
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "4090:4090"
+    volumes:
+      - ./games/decrypto/data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=4090
+      - LOG_LEVEL=info
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   landing:
     build:
       context: .

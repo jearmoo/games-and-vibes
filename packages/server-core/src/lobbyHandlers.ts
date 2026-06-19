@@ -80,6 +80,7 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
         existing.socketId = socket.id;
         existing.disconnectedAt = undefined;
         existing.removed = false;
+        room.touch();
         ctx.setPlayerId(existing.id);
         rooms.trackPlayer(existing.id, room.code);
         socket.join(room.code);

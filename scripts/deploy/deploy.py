@@ -21,7 +21,15 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = SCRIPT_DIR.parent.parent
 LOG_FILE = SCRIPT_DIR / 'deploy.log'
-IMAGES = ['adversarial-taboo', 'charades', 'odes-for-cave-men', 'yip-yap', 'two-rooms-and-a-boom', 'games-landing']
+IMAGES = [
+    'adversarial-taboo',
+    'charades',
+    'odes-for-cave-men',
+    'yip-yap',
+    'two-rooms-and-a-boom',
+    'decrypto',
+    'games-landing',
+]
 DEPLOY_TIMEOUT = 280  # seconds
 
 # --- Logging (shared log file with listener) ---

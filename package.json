@@ -12,6 +12,7 @@
     "dev:yip-yap": "concurrently \"pnpm --filter @games/yip-yap-server dev\" \"pnpm --filter @games/yip-yap-client dev\"",
     "dev:tworooms": "concurrently \"pnpm --filter @games/two-rooms-and-a-boom-server dev\" \"pnpm --filter @games/two-rooms-and-a-boom-client dev\"",
     "dev:charades": "concurrently \"pnpm --filter @games/charades-server dev\" \"pnpm --filter @games/charades-client dev\"",
+    "dev:decrypto": "concurrently \"pnpm --filter @games/decrypto-server dev\" \"pnpm --filter @games/decrypto-client dev\"",
     "dev:landing": "pnpm --filter @games/landing dev",
     "build": "pnpm -r build",
     "lint": "eslint \"packages/*/src/**/*.ts\" \"games/*/client/src/**/*.{ts,tsx}\" \"games/*/server/src/**/*.ts\" \"apps/*/src/**/*.{ts,tsx}\"",

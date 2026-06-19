@@ -20,7 +20,8 @@ export default function Timer({ endTime, duration = 60 }: { endTime: number; dur
   return (
     <div className="w-full">
       <div
-        className={`text-center font-display text-5xl tracking-wider ${
+        key={remaining}
+        className={`isolate h-[3.75rem] overflow-hidden text-center font-display text-5xl leading-none tracking-wider [backface-visibility:hidden] [font-variant-numeric:tabular-nums] ${
           isFinal
             ? 'text-red-400 animate-buzz-shake'
             : isCritical
@@ -30,7 +31,7 @@ export default function Timer({ endTime, duration = 60 }: { endTime: number; dur
                 : 'text-white'
         }`}
       >
-        {remaining}
+        <span className="inline-block min-w-[2.5ch] transform-gpu">{remaining}</span>
       </div>
       <div className="w-full h-1 bg-surface-raised rounded-full mt-2 overflow-hidden">
         <div

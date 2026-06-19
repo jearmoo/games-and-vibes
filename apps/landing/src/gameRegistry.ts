@@ -61,6 +61,16 @@ export const games: GameEntry[] = [
     available: true,
   },
   {
+    id: 'decrypto',
+    name: 'Decrypto',
+    tagline: 'Crack the code before your opponents do',
+    url: 'https://decrypto.jerpi.org',
+    playerCount: '4-8 players',
+    accentColor: '#ff0080',
+    accentGlow: 'rgba(255, 0, 128, 0.4)',
+    available: true,
+  },
+  {
     id: 'hivemind',
     name: 'Hivemind',
     tagline: 'Think alike and score big together',
@@ -68,16 +78,6 @@ export const games: GameEntry[] = [
     playerCount: '3-8 players',
     accentColor: '#06b6d4',
     accentGlow: 'rgba(6, 182, 212, 0.4)',
-    available: false,
-  },
-  {
-    id: 'decrypto',
-    name: 'Decrypto',
-    tagline: 'Crack the code before your opponents do',
-    url: '#',
-    playerCount: '4-8 players',
-    accentColor: '#f43f5e',
-    accentGlow: 'rgba(244, 63, 94, 0.4)',
     available: false,
   },
 ];

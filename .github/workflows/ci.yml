@@ -88,6 +88,9 @@ jobs:
       - name: Build two-rooms-and-a-boom image
         run: docker build -f games/two-rooms-and-a-boom/Dockerfile -t two-rooms-and-a-boom .
 
+      - name: Build decrypto image
+        run: docker build -f games/decrypto/Dockerfile -t decrypto .
+
       - name: Build landing image
         run: docker build -f apps/landing/Dockerfile -t landing .
 

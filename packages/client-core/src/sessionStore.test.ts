@@ -39,6 +39,23 @@ describe('sessionStore', () => {
     expect(session).toEqual({ roomCode: 'WXYZ', playerId: 'p2', playerName: 'Bob' });
   });
 
+  it('loadSession preserves a future expiry', () => {
+    saveSession(KEY, { roomCode: 'WXYZ', playerId: 'p2', playerName: 'Bob', expiresAt: 2_000 });
+    const session = loadSession(KEY, 1_000);
+    expect(session).toEqual({ roomCode: 'WXYZ', playerId: 'p2', playerName: 'Bob', expiresAt: 2_000 });
+  });
+
+  it('loadSession clears and rejects an expired session', () => {
+    saveSession(KEY, { roomCode: 'WXYZ', playerId: 'p2', playerName: 'Bob', expiresAt: 1_000 });
+    expect(loadSession(KEY, 2_000)).toBeNull();
+    expect(store[KEY]).toBeUndefined();
+  });
+
+  it('loadSession rejects malformed expiry metadata', () => {
+    store[KEY] = JSON.stringify({ roomCode: 'WXYZ', playerId: 'p2', playerName: 'Bob', expiresAt: 'soon' });
+    expect(loadSession(KEY, 1_000)).toBeNull();
+  });
+
   it('loadSession returns null for missing key', () => {
     expect(loadSession('nonexistent')).toBeNull();
   });
