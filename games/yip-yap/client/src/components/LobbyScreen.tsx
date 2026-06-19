@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ConfirmModal } from '@games/client-core';
+import { ConfirmModal, RoomQrButton } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useSettings } from '../store';
 
@@ -62,12 +62,15 @@ export default function LobbyScreen() {
           </button>
           <div className="text-amber-400/80 text-xs mt-1 h-4">{copied ? 'Link copied!' : 'Tap code to copy link'}</div>
         </div>
-        <button
-          onClick={handleLeave}
-          className="text-gray-500 hover:text-white text-xs tracking-wider transition-colors px-3 py-1.5 border border-white/5 rounded-lg"
-        >
-          Leave
-        </button>
+        <div className="flex items-center gap-2">
+          <RoomQrButton roomCode={roomCode} shareUrl={shareUrl} />
+          <button
+            onClick={handleLeave}
+            className="text-gray-500 hover:text-white text-xs tracking-wider transition-colors px-3 py-1.5 border border-white/5 rounded-lg"
+          >
+            Leave
+          </button>
+        </div>
       </div>
 
       {/* Player list */}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ConfirmModal } from '@games/client-core';
+import { ConfirmModal, RoomQrButton } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useTeamPlayers, type DecryptoPlayerDTO, type TeamId } from '../store';
 
@@ -68,6 +68,7 @@ export default function LobbyScreen() {
           <div className="text-cyan-300/80 text-xs mt-1 h-4">{copied ? 'Link copied!' : 'Tap code to copy link'}</div>
         </div>
         <div className="flex items-center gap-2">
+          <RoomQrButton roomCode={roomCode} shareUrl={shareUrl} />
           <button
             type="button"
             onClick={() => setHelpOpen(true)}
