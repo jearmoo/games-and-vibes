@@ -130,7 +130,7 @@ export default function TieBreakerScreen() {
             </div>
           </div>
 
-          <ScoreStrip scores={room.scores} />
+          <ScoreStrip scores={room.scores} players={room.players} />
           <SubmissionStrip submissions={room.tiebreaker?.submissions} />
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">

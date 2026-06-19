@@ -261,11 +261,12 @@ export function DisclosureChevron({ open }: { open: boolean }) {
   );
 }
 
-export function ScoreStrip({ scores }: { scores: ScoreBoard }) {
+export function ScoreStrip({ scores, players }: { scores: ScoreBoard; players?: DecryptoPlayerDTO[] }) {
   return (
     <div className="grid w-full grid-cols-2 gap-2">
       {(['red', 'blue'] as TeamId[]).map((team) => {
         const style = TEAM_STYLES[team];
+        const teamPlayers = players?.filter((player) => player.team === team) ?? [];
         return (
           <div key={team} className={`min-w-0 rounded-xl border ${style.border} ${style.bg} px-3 py-2`}>
             <div className={`font-display tracking-wider ${style.text}`}>{style.label}</div>
@@ -287,6 +288,24 @@ export function ScoreStrip({ scores }: { scores: ScoreBoard }) {
                 <span className="text-gray-600"> /2</span>
               </div>
             </div>
+            {players && (
+              <div className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-snug text-gray-300">
+                {teamPlayers.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {teamPlayers.map((player) => (
+                      <span
+                        key={player.id}
+                        className="min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 text-gray-300"
+                      >
+                        {player.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-gray-600">No players</span>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

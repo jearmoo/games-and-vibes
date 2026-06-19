@@ -156,7 +156,7 @@ function HeaderPanel() {
           </div>
         </div>
         <div className="w-full min-w-0">
-          <ScoreStrip scores={room.scores} />
+          <ScoreStrip scores={room.scores} players={room.players} />
         </div>
       </div>
     </div>

@@ -113,7 +113,7 @@ export default function GameOverScreen() {
             <div className="text-gray-300 text-sm tracking-wider mt-3">{reason}</div>
           </div>
 
-          <ScoreStrip scores={room.scores} />
+          <ScoreStrip scores={room.scores} players={room.players} />
 
           <WordReleasePanel
             myTeam={privateState?.team}
