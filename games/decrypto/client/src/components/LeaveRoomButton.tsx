@@ -37,7 +37,7 @@ export default function LeaveRoomButton({
           message="You'll be removed from the room. You can rejoin with the same name or create a new room."
           confirmLabel="Leave"
           cancelLabel="Stay"
-          confirmClass="btn-decrypto"
+          confirmClass="btn-team-b"
           onConfirm={handleConfirm}
           onCancel={() => setConfirming(false)}
         />
