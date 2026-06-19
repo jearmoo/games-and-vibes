@@ -82,47 +82,50 @@ export default function TurnScreen() {
     <div className="h-full flex flex-col animate-fade-in">
       <GameHeader dropdownOpen={roundDetailsOpen} onDropdownOpenChange={setRoundDetailsOpen} />
       {clueTimer && <FixedClueTimer endTime={clueTimer.expiresAt} duration={clueTimer.durationSeconds} />}
-      <div className="grid min-h-0 flex-1 w-full max-w-6xl mx-auto grid-cols-1 lg:grid-cols-[1fr_21rem] gap-2 overflow-y-auto px-3 pt-1 pb-4 sm:gap-4 sm:px-5 sm:pt-5 sm:pb-5">
-        {roundDetailsOpen && (
-          <div className="sm:hidden">
-            <div className="rounded-lg border border-white/10 bg-black/15 p-2">
-              <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
-              <MobileScoreSummary scores={room.scores} players={room.players} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="grid w-full max-w-6xl mx-auto grid-cols-1 items-start lg:grid-cols-[1fr_21rem] gap-2 px-3 pt-1 pb-4 sm:gap-4 sm:px-5 sm:pt-5 sm:pb-5">
+          {roundDetailsOpen && (
+            <div className="sm:hidden">
+              <div className="rounded-lg border border-white/10 bg-black/15 p-2">
+                <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
+                <MobileScoreSummary scores={room.scores} players={room.players} />
+              </div>
             </div>
-          </div>
-        )}
-        <div className="space-y-2 min-w-0 sm:space-y-4">
-          <HeaderPanel />
-          <KeywordPanel
-            team={privateState?.team}
-            keywords={privateState?.keywords}
-            wordsHidden={wordsHidden}
-            setWordsHidden={setWordsHidden}
-          />
-
-          {phase === DecryptoPhase.CLUE ? (
-            <CluePhase
-              clues={clues}
-              setClues={setClues}
-              submitting={submitting}
-              setSubmitting={setSubmitting}
+          )}
+          <div className="space-y-2 min-w-0 sm:space-y-4">
+            <HeaderPanel />
+            <KeywordPanel
+              team={privateState?.team}
+              keywords={privateState?.keywords}
               wordsHidden={wordsHidden}
               setWordsHidden={setWordsHidden}
             />
-          ) : (
-            <GuessPhase />
-          )}
-        </div>
 
-        <div className="space-y-2 sm:space-y-4">
-          <ClueBank
-            myTeam={privateState?.team}
-            keywords={privateState?.keywords}
-            history={room.clueHistory}
-            wordsHidden={wordsHidden}
-            setWordsHidden={setWordsHidden}
-          />
-          <HistoryPanel />
+            {phase === DecryptoPhase.CLUE ? (
+              <CluePhase
+                clues={clues}
+                setClues={setClues}
+                submitting={submitting}
+                setSubmitting={setSubmitting}
+                wordsHidden={wordsHidden}
+                setWordsHidden={setWordsHidden}
+              />
+            ) : (
+              <GuessPhase />
+            )}
+
+            <ClueBank
+              myTeam={privateState?.team}
+              keywords={privateState?.keywords}
+              history={room.clueHistory}
+              wordsHidden={wordsHidden}
+              setWordsHidden={setWordsHidden}
+            />
+          </div>
+
+          <div className="space-y-2 sm:space-y-4">
+            <HistoryPanel />
+          </div>
         </div>
       </div>
     </div>
@@ -295,13 +298,13 @@ function CluePhase({
                   <button
                     type="button"
                     onClick={() => setWordsHidden((hidden) => !hidden)}
-                    className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-surface-raised px-2 py-1 text-left text-xs font-semibold text-white transition hover:bg-surface-hover active:scale-95 sm:max-w-[9rem] sm:border-0 sm:bg-transparent sm:px-1.5 sm:py-0.5 sm:text-right sm:font-normal sm:text-gray-500 sm:hover:bg-white/5 sm:hover:text-gray-200"
+                    className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-surface-raised px-2 py-1 text-left text-xs font-semibold text-white transition hover:bg-surface-hover active:scale-95 sm:border-0 sm:bg-transparent sm:px-1.5 sm:py-0.5 sm:text-sm sm:font-semibold sm:text-white sm:hover:bg-white/5 sm:hover:text-amber-100"
                     aria-label={wordsHidden ? 'Show keyword' : 'Hide keyword'}
                     title={wordsHidden ? 'Show keyword' : 'Hide keyword'}
                   >
                     {wordsHidden ? '••••••' : (privateState.keywords?.[digit - 1] ?? 'Keyword')}
                   </button>
-                  <div className="grid w-[6.5rem] shrink-0 grid-cols-2 rounded-lg border border-white/10 bg-surface-raised p-0.5 sm:w-auto sm:flex sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0">
+                  <div className="grid w-[6.5rem] shrink-0 grid-cols-2 rounded-lg border border-white/10 bg-surface-raised p-0.5 sm:ml-auto sm:w-auto sm:flex sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0">
                     <button
                       type="button"
                       disabled={locked}
@@ -881,5 +884,5 @@ function StatusPanel({ text }: { text: string }) {
 
 function HistoryPanel() {
   const history = useGameStore((s) => s.room?.clueHistory ?? []);
-  return <SignalHistory history={history} limit={6} sticky />;
+  return <SignalHistory history={history} limit={6} />;
 }
