@@ -44,7 +44,10 @@ const compactUpperButtonClass =
   'inline-flex items-center justify-center rounded-lg border border-white/10 bg-surface-raised px-2 py-1 text-[10px] tracking-widest uppercase text-gray-300 transition-all hover:bg-surface-hover active:scale-[0.97]';
 
 const wordBankUpperButtonClass =
-  'inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-white/10 bg-surface-raised px-3 py-2 text-[10px] tracking-widest uppercase text-gray-300 transition-all hover:bg-surface-hover active:scale-[0.97]';
+  'inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-surface-raised px-2 py-1 text-[10px] tracking-widest uppercase text-gray-300 transition-all hover:bg-surface-hover active:scale-[0.97] sm:min-h-9 sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2';
+
+const wordBankIconButtonClass =
+  'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-surface-raised text-gray-300 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.95] sm:hidden';
 
 const CLUE_BANK_SLOTS = [0, 1, 2, 3];
 const CLUE_BANK_SWIPE_THRESHOLD = 56;
@@ -542,6 +545,7 @@ export function ClueBank({
 }) {
   const [flipRotation, setFlipRotation] = useState(0);
   const [internalWordsHidden, setInternalWordsHidden] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const [dragX, setDragX] = useState(0);
   const swipeStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   if (!myTeam) return null;
@@ -627,6 +631,8 @@ export function ClueBank({
           history={history}
           finalKeywords={finalKeywords}
           compactMobile={compactMobile}
+          mobileExpanded={mobileExpanded}
+          setMobileExpanded={setMobileExpanded}
           wordsHidden={effectiveWordsHidden}
           setWordsHidden={updateWordsHidden}
           flipped={flipped}
@@ -641,6 +647,8 @@ export function ClueBank({
           history={history}
           finalKeywords={finalKeywords}
           compactMobile={compactMobile}
+          mobileExpanded={mobileExpanded}
+          setMobileExpanded={setMobileExpanded}
           wordsHidden={false}
           setWordsHidden={updateWordsHidden}
           flipped={flipped}
@@ -666,6 +674,8 @@ function ClueBankFace({
   history,
   finalKeywords,
   compactMobile,
+  mobileExpanded,
+  setMobileExpanded,
   wordsHidden,
   setWordsHidden,
   flipped,
@@ -680,6 +690,8 @@ function ClueBankFace({
   history: ClueRecord[];
   finalKeywords?: Partial<Record<TeamId, string[]>>;
   compactMobile: boolean;
+  mobileExpanded: boolean;
+  setMobileExpanded: Dispatch<SetStateAction<boolean>>;
   wordsHidden: boolean;
   setWordsHidden: Dispatch<SetStateAction<boolean>>;
   flipped: boolean;
@@ -696,26 +708,79 @@ function ClueBankFace({
   const frontFlipCueColor = myTeam === 'red' ? 'bg-rose-300' : 'bg-cyan-200';
   const backFlipCueColor = otherTeam(myTeam) === 'red' ? 'bg-rose-300' : 'bg-cyan-200';
   const visibleFlipCueRotation = front ? flipCueRotation : -flipCueRotation;
+  const useCompactMobile = !mobileExpanded;
 
   return (
     <div
       aria-hidden={!active}
-      className={`glass-card rounded-2xl border ${style.border} ${compactMobile ? 'p-3 sm:p-4' : 'p-4'} ${
+      className={`glass-card rounded-2xl border ${style.border} ${
+        useCompactMobile ? 'p-2.5 sm:p-4' : 'p-4'
+      } transition-[padding,box-shadow,border-color,background-color] duration-300 ease-out ${
         active ? '' : 'pointer-events-none'
       } ${className}`}
     >
-      <div className={`flex items-center justify-between gap-3 ${compactMobile ? 'mb-2 sm:mb-3' : 'mb-3'}`}>
+      <div className="mb-2 flex items-center justify-between gap-2 transition-[margin,gap] duration-300 ease-out sm:mb-3">
         <div className="min-w-0">
           <div
-            className={`font-display tracking-wider ${compactMobile ? 'text-base sm:text-lg' : 'text-lg'} ${style.text}`}
+            className={`font-display tracking-wider ${
+              useCompactMobile ? 'text-base sm:text-lg' : 'text-lg'
+            } ${style.text} transition-[font-size,line-height] duration-300 ease-out`}
           >
             {title}
           </div>
-          <div className={`text-gray-500 ${compactMobile ? 'text-[11px] sm:text-xs' : 'text-xs'}`}>
+          <div
+            className={`overflow-hidden text-gray-500 transition-[max-height,opacity] duration-300 ease-out sm:block ${
+              useCompactMobile ? 'max-h-0 opacity-0 sm:max-h-5 sm:opacity-100' : 'max-h-5 text-[11px] opacity-100'
+            } ${compactMobile ? 'sm:text-xs' : 'text-xs'}`}
+          >
             {front ? 'Your clues grouped by keyword' : 'Opponent clue history by hidden word slot'}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => setMobileExpanded((expanded) => !expanded)}
+            aria-label={mobileExpanded ? 'Shrink word bank' : 'Enlarge word bank'}
+            title={mobileExpanded ? 'Shrink' : 'Enlarge'}
+            className={`${wordBankIconButtonClass} ${mobileExpanded ? `${style.border} ${style.bg} ${style.text}` : ''}`}
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className={`h-4 w-4 transition-transform duration-300 ease-out ${
+                mobileExpanded ? 'rotate-180 scale-95' : 'rotate-0 scale-100'
+              }`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {mobileExpanded ? (
+                <>
+                  <path d="M8 3v5H3" />
+                  <path d="M16 3v5h5" />
+                  <path d="M8 21v-5H3" />
+                  <path d="M16 21v-5h5" />
+                  <path d="M3 8l5-5" />
+                  <path d="M21 8l-5-5" />
+                  <path d="M3 16l5 5" />
+                  <path d="M21 16l-5 5" />
+                </>
+              ) : (
+                <>
+                  <path d="M9 3H3v6" />
+                  <path d="M15 3h6v6" />
+                  <path d="M9 21H3v-6" />
+                  <path d="M15 21h6v-6" />
+                  <path d="M3 3l7 7" />
+                  <path d="M21 3l-7 7" />
+                  <path d="M3 21l7-7" />
+                  <path d="M21 21l-7-7" />
+                </>
+              )}
+            </svg>
+          </button>
           {canHideWords && (
             <VisibilitySwipeButton
               hidden={wordsHidden}
@@ -748,7 +813,11 @@ function ClueBankFace({
         </div>
       </div>
 
-      <div className={`grid ${compactMobile ? 'grid-cols-2 gap-1.5 sm:gap-2' : 'grid-cols-1 sm:grid-cols-2 gap-2'}`}>
+      <div
+        className={`grid transition-[grid-template-columns,gap] duration-300 ease-out ${
+          useCompactMobile ? 'grid-cols-2 gap-1.5' : 'grid-cols-1 gap-2'
+        } sm:grid-cols-2 sm:gap-2`}
+      >
         {CLUE_BANK_SLOTS.map((slotIndex) => {
           const slotClues = cluesForSlot(history, team, slotIndex);
           const label =
@@ -759,38 +828,55 @@ function ClueBankFace({
             <div
               key={slotIndex}
               className={`rounded-xl border ${style.border} ${style.bg} ${
-                compactMobile ? 'min-h-[5.75rem] p-2 sm:min-h-[7.5rem] sm:p-3' : 'p-3 min-h-[7.5rem]'
-              }`}
+                useCompactMobile ? 'min-h-[4.75rem] p-1.5 sm:min-h-[7.5rem] sm:p-3' : 'min-h-[7.5rem] p-3'
+              } transition-[min-height,padding,transform,background-color] duration-300 ease-out`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className={`font-display ${compactMobile ? 'text-base sm:text-xl' : 'text-xl'} ${style.text}`}>
+              <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                <div
+                  className={`font-display ${
+                    useCompactMobile ? 'text-base sm:text-xl' : 'text-xl'
+                  } ${style.text} transition-[font-size,line-height] duration-300 ease-out`}
+                >
                   {slotIndex + 1}
                 </div>
-                <div className="text-gray-500 text-[9px] tracking-widest uppercase sm:text-[10px]">
-                  {slotClues.length} clues
+                <div
+                  className={`tracking-widest text-gray-500 uppercase transition-[font-size,line-height] duration-300 ease-out ${
+                    useCompactMobile ? 'text-[8px] sm:text-[10px]' : 'text-[10px]'
+                  }`}
+                >
+                  {slotClues.length}
+                  <span className={useCompactMobile ? 'hidden sm:inline' : ''}> clues</span>
                 </div>
               </div>
               {label && (
                 <div
-                  className={`mt-1 break-words font-semibold text-white ${
-                    compactMobile ? 'text-xs leading-snug sm:text-base' : ''
-                  }`}
+                  className={`mt-0.5 break-words font-semibold leading-snug text-white sm:mt-1 ${
+                    useCompactMobile ? 'text-[11px] sm:text-base' : 'text-base'
+                  } transition-[font-size,line-height,margin] duration-300 ease-out`}
                 >
                   {label}
                 </div>
               )}
-              <div className={`${compactMobile ? 'mt-1.5 gap-1 sm:mt-2 sm:gap-1.5' : 'mt-2 gap-1.5'} flex flex-wrap`}>
+              <div
+                className={`flex flex-wrap transition-[gap,margin] duration-300 ease-out ${
+                  useCompactMobile ? 'mt-1 gap-1 sm:mt-2 sm:gap-1.5' : 'mt-2 gap-1.5'
+                }`}
+              >
                 {slotClues.map((item, index) => (
                   <ClueChip
                     key={`${item.round}-${clueLabel(item.clue)}-${index}`}
                     clue={item.clue}
                     title={`Round ${item.round} by ${item.encryptorName}`}
                     previewTitle={`${possessiveName(item.encryptorName)} round ${item.round} drawing clue`}
-                    compactMobile={compactMobile}
+                    compactMobile={useCompactMobile}
                   />
                 ))}
                 {slotClues.length === 0 && (
-                  <span className={`text-gray-600 ${compactMobile ? 'text-[11px] sm:text-xs' : 'text-xs'}`}>
+                  <span
+                    className={`text-gray-600 transition-[font-size,line-height] duration-300 ease-out ${
+                      useCompactMobile ? 'text-[10px] sm:text-xs' : 'text-xs'
+                    }`}
+                  >
                     No clues yet
                   </span>
                 )}
@@ -914,11 +1000,14 @@ export function ClueChip({
 }) {
   if (clue.kind === 'drawing') {
     return (
-      <div className={compactMobile ? 'w-14 sm:w-20' : 'w-20'} title={title}>
+      <div
+        className={`transition-[width] duration-300 ease-out ${compactMobile ? 'w-12 sm:w-20' : 'w-20'}`}
+        title={title}
+      >
         <ClueView
           clue={clue}
           className="!p-1"
-          imageClassName={compactMobile ? '!h-8 sm:!h-10' : '!h-10'}
+          imageClassName={compactMobile ? '!h-7 sm:!h-10' : '!h-10'}
           previewTitle={previewTitle ?? title}
         />
       </div>
@@ -929,9 +1018,9 @@ export function ClueChip({
     <span
       className={`rounded-lg border border-white/10 bg-black/25 text-gray-200 ${
         compactMobile
-          ? 'px-1.5 py-0.5 text-[10px] leading-snug sm:px-2 sm:py-1 sm:text-[11px]'
-          : 'px-2 py-1 text-[11px]'
-      }`}
+          ? 'max-w-full px-1.5 py-0.5 text-[10px] leading-snug sm:px-2 sm:py-1 sm:text-[11px]'
+          : 'max-w-full px-2 py-1 text-[11px] leading-snug'
+      } transition-[font-size,line-height,padding] duration-300 ease-out`}
       title={title}
     >
       {clue.text}
