@@ -227,18 +227,22 @@ describe('DecryptoRoom', () => {
     const tornadoSynonym = semanticSimilarityDetails('twister', 'Tornado');
     const tornadoUnrelated = semanticSimilarityDetails('apple', 'Tornado');
     const oov = semanticSimilarityDetails('zzzznotaword', 'volcano');
+    const filteredName = semanticSimilarityDetails('bob', 'Netflix');
+    const filteredJunk = semanticSimilarityDetails('bkb', 'Key');
     const displayWordSimilarityExamples = [
       semanticSimilarityDetails('dawn', 'Sunrise'),
       semanticSimilarityDetails('killer', 'Assassin'),
       semanticSimilarityDetails('wizard', 'Witch'),
       semanticSimilarityDetails('twister', 'Tornado'),
-      semanticSimilarityDetails('monster', 'Medusa'),
-      semanticSimilarityDetails('tile', 'Domino'),
       semanticSimilarityDetails('fall', 'Autumn'),
-      semanticSimilarityDetails('triathlon', 'Marathon'),
-      semanticSimilarityDetails('master', 'Yoda'),
       semanticSimilarityDetails('dot', 'Pixel'),
       semanticSimilarityDetails('goddess', 'Athena'),
+    ];
+    const weakOrBroadExamples = [
+      semanticSimilarityDetails('monster', 'Medusa'),
+      semanticSimilarityDetails('tile', 'Domino'),
+      semanticSimilarityDetails('master', 'Yoda'),
+      semanticSimilarityDetails('company', 'OpenAI'),
     ];
     const strongNonExactScores = [
       semanticSimilarityDetails('coffee', 'tea'),
@@ -252,8 +256,12 @@ describe('DecryptoRoom', () => {
     expect(isKnownTiebreakerGuess('openai')).toBe(true);
     expect(isKnownTiebreakerGuess('mcdonalds')).toBe(true);
     expect(isKnownTiebreakerGuess('teapot')).toBe(true);
+    expect(isKnownTiebreakerGuess('bob')).toBe(false);
+    expect(isKnownTiebreakerGuess('kha')).toBe(false);
+    expect(isKnownTiebreakerGuess('bkb')).toBe(false);
     expect(isKnownTiebreakerGuess('zzzznotaword')).toBe(false);
     expect(getTiebreakerVocabulary().length).toBeGreaterThan(25_000);
+    expect(getTiebreakerVocabulary().length).toBeLessThan(50_000);
     expect(assetStatus).toMatchObject({
       terms: getTiebreakerVocabulary().length,
       dimensions: 384,
@@ -266,13 +274,16 @@ describe('DecryptoRoom', () => {
     expect(STORED_EMBEDDING_METADATA.embedding.dimensionalityReduction).toContain('dimensions parameter');
     expect(STORED_EMBEDDING_METADATA.embedding.runtimeVectorFormat).toContain('no full Float32 matrix');
     expect(STORED_EMBEDDING_METADATA.embedding.runtimeVectorFormat).toContain('guess vectors are stored first');
+    expect(STORED_EMBEDDING_METADATA.scoring.transformation).toContain('conservative fixed piecewise curve');
     expect(storedEmbeddingInt8Norm(thunderIndex)).toBeGreaterThan(0);
 
     expect(close.method).toBe('stored-embedding');
-    expect(close.score).toBeGreaterThan(0.5);
+    expect(close.score).toBeGreaterThan(0.7);
     expect(close.score).toBeLessThan(1);
     if (close.method === 'stored-embedding') {
       expect(close.neighborRank).toBeLessThanOrEqual(20);
+      expect(close.rankMultiplier).toBeLessThanOrEqual(1);
+      expect(close.score).toBeLessThanOrEqual(close.rawScore);
     }
 
     expect(medium.method).toBe('stored-embedding');
@@ -296,13 +307,28 @@ describe('DecryptoRoom', () => {
     const displayWordSimilarityAverage =
       displayWordSimilarityExamples.reduce((sum, details) => sum + details.score, 0) /
       displayWordSimilarityExamples.length;
-    expect(displayWordSimilarityAverage).toBeGreaterThan(unrelated.score + 0.45);
+    expect(displayWordSimilarityAverage).toBeGreaterThan(unrelated.score + 0.55);
     expect(displayWordSimilarityAverage).toBeLessThan(1);
+    expect(
+      weakOrBroadExamples.every(
+        (details) => details.method === 'stored-embedding' && details.score < displayWordSimilarityAverage,
+      ),
+    ).toBe(true);
 
     expect(oov).toMatchObject({
       method: 'out-of-vocabulary',
       score: 0,
       missing: ['zzzznotaword'],
+    });
+    expect(filteredName).toMatchObject({
+      method: 'out-of-vocabulary',
+      score: 0,
+      missing: ['bob'],
+    });
+    expect(filteredJunk).toMatchObject({
+      method: 'out-of-vocabulary',
+      score: 0,
+      missing: ['bkb'],
     });
 
     const strongNonExactAverage =

@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type PointerEvent, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
-import type { ClueContent, ClueRecord, Code, ScoreBoard, TeamId, TiebreakerResult } from '@games/decrypto-shared';
+import type {
+  ClueContent,
+  ClueRecord,
+  Code,
+  DecryptoPlayerDTO,
+  ScoreBoard,
+  TeamId,
+  TiebreakerResult,
+} from '@games/decrypto-shared';
 
 export const TEAM_STYLES: Record<
   TeamId,
@@ -149,6 +157,80 @@ export function possessiveName(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`;
 }
 
+export function HowToPlayPanel({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="How to play Decrypto"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-md" />
+      <div
+        className="relative w-full max-w-md rounded-2xl border border-white/10 bg-surface/95 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.55)] animate-fade-in"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">How to play</div>
+            <div className="font-display text-2xl tracking-wider text-white">Decrypto</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close how to play"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-xl leading-none text-gray-400 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="space-y-3 text-sm leading-relaxed text-gray-300">
+          <p>
+            Each team has 4 secret keywords. Your team gives clues that point to three of those words in a hidden order.
+          </p>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="mb-1 text-[10px] tracking-[0.25em] text-gray-500 uppercase">Round flow</div>
+            <p>
+              The encryptor sees a 3-number code, gives three clues, then teammates guess the order. From round 2 on,
+              the other team also tries to intercept your code.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+              <div className="font-display tracking-wider text-emerald-200">Win</div>
+              <p className="mt-1 text-xs text-gray-300">Intercept 2 enemy transmissions.</p>
+            </div>
+            <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-3">
+              <div className="font-display tracking-wider text-rose-200">Avoid</div>
+              <p className="mt-1 text-xs text-gray-300">2 team miscommunications.</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">
+            Round 1 has no intercept. Clues can be typed or drawn, but keep them clear enough for your team and vague
+            enough to hide your keywords.
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function TeamBadge({ team }: { team: TeamId }) {
   const style = TEAM_STYLES[team];
   return (
@@ -209,8 +291,64 @@ export function ScoreStrip({ scores }: { scores: ScoreBoard }) {
   );
 }
 
-export function KeywordPanel({ team, keywords }: { team?: TeamId; keywords?: string[] }) {
-  const [hidden, setHidden] = useState(false);
+export function MobileScoreSummary({ scores, players }: { scores: ScoreBoard; players: DecryptoPlayerDTO[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {(['red', 'blue'] as TeamId[]).map((team) => {
+        const style = TEAM_STYLES[team];
+        const teamPlayers = players.filter((player) => player.team === team);
+        return (
+          <div key={team} className={`min-w-0 rounded-xl border ${style.border} ${style.bg} px-3 py-2`}>
+            <div className={`font-display tracking-wider ${style.text}`}>{style.label}</div>
+            <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+              <div>
+                <span className="block text-gray-500 uppercase tracking-widest">Ints</span>
+                <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
+                <span className="text-gray-600"> /2</span>
+              </div>
+              <div>
+                <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Miscoms</span>
+                <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
+                <span className="text-gray-600"> /2</span>
+              </div>
+            </div>
+            <div className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-snug text-gray-300">
+              {teamPlayers.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {teamPlayers.map((player) => (
+                    <span
+                      key={player.id}
+                      className="min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 text-gray-300"
+                    >
+                      {player.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-gray-600">No players</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function KeywordPanel({
+  team,
+  keywords,
+  wordsHidden,
+  setWordsHidden,
+}: {
+  team?: TeamId;
+  keywords?: string[];
+  wordsHidden?: boolean;
+  setWordsHidden?: Dispatch<SetStateAction<boolean>>;
+}) {
+  const [internalHidden, setInternalHidden] = useState(false);
+  const hidden = wordsHidden ?? internalHidden;
+  const updateHidden = setWordsHidden ?? setInternalHidden;
 
   if (!team || !keywords?.length) {
     return (
@@ -231,7 +369,7 @@ export function KeywordPanel({ team, keywords }: { team?: TeamId; keywords?: str
         <div className="flex items-stretch gap-2">
           <VisibilitySwipeButton
             hidden={hidden}
-            onClick={() => setHidden((value) => !value)}
+            onClick={() => updateHidden((value) => !value)}
             hiddenLabel="Show keywords"
             visibleLabel="Hide keywords"
           />
@@ -255,7 +393,7 @@ export function KeywordPanel({ team, keywords }: { team?: TeamId; keywords?: str
   );
 }
 
-function VisibilitySwipeButton({
+export function VisibilitySwipeButton({
   hidden,
   onClick,
   hiddenLabel,
@@ -294,6 +432,79 @@ function VisibilitySwipeButton({
   );
 }
 
+export function AnimatedLockButton({
+  locked,
+  onClick,
+  disabled = false,
+  size = 'large',
+  lockedLabel = 'Unlock',
+  unlockedLabel = 'Lock',
+}: {
+  locked: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  size?: 'medium' | 'large';
+  lockedLabel?: string;
+  unlockedLabel?: string;
+}) {
+  const [animating, setAnimating] = useState(false);
+  const buttonSize = size === 'large' ? 'h-14 w-14 rounded-2xl' : 'h-8 w-8 rounded-lg';
+  const iconSize = size === 'large' ? 'h-8 w-8' : 'h-[18px] w-[18px]';
+  const label = locked ? lockedLabel : unlockedLabel;
+
+  useEffect(() => {
+    if (!animating) return;
+    const timeout = window.setTimeout(() => setAnimating(false), 320);
+    return () => window.clearTimeout(timeout);
+  }, [animating, locked]);
+
+  const handleClick = () => {
+    if (disabled) return;
+    setAnimating(true);
+    onClick();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={disabled}
+      aria-label={label}
+      aria-pressed={locked}
+      title={label}
+      className={`flex ${buttonSize} items-center justify-center border transition-all active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-40 ${
+        locked
+          ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.16)]'
+          : 'border-white/10 bg-surface-raised text-gray-300 hover:bg-surface-hover hover:text-white'
+      }`}
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className={`${iconSize} transition-transform duration-200 ${animating ? 'scale-110' : 'scale-100'}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <g
+          style={{
+            transformBox: 'fill-box',
+            transformOrigin: '20% 100%',
+            transform: locked ? 'translateY(0) rotate(0deg)' : 'translateY(-2px) rotate(-28deg)',
+            transition: 'transform 260ms ease',
+          }}
+        >
+          <path d="M8 10V8a4 4 0 0 1 8 0v2" />
+        </g>
+        <rect x="5.5" y="10" width="13" height="10" rx="2.25" />
+        <path d="M12 14v2.75" />
+      </svg>
+    </button>
+  );
+}
+
 function cluesForSlot(history: ClueRecord[], team: TeamId, slotIndex: number) {
   const digit = slotIndex + 1;
   return history.flatMap((record) => {
@@ -318,18 +529,24 @@ export function ClueBank({
   history,
   finalKeywords,
   compactMobile = false,
+  wordsHidden,
+  setWordsHidden,
 }: {
   myTeam?: TeamId;
   keywords?: string[];
   history: ClueRecord[];
   finalKeywords?: Partial<Record<TeamId, string[]>>;
   compactMobile?: boolean;
+  wordsHidden?: boolean;
+  setWordsHidden?: Dispatch<SetStateAction<boolean>>;
 }) {
   const [flipRotation, setFlipRotation] = useState(0);
-  const [wordsHidden, setWordsHidden] = useState(false);
+  const [internalWordsHidden, setInternalWordsHidden] = useState(false);
   const [dragX, setDragX] = useState(0);
   const swipeStart = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   if (!myTeam) return null;
+  const effectiveWordsHidden = wordsHidden ?? internalWordsHidden;
+  const updateWordsHidden = setWordsHidden ?? setInternalWordsHidden;
 
   const opponentTeam = otherTeam(myTeam);
   const activeSide = ((Math.round(flipRotation / 180) % 2) + 2) % 2;
@@ -410,8 +627,8 @@ export function ClueBank({
           history={history}
           finalKeywords={finalKeywords}
           compactMobile={compactMobile}
-          wordsHidden={wordsHidden}
-          setWordsHidden={setWordsHidden}
+          wordsHidden={effectiveWordsHidden}
+          setWordsHidden={updateWordsHidden}
           flipped={flipped}
           flipCueRotation={flipRotation}
           active={!flipped}
@@ -425,7 +642,7 @@ export function ClueBank({
           finalKeywords={finalKeywords}
           compactMobile={compactMobile}
           wordsHidden={false}
-          setWordsHidden={setWordsHidden}
+          setWordsHidden={updateWordsHidden}
           flipped={flipped}
           flipCueRotation={flipRotation}
           active={flipped}
@@ -464,7 +681,7 @@ function ClueBankFace({
   finalKeywords?: Partial<Record<TeamId, string[]>>;
   compactMobile: boolean;
   wordsHidden: boolean;
-  setWordsHidden: (value: (current: boolean) => boolean) => void;
+  setWordsHidden: Dispatch<SetStateAction<boolean>>;
   flipped: boolean;
   flipCueRotation: number;
   active: boolean;
