@@ -26,7 +26,7 @@ DEPLOY_SCRIPT = SCRIPT_DIR / 'deploy.py'
 LOG_FILE = SCRIPT_DIR / 'deploy.log'
 PORT = 9877
 MAX_DEPLOY_CYCLES = 5
-DEPLOY_TIMEOUT = 300  # seconds
+DEPLOY_TIMEOUT = 960  # seconds; must exceed deploy.py's Docker rebuild timeout
 RESPONSE_TIMEOUT = 60  # max seconds before responding to HTTP request
 
 # --- Logging ---
