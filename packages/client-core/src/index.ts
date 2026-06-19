@@ -9,6 +9,8 @@ export { default as KickedScreen } from './components/KickedScreen.js';
 export { clientLogger } from './clientLogger.js';
 export { default as ConfirmModal } from './components/ConfirmModal.js';
 export type { ConfirmModalProps } from './components/ConfirmModal.js';
+export { default as RoomQrButton } from './components/RoomQrButton.js';
+export type { RoomQrButtonProps } from './components/RoomQrButton.js';
 export { leaveRoom } from './leaveRoom.js';
 export type { LeaveRoomOptions } from './leaveRoom.js';
 export { SwipeCard, SwipeHints, ActionButtonBar } from './swipe/index.js';

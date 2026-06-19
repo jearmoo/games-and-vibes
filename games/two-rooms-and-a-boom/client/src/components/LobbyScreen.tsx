@@ -8,6 +8,7 @@ import {
   type DeckItem,
   type RoleTeam,
 } from '@games/two-rooms-and-a-boom-shared';
+import { RoomQrButton } from '@games/client-core';
 import { socket } from '../socket';
 import { useGameStore, useIsHost, useSelection } from '../store';
 import RolesInPlay from './RolesInPlay';
@@ -30,6 +31,7 @@ export default function LobbyScreen() {
   const [search, setSearch] = useState('');
   const [showCatalog, setShowCatalog] = useState(false);
   const [copied, setCopied] = useState(false);
+  const shareUrl = `${window.location.origin}/${room.code}`;
 
   const connectedPlayers = room.players.filter((p) => p.connected);
   const playerCount = connectedPlayers.length;
@@ -66,8 +68,7 @@ export default function LobbyScreen() {
   }, [search]);
 
   function copyLink(): void {
-    const url = `${window.location.origin}/${room.code}`;
-    navigator.clipboard?.writeText(url).then(
+    navigator.clipboard?.writeText(shareUrl).then(
       () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
@@ -89,9 +90,12 @@ export default function LobbyScreen() {
           <div className="font-display text-4xl tracking-[0.3em] text-accent">{room.code}</div>
           <div className="text-accent/80 text-xs mt-1 h-4">{copied ? 'Link copied!' : ''}</div>
         </button>
-        <button onClick={leaveRoom} className="btn-ghost btn-ghost-sm">
-          Leave
-        </button>
+        <div className="flex items-center gap-2">
+          <RoomQrButton roomCode={room.code} shareUrl={shareUrl} className="btn-ghost btn-ghost-sm" />
+          <button onClick={leaveRoom} className="btn-ghost btn-ghost-sm">
+            Leave
+          </button>
+        </div>
       </div>
 
       {/* Players */}

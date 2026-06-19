@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useGameStore, useIsHost, useMyPlayer, useTeamName } from '../store';
 import type { TeamId } from '@games/odes-for-cave-men-shared';
-import { ConfirmModal } from '@games/client-core';
+import { ConfirmModal, RoomQrButton } from '@games/client-core';
 import { socket } from '../socket';
 import {
   DndContext,
@@ -36,9 +36,10 @@ export default function LobbyScreen() {
     setTimerInput(String(settings.timerSeconds));
   }, [settings.timerSeconds]);
 
-  const shareUrl = `${window.location.origin}/${roomCode}`;
+  const shareUrl = roomCode ? `${window.location.origin}/${roomCode}` : '';
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
+    if (!shareUrl) return;
     navigator.clipboard?.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -91,9 +92,16 @@ export default function LobbyScreen() {
 
       {/* Compact header row 2: copy link + settings summary */}
       <div className="flex items-center justify-between">
-        <button onClick={handleCopy} className="text-amber-400 text-xs hover:text-amber-300 transition-colors">
-          {copied ? 'Copied!' : 'Copy link'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleCopy} className="text-amber-400 text-xs hover:text-amber-300 transition-colors">
+            {copied ? 'Copied!' : 'Copy link'}
+          </button>
+          <RoomQrButton
+            roomCode={roomCode}
+            shareUrl={shareUrl}
+            className="text-amber-400 text-xs hover:text-amber-300 transition-colors"
+          />
+        </div>
         {host ? (
           <button
             onClick={() => setShowSettings(true)}
