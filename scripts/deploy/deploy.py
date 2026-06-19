@@ -30,7 +30,7 @@ IMAGES = [
     'decrypto',
     'games-landing',
 ]
-DEPLOY_TIMEOUT = 280  # seconds
+DEPLOY_TIMEOUT = 900  # seconds; Pi Docker rebuilds can take 4-5 minutes
 
 # --- Logging (shared log file with listener) ---
 
