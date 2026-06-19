@@ -1,10 +1,10 @@
 import { BaseRoom, logger } from '@games/server-core';
 import {
-  CastlefallPhase,
-  type CastlefallPlayer,
-  type CastlefallPlayerDTO,
-  type CastlefallRoomDTO,
-  type CastlefallSettings,
+  YipYapPhase,
+  type YipYapPlayer,
+  type YipYapPlayerDTO,
+  type YipYapRoomDTO,
+  type YipYapSettings,
   type FullReveal,
   type PrivateRoundState,
   type PublicRoundState,
@@ -12,14 +12,14 @@ import {
   type RoundOutcome,
   type TeamId,
   type WinningTeam,
-} from '@games/castlefall-shared';
+} from '@games/yip-yap-shared';
 import { pickTeamWords, pickWords } from './wordbank.js';
 
-interface PersistedCastlefallRoom {
+interface PersistedYipYapRoom {
   code: string;
   hostId: string;
   lastActivity?: number;
-  settings?: Partial<CastlefallSettings>;
+  settings?: Partial<YipYapSettings>;
   players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; points?: number }>;
   phase?: string;
   words?: string[];
@@ -35,9 +35,9 @@ interface PersistedCastlefallRoom {
 const WORDS_PER_ROUND = 18;
 const DEFAULT_TIMER_SECONDS = 60;
 
-export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
-  declare settings: CastlefallSettings;
-  phase: CastlefallPhase = CastlefallPhase.LOBBY;
+export class YipYapRoom extends BaseRoom<YipYapPlayer> {
+  declare settings: YipYapSettings;
+  phase: YipYapPhase = YipYapPhase.LOBBY;
   words: string[] = [];
   teamWords: { 1: string; 2: string } = { 1: '', 2: '' };
   respondingState?: RespondingState;
@@ -51,16 +51,16 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     super(code, hostId, { timerSeconds: DEFAULT_TIMER_SECONDS });
   }
 
-  override addPlayer(id: string, name: string, socketId: string): CastlefallPlayer {
-    const player: CastlefallPlayer = { id, name, socketId, connected: true, points: 0 };
+  override addPlayer(id: string, name: string, socketId: string): YipYapPlayer {
+    const player: YipYapPlayer = { id, name, socketId, connected: true, points: 0 };
     this.players.set(id, player);
     this.touch();
     return player;
   }
 
-  override playerDTOs(): CastlefallPlayerDTO[] {
-    const includeTeam = this.phase === CastlefallPhase.GAME_OVER;
-    const includeInRound = this.phase === CastlefallPhase.ROUND || this.phase === CastlefallPhase.GAME_OVER;
+  override playerDTOs(): YipYapPlayerDTO[] {
+    const includeTeam = this.phase === YipYapPhase.GAME_OVER;
+    const includeInRound = this.phase === YipYapPhase.ROUND || this.phase === YipYapPhase.GAME_OVER;
     return Array.from(this.players.values()).map((p) => ({
       id: p.id,
       name: p.name,
@@ -71,7 +71,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     }));
   }
 
-  override toDTO(): CastlefallRoomDTO {
+  override toDTO(): YipYapRoomDTO {
     return {
       code: this.code,
       hostId: this.hostId,
@@ -79,7 +79,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       settings: { ...this.settings },
       phase: this.phase,
       round: this.getPublicRoundState(),
-      reveal: this.phase === CastlefallPhase.GAME_OVER ? this.getFullReveal() : null,
+      reveal: this.phase === YipYapPhase.GAME_OVER ? this.getFullReveal() : null,
       roundsPlayed: this.roundsPlayed,
     };
   }
@@ -125,7 +125,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
   }
 
   isGameActive(): boolean {
-    return this.phase === CastlefallPhase.ROUND;
+    return this.phase === YipYapPhase.ROUND;
   }
 
   getPhase(): string {
@@ -163,7 +163,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     for (const [id, player] of this.players) {
       if (player.removed) this.players.delete(id);
     }
-    this.phase = CastlefallPhase.LOBBY;
+    this.phase = YipYapPhase.LOBBY;
     this.clearRoundState();
     this.touch();
   }
@@ -177,7 +177,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     this.winningTeam = undefined;
     this.clappingPlayerId = undefined;
     this.losingPlayerId = undefined;
-    this.phase = CastlefallPhase.ROUND;
+    this.phase = YipYapPhase.ROUND;
     this.roundsPlayed += 1;
     this.touch();
   }
@@ -199,13 +199,13 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     for (const p of this.players.values()) {
       if (p.team === winningTeam) p.points += 1;
     }
-    this.phase = CastlefallPhase.GAME_OVER;
+    this.phase = YipYapPhase.GAME_OVER;
     this.touch();
   }
 
   /** Correct-clap path: start the response window for the opposing team. */
   correctClap({ clappingPlayerId }: { clappingPlayerId: string }): void {
-    if (this.phase !== CastlefallPhase.ROUND) {
+    if (this.phase !== YipYapPhase.ROUND) {
       logger.warn('game', 'correctClap rejected: wrong phase', { phase: this.phase });
       return;
     }
@@ -251,7 +251,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     }
     this.clappingPlayerId = responding.clapperId;
     this.respondingState = undefined;
-    this.phase = CastlefallPhase.GAME_OVER;
+    this.phase = YipYapPhase.GAME_OVER;
     this.touch();
   }
 
@@ -259,7 +259,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
     for (const [id, player] of this.players) {
       if (player.removed) this.players.delete(id);
     }
-    this.phase = CastlefallPhase.LOBBY;
+    this.phase = YipYapPhase.LOBBY;
     this.clearRoundState();
     this.touch();
   }
@@ -298,7 +298,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
   }
 
   getPublicRoundState(): PublicRoundState | null {
-    if (this.phase !== CastlefallPhase.ROUND) return null;
+    if (this.phase !== YipYapPhase.ROUND) return null;
     return {
       phase: this.phase,
       words: [...this.words],
@@ -307,7 +307,7 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
   }
 
   getPrivateRoundStateFor({ playerId }: { playerId: string }): PrivateRoundState | null {
-    if (this.phase !== CastlefallPhase.ROUND) return null;
+    if (this.phase !== YipYapPhase.ROUND) return null;
     const player = this.players.get(playerId);
     if (!player?.team) return null;
     return {
@@ -325,28 +325,28 @@ export class CastlefallRoom extends BaseRoom<CastlefallPlayer> {
       team1Word: this.teamWords[1],
       team2Word: this.teamWords[2],
       players: Array.from(this.players.values())
-        .filter((p): p is CastlefallPlayer & { team: TeamId } => !!p.team)
+        .filter((p): p is YipYapPlayer & { team: TeamId } => !!p.team)
         .map((p) => ({ id: p.id, name: p.name, team: p.team, points: p.points })),
     };
   }
 
-  getTeamPlayers(team: TeamId): CastlefallPlayer[] {
+  getTeamPlayers(team: TeamId): YipYapPlayer[] {
     return Array.from(this.players.values()).filter((p) => p.team === team && !p.removed);
   }
 
-  static fromJSON(data: unknown): CastlefallRoom {
-    const d = data as PersistedCastlefallRoom;
-    const room = new CastlefallRoom(d.code, d.hostId);
+  static fromJSON(data: unknown): YipYapRoom {
+    const d = data as PersistedYipYapRoom;
+    const room = new YipYapRoom(d.code, d.hostId);
     room.lastActivity = d.lastActivity ?? Date.now();
     room.settings = { ...room.settings, ...d.settings };
-    const validPhases = Object.values(CastlefallPhase) as string[];
+    const validPhases = Object.values(YipYapPhase) as string[];
     if (d.phase !== undefined && validPhases.includes(d.phase)) {
-      room.phase = d.phase as CastlefallPhase;
+      room.phase = d.phase as YipYapPhase;
     } else {
       if (d.phase !== undefined) {
         logger.warn('game', 'fromJSON: invalid phase, falling back to LOBBY', { phase: d.phase });
       }
-      room.phase = CastlefallPhase.LOBBY;
+      room.phase = YipYapPhase.LOBBY;
     }
     room.words = d.words ?? [];
     room.teamWords = d.teamWords ?? { 1: '', 2: '' };

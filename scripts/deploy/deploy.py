@@ -25,7 +25,7 @@ IMAGES = [
     'adversarial-taboo',
     'charades',
     'odes-for-cave-men',
-    'castlefall',
+    'yip-yap',
     'two-rooms-and-a-boom',
     'decrypto',
     'games-landing',

@@ -71,21 +71,21 @@ services:
         max-size: "10m"
         max-file: "5"
 
-  castlefall:
+  yip-yap:
     build:
       context: .
-      dockerfile: games/castlefall/Dockerfile
+      dockerfile: games/yip-yap/Dockerfile
       args:
         GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
     env_file: .env
-    container_name: castlefall
+    container_name: yip-yap
     restart: unless-stopped
     stop_grace_period: 30s
     ports:
       - "4070:4070"
     volumes:
-      - ./games/castlefall/data:/data
+      - ./games/yip-yap/data:/data
     environment:
       - NODE_ENV=production
       - PORT=4070

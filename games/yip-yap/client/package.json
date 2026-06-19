@@ -1,5 +1,5 @@
 {
-  "name": "@games/castlefall-client",
+  "name": "@games/yip-yap-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@games/castlefall-shared": "workspace:*",
+    "@games/yip-yap-shared": "workspace:*",
     "@games/client-core": "workspace:*",
     "motion": "^12.38.0",
     "react": "^18.3.0",

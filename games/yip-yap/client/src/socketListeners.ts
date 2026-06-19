@@ -1,13 +1,13 @@
 import { socket, autoReconnecting, clearAutoReconnecting } from './socket';
 import { useGameStore, initialState, SESSION_KEY } from './store';
-import { CastlefallEvent, CastlefallPhase } from '@games/castlefall-shared';
+import { YipYapEvent, YipYapPhase } from '@games/yip-yap-shared';
 import type {
-  CastlefallRejoinGame,
-  CastlefallRoomDTO,
+  YipYapRejoinGame,
+  YipYapRoomDTO,
   RoundEndedPayload,
   RoundStartedPayload,
   RoundUpdatedPayload,
-} from '@games/castlefall-shared';
+} from '@games/yip-yap-shared';
 import { clientLogger } from '@games/client-core';
 
 function saveSession() {
@@ -54,7 +54,7 @@ socket.on('room:kicked', () => {
 // Room lifecycle (BaseRoom standard events)
 socket.on(
   'room:created',
-  ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: CastlefallRoomDTO }) => {
+  ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: YipYapRoomDTO }) => {
     useGameStore.setState({ roomCode, playerId, room });
     saveSession();
     window.history.replaceState(null, '', `/${roomCode}`);
@@ -63,7 +63,7 @@ socket.on(
 
 socket.on(
   'room:joined',
-  ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: CastlefallRoomDTO }) => {
+  ({ roomCode, playerId, room }: { roomCode: string; playerId: string; room: YipYapRoomDTO }) => {
     useGameStore.setState({ roomCode, playerId, room });
     saveSession();
     window.history.replaceState(null, '', `/${roomCode}`);
@@ -80,8 +80,8 @@ socket.on(
   }: {
     roomCode: string;
     playerId: string;
-    room: CastlefallRoomDTO;
-    game: CastlefallRejoinGame | null;
+    room: YipYapRoomDTO;
+    game: YipYapRejoinGame | null;
   }) => {
     clearAutoReconnecting();
     const me = room.players.find((p) => p.id === playerId);
@@ -110,8 +110,8 @@ socket.on(
   }: {
     roomCode: string;
     playerId: string;
-    room: CastlefallRoomDTO;
-    game: CastlefallRejoinGame | null;
+    room: YipYapRoomDTO;
+    game: YipYapRejoinGame | null;
   }) => {
     useGameStore.setState({
       roomCode,
@@ -127,12 +127,12 @@ socket.on(
 );
 
 // Player roster updates — patch the embedded room DTO
-socket.on('room:player-joined', ({ player }: { player: import('@games/castlefall-shared').CastlefallPlayerDTO }) => {
+socket.on('room:player-joined', ({ player }: { player: import('@games/yip-yap-shared').YipYapPlayerDTO }) => {
   useGameStore.setState((s) => (s.room ? { room: { ...s.room, players: [...s.room.players, player] } } : {}));
 });
 socket.on(
   'room:player-left',
-  ({ hostId, players }: { hostId: string; players: import('@games/castlefall-shared').CastlefallPlayerDTO[] }) => {
+  ({ hostId, players }: { hostId: string; players: import('@games/yip-yap-shared').YipYapPlayerDTO[] }) => {
     useGameStore.setState((s) => (s.room ? { room: { ...s.room, hostId, players } } : {}));
   },
 );
@@ -153,10 +153,10 @@ socket.on('room:host-updated', ({ hostId }: { hostId: string }) => {
 });
 
 // Lobby — team / settings updates re-emit player roster + settings
-socket.on('team:updated', ({ players }: { players: import('@games/castlefall-shared').CastlefallPlayerDTO[] }) => {
+socket.on('team:updated', ({ players }: { players: import('@games/yip-yap-shared').YipYapPlayerDTO[] }) => {
   useGameStore.setState((s) => (s.room ? { room: { ...s.room, players } } : {}));
 });
-socket.on('settings:updated', ({ settings }: { settings: import('@games/castlefall-shared').CastlefallSettings }) => {
+socket.on('settings:updated', ({ settings }: { settings: import('@games/yip-yap-shared').YipYapSettings }) => {
   useGameStore.setState((s) => (s.room ? { room: { ...s.room, settings } } : {}));
 });
 
@@ -172,35 +172,35 @@ socket.on('room:error', ({ message }: { message: string }) => {
   useGameStore.getState().setError(message);
 });
 
-// Castlefall game events
-socket.on(CastlefallEvent.RoundStarted, ({ public: pub, private: priv }: RoundStartedPayload) => {
+// YipYap game events
+socket.on(YipYapEvent.RoundStarted, ({ public: pub, private: priv }: RoundStartedPayload) => {
   useGameStore.setState((s) => ({
     publicRound: pub,
     privateRound: priv,
     reveal: null,
-    room: s.room ? { ...s.room, phase: CastlefallPhase.ROUND, round: pub, reveal: null } : s.room,
+    room: s.room ? { ...s.room, phase: YipYapPhase.ROUND, round: pub, reveal: null } : s.room,
   }));
 });
 
-socket.on(CastlefallEvent.RoundUpdated, ({ public: pub }: RoundUpdatedPayload) => {
+socket.on(YipYapEvent.RoundUpdated, ({ public: pub }: RoundUpdatedPayload) => {
   useGameStore.setState((s) => ({
     publicRound: pub,
     room: s.room ? { ...s.room, round: pub } : s.room,
   }));
 });
 
-socket.on(CastlefallEvent.RoundEnded, ({ reveal }: RoundEndedPayload) => {
+socket.on(YipYapEvent.RoundEnded, ({ reveal }: RoundEndedPayload) => {
   useGameStore.setState((s) => ({
     reveal,
-    room: s.room ? { ...s.room, phase: CastlefallPhase.GAME_OVER, reveal } : s.room,
+    room: s.room ? { ...s.room, phase: YipYapPhase.GAME_OVER, reveal } : s.room,
   }));
 });
 
-socket.on(CastlefallEvent.NewRound, () => {
+socket.on(YipYapEvent.NewRound, () => {
   useGameStore.setState((s) => ({
     publicRound: null,
     privateRound: null,
     reveal: null,
-    room: s.room ? { ...s.room, phase: CastlefallPhase.LOBBY, round: null, reveal: null } : s.room,
+    room: s.room ? { ...s.room, phase: YipYapPhase.LOBBY, round: null, reveal: null } : s.room,
   }));
 });

@@ -177,6 +177,6 @@ Keep this updated as games are added:
 | 4040 | adtaboo | adtaboo.jerpi.org |
 | 4050 | charades | charades.jerpi.org |
 | 4060 | odes-for-cave-men | odes.jerpi.org |
-| 4070 | castlefall | castlefall.jerpi.org |
+| 4070 | yip-yap | yipyap.jerpi.org |
 | 4080 | two-rooms-and-a-boom | boom.jerpi.org |
 | 4090 | decrypto | decrypto.jerpi.org |

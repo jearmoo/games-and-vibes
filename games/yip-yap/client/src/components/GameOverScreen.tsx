@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../store';
-import type { TeamId } from '@games/castlefall-shared';
+import type { TeamId } from '@games/yip-yap-shared';
 
 export default function GameOverScreen() {
   const reveal = useGameStore((s) => s.reveal);

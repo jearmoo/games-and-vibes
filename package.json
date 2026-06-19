@@ -9,7 +9,7 @@
   "scripts": {
     "dev:adtaboo": "concurrently \"pnpm --filter @games/adtaboo-server dev\" \"pnpm --filter @games/adtaboo-client dev\"",
     "dev:cave": "concurrently \"pnpm --filter @games/odes-for-cave-men-server dev\" \"pnpm --filter @games/odes-for-cave-men-client dev\"",
-    "dev:castlefall": "concurrently \"pnpm --filter @games/castlefall-server dev\" \"pnpm --filter @games/castlefall-client dev\"",
+    "dev:yip-yap": "concurrently \"pnpm --filter @games/yip-yap-server dev\" \"pnpm --filter @games/yip-yap-client dev\"",
     "dev:tworooms": "concurrently \"pnpm --filter @games/two-rooms-and-a-boom-server dev\" \"pnpm --filter @games/two-rooms-and-a-boom-client dev\"",
     "dev:charades": "concurrently \"pnpm --filter @games/charades-server dev\" \"pnpm --filter @games/charades-client dev\"",
     "dev:decrypto": "concurrently \"pnpm --filter @games/decrypto-server dev\" \"pnpm --filter @games/decrypto-client dev\"",

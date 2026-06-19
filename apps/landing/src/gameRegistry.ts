@@ -41,10 +41,10 @@ export const games: GameEntry[] = [
     available: true,
   },
   {
-    id: 'castlefall',
-    name: 'Castlefall',
+    id: 'yip-yap',
+    name: 'Yip Yap',
     tagline: 'Two secret teams. One betrayal away.',
-    url: 'https://castlefall.jerpi.org',
+    url: 'https://yipyap.jerpi.org',
     playerCount: '4-10 players',
     accentColor: '#a855f7',
     accentGlow: 'rgba(168, 85, 247, 0.4)',

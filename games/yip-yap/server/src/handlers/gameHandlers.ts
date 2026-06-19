@@ -2,38 +2,38 @@ import type { Server } from 'socket.io';
 import type { SocketContext } from '@games/server-core';
 import { logger } from '@games/server-core';
 import {
-  CastlefallEvent,
-  CastlefallPhase,
+  YipYapEvent,
+  YipYapPhase,
   type CorrectClapPayload,
   type EndRoundPayload,
   type ResolveGuessPayload,
-} from '@games/castlefall-shared';
-import type { CastlefallRoom } from '../CastlefallRoom.js';
+} from '@games/yip-yap-shared';
+import type { YipYapRoom } from '../YipYapRoom.js';
 
-function emitRoundStarted(room: CastlefallRoom, io: Server) {
+function emitRoundStarted(room: YipYapRoom, io: Server) {
   const publicState = room.getPublicRoundState();
   if (!publicState) return;
   for (const player of room.players.values()) {
     if (!player.team || !player.socketId) continue;
     const privateState = room.getPrivateRoundStateFor({ playerId: player.id });
     if (!privateState) continue;
-    io.to(player.socketId).emit(CastlefallEvent.RoundStarted, {
+    io.to(player.socketId).emit(YipYapEvent.RoundStarted, {
       public: publicState,
       private: privateState,
     });
   }
 }
 
-function emitRoundUpdated(room: CastlefallRoom, io: Server) {
+function emitRoundUpdated(room: YipYapRoom, io: Server) {
   const publicState = room.getPublicRoundState();
   if (!publicState) return;
-  io.to(room.code).emit(CastlefallEvent.RoundUpdated, { public: publicState });
+  io.to(room.code).emit(YipYapEvent.RoundUpdated, { public: publicState });
 }
 
-export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
+export function registerGameHandlers(ctx: SocketContext<YipYapRoom>) {
   const { io, socket, rooms, metrics } = ctx;
 
-  socket.on(CastlefallEvent.StartRound, () => {
+  socket.on(YipYapEvent.StartRound, () => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
@@ -42,7 +42,7 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
       logger.warn('game', 'Non-host attempted to start first round', { room: room.code, player: playerId });
       return;
     }
-    if (room.phase !== CastlefallPhase.LOBBY && room.phase !== CastlefallPhase.GAME_OVER) {
+    if (room.phase !== YipYapPhase.LOBBY && room.phase !== YipYapPhase.GAME_OVER) {
       logger.warn('game', 'startRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
@@ -68,12 +68,12 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     });
   });
 
-  socket.on(CastlefallEvent.EndRound, (payload: EndRoundPayload) => {
+  socket.on(YipYapEvent.EndRound, (payload: EndRoundPayload) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (room.phase !== CastlefallPhase.ROUND) {
+    if (room.phase !== YipYapPhase.ROUND) {
       logger.warn('game', 'endRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
@@ -94,7 +94,7 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     room.endRound({ losingPlayerId });
     metrics.gameCompleted();
     const reveal = room.getFullReveal();
-    io.to(room.code).emit(CastlefallEvent.RoundEnded, { reveal });
+    io.to(room.code).emit(YipYapEvent.RoundEnded, { reveal });
     logger.info('game', 'Round ended via wrong clap', {
       room: room.code,
       losingPlayerId,
@@ -102,12 +102,12 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     });
   });
 
-  socket.on(CastlefallEvent.CorrectClap, (payload: CorrectClapPayload) => {
+  socket.on(YipYapEvent.CorrectClap, (payload: CorrectClapPayload) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (room.phase !== CastlefallPhase.ROUND) {
+    if (room.phase !== YipYapPhase.ROUND) {
       logger.warn('game', 'correctClap rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
@@ -138,12 +138,12 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     });
   });
 
-  socket.on(CastlefallEvent.ResolveGuess, (payload: ResolveGuessPayload) => {
+  socket.on(YipYapEvent.ResolveGuess, (payload: ResolveGuessPayload) => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (room.phase !== CastlefallPhase.ROUND) {
+    if (room.phase !== YipYapPhase.ROUND) {
       logger.warn('game', 'resolveGuess rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
@@ -159,7 +159,7 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     room.resolveGuess({ guessedCorrectly: payload.guessedCorrectly });
     metrics.gameCompleted();
     const reveal = room.getFullReveal();
-    io.to(room.code).emit(CastlefallEvent.RoundEnded, { reveal });
+    io.to(room.code).emit(YipYapEvent.RoundEnded, { reveal });
     logger.info('game', 'Round ended via guess resolution', {
       room: room.code,
       guessedCorrectly: payload.guessedCorrectly,
@@ -176,7 +176,7 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
       logger.warn('game', 'Non-host attempted to update settings', { room: room.code, player: playerId });
       return;
     }
-    if (room.phase !== CastlefallPhase.LOBBY && room.phase !== CastlefallPhase.GAME_OVER) {
+    if (room.phase !== YipYapPhase.LOBBY && room.phase !== YipYapPhase.GAME_OVER) {
       logger.warn('game', 'settings:update rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
@@ -191,18 +191,18 @@ export function registerGameHandlers(ctx: SocketContext<CastlefallRoom>) {
     io.to(room.code).emit('settings:updated', { settings: room.settings });
   });
 
-  socket.on(CastlefallEvent.StartNewRound, () => {
+  socket.on(YipYapEvent.StartNewRound, () => {
     const playerId = ctx.getPlayerId();
     if (!playerId) return;
     const room = rooms.getRoomForPlayer(playerId);
     if (!room) return;
-    if (room.phase !== CastlefallPhase.GAME_OVER) {
+    if (room.phase !== YipYapPhase.GAME_OVER) {
       logger.warn('game', 'startNewRound rejected: wrong phase', { room: room.code, phase: room.phase });
       return;
     }
 
     room.startNewRound();
-    io.to(room.code).emit(CastlefallEvent.NewRound);
+    io.to(room.code).emit(YipYapEvent.NewRound);
 
     logger.info('game', 'New round prepared', { room: room.code });
   });
