@@ -21,6 +21,7 @@ import {
 } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
 import {
+  AnimatedLockButton,
   ClueBank,
   ClueView,
   CodeDisplay,
@@ -81,51 +82,50 @@ export default function TurnScreen() {
     <div className="h-full flex flex-col animate-fade-in">
       <GameHeader dropdownOpen={roundDetailsOpen} onDropdownOpenChange={setRoundDetailsOpen} />
       {clueTimer && <FixedClueTimer endTime={clueTimer.expiresAt} duration={clueTimer.durationSeconds} />}
-      <div
-        className={`grid min-h-0 flex-1 w-full max-w-6xl mx-auto grid-cols-1 lg:grid-cols-[1fr_21rem] gap-2 overflow-y-auto px-3 pb-4 sm:gap-4 sm:px-5 sm:pb-5 ${
-          clueTimer ? 'pt-16 sm:pt-28' : 'pt-1 sm:pt-5'
-        }`}
-      >
-        {roundDetailsOpen && (
-          <div className="sm:hidden">
-            <div className="rounded-lg border border-white/10 bg-black/15 p-2">
-              <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
-              <MobileScoreSummary scores={room.scores} players={room.players} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="grid w-full max-w-6xl mx-auto grid-cols-1 items-start lg:grid-cols-[1fr_21rem] gap-2 px-3 pt-1 pb-4 sm:gap-4 sm:px-5 sm:pt-5 sm:pb-5">
+          {roundDetailsOpen && (
+            <div className="sm:hidden">
+              <div className="rounded-lg border border-white/10 bg-black/15 p-2">
+                <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
+                <MobileScoreSummary scores={room.scores} players={room.players} />
+              </div>
             </div>
-          </div>
-        )}
-        <div className="space-y-2 min-w-0 sm:space-y-4">
-          <HeaderPanel />
-          <KeywordPanel
-            team={privateState?.team}
-            keywords={privateState?.keywords}
-            wordsHidden={wordsHidden}
-            setWordsHidden={setWordsHidden}
-          />
-
-          {phase === DecryptoPhase.CLUE ? (
-            <CluePhase
-              clues={clues}
-              setClues={setClues}
-              submitting={submitting}
-              setSubmitting={setSubmitting}
+          )}
+          <div className="space-y-2 min-w-0 sm:space-y-4">
+            <HeaderPanel />
+            <KeywordPanel
+              team={privateState?.team}
+              keywords={privateState?.keywords}
               wordsHidden={wordsHidden}
               setWordsHidden={setWordsHidden}
             />
-          ) : (
-            <GuessPhase />
-          )}
-        </div>
 
-        <div className="space-y-2 sm:space-y-4">
-          <ClueBank
-            myTeam={privateState?.team}
-            keywords={privateState?.keywords}
-            history={room.clueHistory}
-            wordsHidden={wordsHidden}
-            setWordsHidden={setWordsHidden}
-          />
-          <HistoryPanel />
+            {phase === DecryptoPhase.CLUE ? (
+              <CluePhase
+                clues={clues}
+                setClues={setClues}
+                submitting={submitting}
+                setSubmitting={setSubmitting}
+                wordsHidden={wordsHidden}
+                setWordsHidden={setWordsHidden}
+              />
+            ) : (
+              <GuessPhase />
+            )}
+
+            <ClueBank
+              myTeam={privateState?.team}
+              keywords={privateState?.keywords}
+              history={room.clueHistory}
+              wordsHidden={wordsHidden}
+              setWordsHidden={setWordsHidden}
+            />
+          </div>
+
+          <div className="space-y-2 sm:space-y-4">
+            <HistoryPanel />
+          </div>
         </div>
       </div>
     </div>
@@ -159,7 +159,7 @@ function HeaderPanel() {
           </div>
         </div>
         <div className="w-full min-w-0">
-          <ScoreStrip scores={room.scores} />
+          <ScoreStrip scores={room.scores} players={room.players} />
         </div>
       </div>
     </div>
@@ -269,66 +269,73 @@ function CluePhase({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       <TeamClueStatus />
-      <div className="glass-card rounded-2xl border border-amber-400/30 bg-amber-500/5 p-4 space-y-4">
-        <div className="text-center">
-          <div className="text-amber-300 text-[10px] tracking-[0.3em] uppercase mb-2">Your secret code</div>
-          <CodeDisplay code={privateState?.code} />
+      <div className="glass-card space-y-3 rounded-2xl border border-amber-400/30 bg-amber-500/5 p-3 sm:space-y-4 sm:p-4">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-300/15 bg-black/15 px-3 py-2 sm:block sm:border-0 sm:bg-transparent sm:p-0 sm:text-center">
+          <div className="text-[10px] tracking-[0.24em] text-amber-300 uppercase sm:mb-2 sm:tracking-[0.3em]">
+            Your secret code
+          </div>
+          <div className="shrink-0 scale-90 sm:scale-100">
+            <CodeDisplay code={privateState?.code} />
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {privateState?.code?.map((digit, index) => {
             const clue = clues[index] ?? createTextClue();
             const textMode = clue.kind === 'text';
             const savedDrawing = clue.kind === 'drawing' ? clue.dataUrl : (drawingDrafts[index] ?? '');
             return (
-              <div key={`${digit}-${index}`} className="block">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-gray-400 text-xs tracking-widest uppercase">
-                    Clue {index + 1} for #{digit}
+              <div
+                key={`${digit}-${index}`}
+                className="rounded-2xl border border-white/10 bg-black/15 p-2.5 sm:border-0 sm:bg-transparent sm:p-0"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-300/25 bg-amber-300/10 font-display text-sm text-amber-100">
+                    {digit}
                   </span>
                   <button
                     type="button"
                     onClick={() => setWordsHidden((hidden) => !hidden)}
-                    className="min-w-0 max-w-[9rem] truncate rounded-md px-1.5 py-0.5 text-right text-xs text-gray-500 transition hover:bg-white/5 hover:text-gray-200 active:scale-95"
+                    className="min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-surface-raised px-2 py-1 text-left text-xs font-semibold text-white transition hover:bg-surface-hover active:scale-95 sm:border-0 sm:bg-transparent sm:px-1.5 sm:py-0.5 sm:text-sm sm:font-semibold sm:text-white sm:hover:bg-white/5 sm:hover:text-amber-100"
                     aria-label={wordsHidden ? 'Show keyword' : 'Hide keyword'}
                     title={wordsHidden ? 'Show keyword' : 'Hide keyword'}
                   >
                     {wordsHidden ? '••••••' : (privateState.keywords?.[digit - 1] ?? 'Keyword')}
                   </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <button
-                    type="button"
-                    disabled={locked}
-                    onClick={() => {
-                      if (clue.kind === 'drawing') setDrawingDraft(index, clue.dataUrl);
-                      updateClue(index, createTextClue(textMode ? clue.text : ''), { persist: !savedDrawing });
-                    }}
-                    className={`py-2 rounded-xl border text-xs font-semibold tracking-wider transition-all disabled:opacity-40 ${
-                      textMode
-                        ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
-                        : 'border-white/10 bg-surface-raised text-gray-300 hover:bg-surface-hover'
-                    }`}
-                  >
-                    Text
-                  </button>
-                  <button
-                    type="button"
-                    disabled={locked}
-                    onClick={() => {
-                      updateClue(index, { kind: 'drawing', dataUrl: savedDrawing });
-                      setDrawingIndex(index);
-                    }}
-                    className={`py-2 rounded-xl border text-xs font-semibold tracking-wider transition-all disabled:opacity-40 ${
-                      !textMode
-                        ? 'border-amber-300/50 bg-amber-400/10 text-amber-100'
-                        : 'border-white/10 bg-surface-raised text-gray-300 hover:bg-surface-hover'
-                    }`}
-                  >
-                    Draw
-                  </button>
+                  <div className="grid w-[6.5rem] shrink-0 grid-cols-2 rounded-lg border border-white/10 bg-surface-raised p-0.5 sm:ml-auto sm:w-auto sm:flex sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0">
+                    <button
+                      type="button"
+                      disabled={locked}
+                      onClick={() => {
+                        if (clue.kind === 'drawing') setDrawingDraft(index, clue.dataUrl);
+                        updateClue(index, createTextClue(textMode ? clue.text : ''), { persist: !savedDrawing });
+                      }}
+                      className={`rounded-md px-2 py-1 text-[10px] font-semibold tracking-wider transition-all disabled:opacity-40 sm:rounded-xl sm:border sm:px-4 sm:py-2 sm:text-xs ${
+                        textMode
+                          ? 'bg-amber-400/15 text-amber-100 sm:border-amber-300/50 sm:bg-amber-400/10'
+                          : 'text-gray-400 hover:text-gray-200 sm:border-white/10 sm:bg-surface-raised sm:text-gray-300 sm:hover:bg-surface-hover'
+                      }`}
+                    >
+                      Text
+                    </button>
+                    <button
+                      type="button"
+                      disabled={locked}
+                      onClick={() => {
+                        updateClue(index, { kind: 'drawing', dataUrl: savedDrawing });
+                        setDrawingIndex(index);
+                      }}
+                      className={`rounded-md px-2 py-1 text-[10px] font-semibold tracking-wider transition-all disabled:opacity-40 sm:rounded-xl sm:border sm:px-4 sm:py-2 sm:text-xs ${
+                        !textMode
+                          ? 'bg-amber-400/15 text-amber-100 sm:border-amber-300/50 sm:bg-amber-400/10'
+                          : 'text-gray-400 hover:text-gray-200 sm:border-white/10 sm:bg-surface-raised sm:text-gray-300 sm:hover:bg-surface-hover'
+                      }`}
+                    >
+                      Draw
+                    </button>
+                  </div>
                 </div>
                 {textMode ? (
                   <input
@@ -338,19 +345,20 @@ function CluePhase({
                     }
                     maxLength={32}
                     disabled={locked}
-                    className="game-input w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 disabled:opacity-50"
+                    className="game-input w-full rounded-xl px-3 py-2.5 text-base text-white placeholder-gray-600 disabled:opacity-50 sm:px-4 sm:py-3"
                     placeholder="One clue"
                   />
                 ) : (
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-2">
-                    <ClueView clue={clue} imageClassName="!h-20" />
+                  <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-2 sm:block">
+                    <ClueView clue={clue} imageClassName="!h-14 sm:!h-20" className="min-w-0 flex-1" />
                     <button
                       type="button"
                       disabled={locked}
                       onClick={() => setDrawingIndex(index)}
-                      className="mt-2 w-full py-2 rounded-lg bg-surface-raised hover:bg-surface-hover border border-white/10 text-gray-300 text-[11px] tracking-widest uppercase disabled:opacity-40"
+                      className="min-h-14 w-20 shrink-0 rounded-lg border border-white/10 bg-surface-raised px-2 py-2 text-[10px] tracking-widest text-gray-300 uppercase hover:bg-surface-hover disabled:opacity-40 sm:mt-2 sm:min-h-0 sm:w-full sm:text-[11px]"
                     >
-                      {clue.dataUrl ? 'Edit Drawing' : 'Open Drawing Editor'}
+                      {clue.dataUrl ? 'Edit' : 'Open'}
+                      <span className="hidden sm:inline"> Drawing Editor</span>
                     </button>
                   </div>
                 )}
@@ -359,23 +367,15 @@ function CluePhase({
           })}
         </div>
 
-        {locked ? (
-          <button
-            onClick={handleUnlock}
-            disabled={submitting}
-            className="w-full py-4 rounded-2xl bg-surface-raised hover:bg-surface-hover border border-white/10 text-white font-display tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
-          >
-            {submitting ? 'Unlocking...' : 'Unlock Clues'}
-          </button>
-        ) : (
-          <button
-            onClick={handleLock}
-            disabled={!canLock}
-            className="btn-decrypto w-full py-4 rounded-2xl text-white font-display tracking-wider disabled:opacity-30 disabled:shadow-none active:scale-[0.97] transition-all"
-          >
-            {submitting ? 'Locking...' : 'Lock Clues'}
-          </button>
-        )}
+        <div className="flex justify-center pt-1">
+          <AnimatedLockButton
+            locked={locked}
+            onClick={locked ? handleUnlock : handleLock}
+            disabled={locked ? submitting : !canLock}
+            lockedLabel="Unlock clues"
+            unlockedLabel="Lock clues"
+          />
+        </div>
       </div>
       {drawingIndex !== null && editingDrawing?.kind === 'drawing' && (
         <DrawingClueModal
@@ -884,5 +884,5 @@ function StatusPanel({ text }: { text: string }) {
 
 function HistoryPanel() {
   const history = useGameStore((s) => s.room?.clueHistory ?? []);
-  return <SignalHistory history={history} limit={6} sticky />;
+  return <SignalHistory history={history} limit={6} />;
 }

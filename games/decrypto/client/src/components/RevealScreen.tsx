@@ -57,7 +57,7 @@ export default function RevealScreen() {
             </div>
           </div>
 
-          <ScoreStrip scores={room.scores} />
+          <ScoreStrip scores={room.scores} players={room.players} />
 
           {clinchedOutcome && <ClinchedWinPanel outcome={clinchedOutcome} />}
 
