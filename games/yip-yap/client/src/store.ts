@@ -1,19 +1,19 @@
 import { create } from 'zustand';
-import { CastlefallEvent, CastlefallPhase } from '@games/castlefall-shared';
+import { YipYapEvent, YipYapPhase } from '@games/yip-yap-shared';
 import type {
-  CastlefallPlayerDTO,
-  CastlefallRoomDTO,
-  CastlefallSettings,
+  YipYapPlayerDTO,
+  YipYapRoomDTO,
+  YipYapSettings,
   FullReveal,
   PrivateRoundState,
   PublicRoundState,
   TeamId,
-} from '@games/castlefall-shared';
+} from '@games/yip-yap-shared';
 import { socket } from './socket';
 import { SESSION_KEY } from './constants';
 
-export { CastlefallPhase, SESSION_KEY };
-export type { CastlefallPlayerDTO, CastlefallRoomDTO, PublicRoundState, PrivateRoundState, FullReveal, TeamId };
+export { YipYapPhase, SESSION_KEY };
+export type { YipYapPlayerDTO, YipYapRoomDTO, PublicRoundState, PrivateRoundState, FullReveal, TeamId };
 
 export interface GameStore {
   connected: boolean;
@@ -21,7 +21,7 @@ export interface GameStore {
   playerName: string;
 
   roomCode: string | null;
-  room: CastlefallRoomDTO | null;
+  room: YipYapRoomDTO | null;
   publicRound: PublicRoundState | null;
   privateRound: PrivateRoundState | null;
   reveal: FullReveal | null;
@@ -48,7 +48,7 @@ export const initialState = {
   playerId: null as string | null,
   playerName: '',
   roomCode: null as string | null,
-  room: null as CastlefallRoomDTO | null,
+  room: null as YipYapRoomDTO | null,
   publicRound: null as PublicRoundState | null,
   privateRound: null as PrivateRoundState | null,
   reveal: null as FullReveal | null,
@@ -78,27 +78,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     window.history.replaceState(null, '', '/');
   },
   startRound: () => {
-    socket.emit(CastlefallEvent.StartRound, {});
+    socket.emit(YipYapEvent.StartRound, {});
   },
   endRound: ({ losingPlayerId }) => {
-    socket.emit(CastlefallEvent.EndRound, { losingPlayerId });
+    socket.emit(YipYapEvent.EndRound, { losingPlayerId });
   },
   correctClap: ({ clappingPlayerId }) => {
-    socket.emit(CastlefallEvent.CorrectClap, { clappingPlayerId });
+    socket.emit(YipYapEvent.CorrectClap, { clappingPlayerId });
   },
   resolveGuess: ({ guessedCorrectly }) => {
-    socket.emit(CastlefallEvent.ResolveGuess, { guessedCorrectly });
+    socket.emit(YipYapEvent.ResolveGuess, { guessedCorrectly });
   },
   startNewRound: () => {
-    socket.emit(CastlefallEvent.StartNewRound);
+    socket.emit(YipYapEvent.StartNewRound);
   },
 }));
 
-export function usePhase(): CastlefallPhase | null {
+export function usePhase(): YipYapPhase | null {
   return useGameStore((s) => s.room?.phase ?? null);
 }
 
-export function useMyPlayer(): CastlefallPlayerDTO | undefined {
+export function useMyPlayer(): YipYapPlayerDTO | undefined {
   const playerId = useGameStore((s) => s.playerId);
   const room = useGameStore((s) => s.room);
   if (!playerId || !room) return undefined;
@@ -111,11 +111,11 @@ export function useIsHost(): boolean {
   return playerId !== null && playerId === hostId;
 }
 
-export function useSettings(): CastlefallSettings | null {
+export function useSettings(): YipYapSettings | null {
   return useGameStore((s) => s.room?.settings ?? null);
 }
 
-export function useTeamPlayers(team: TeamId): CastlefallPlayerDTO[] {
+export function useTeamPlayers(team: TeamId): YipYapPlayerDTO[] {
   return useGameStore((s) => s.room?.players ?? []).filter((p) => p.team === team);
 }
 

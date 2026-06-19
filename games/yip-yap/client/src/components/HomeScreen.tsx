@@ -35,7 +35,7 @@ export default function HomeScreen() {
           className="font-display text-6xl tracking-wider text-white mb-3 castle-gold-text"
           style={{ textShadow: '0 0 40px rgba(212, 168, 75, 0.45)' }}
         >
-          CASTLEFALL
+          YIP YAP
         </h1>
         <p className="text-gray-400 text-sm tracking-widest uppercase">Two secret teams. One betrayal away.</p>
       </div>

@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { KickedScreen, ReconnectBanner, ErrorToast } from '@games/client-core';
-import { CastlefallPhase } from '@games/castlefall-shared';
+import { YipYapPhase } from '@games/yip-yap-shared';
 import { useGameStore, usePhase } from './store';
 import HomeScreen from './components/HomeScreen';
 import LobbyScreen from './components/LobbyScreen';
@@ -59,13 +59,13 @@ export default function App() {
   );
 }
 
-function ScreenRouter({ phase }: { phase: CastlefallPhase }) {
+function ScreenRouter({ phase }: { phase: YipYapPhase }) {
   switch (phase) {
-    case CastlefallPhase.LOBBY:
+    case YipYapPhase.LOBBY:
       return <LobbyScreen />;
-    case CastlefallPhase.ROUND:
+    case YipYapPhase.ROUND:
       return <RoundScreen />;
-    case CastlefallPhase.GAME_OVER:
+    case YipYapPhase.GAME_OVER:
       return <GameOverScreen />;
     default:
       return <HomeScreen />;

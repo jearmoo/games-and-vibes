@@ -10,27 +10,27 @@ export type RoundOutcome =
   | 'guess-correct' // opposing team correctly guessed back → opposing team +1
   | 'guess-wrong'; // opposing team failed → clapper's team +1
 
-export const CastlefallPhase = {
+export const YipYapPhase = {
   LOBBY: 'lobby',
   ROUND: 'round',
   GAME_OVER: 'gameOver',
 } as const;
 
-export type CastlefallPhase = (typeof CastlefallPhase)[keyof typeof CastlefallPhase];
+export type YipYapPhase = (typeof YipYapPhase)[keyof typeof YipYapPhase];
 
-export interface CastlefallPlayer extends BasePlayer {
+export interface YipYapPlayer extends BasePlayer {
   team?: TeamId;
   points: number;
 }
 
-export interface CastlefallPlayerDTO extends BasePlayerDTO {
+export interface YipYapPlayerDTO extends BasePlayerDTO {
   team?: TeamId;
   points: number;
   /** True during ROUND/GAME_OVER if this player was dealt into the current round. */
   inRound?: boolean;
 }
 
-export interface CastlefallSettings extends RoomSettings {
+export interface YipYapSettings extends RoomSettings {
   /** Response-timer duration (seconds) that starts after a correct clap. 0 = no timer. */
   timerSeconds: number;
 }
@@ -44,7 +44,7 @@ export interface RespondingState {
 }
 
 export interface PublicRoundState {
-  phase: CastlefallPhase;
+  phase: YipYapPhase;
   words: string[];
   responding?: RespondingState;
 }
@@ -66,32 +66,32 @@ export interface FullReveal {
   players: { id: string; name: string; team: TeamId; points: number }[];
 }
 
-export interface CastlefallRoomDTO extends RoomDTO {
-  players: CastlefallPlayerDTO[];
-  settings: CastlefallSettings;
-  phase: CastlefallPhase | null;
+export interface YipYapRoomDTO extends RoomDTO {
+  players: YipYapPlayerDTO[];
+  settings: YipYapSettings;
+  phase: YipYapPhase | null;
   round: PublicRoundState | null;
   reveal: FullReveal | null;
   roundsPlayed: number;
 }
 
-export const CastlefallEvent = {
-  StartRound: 'castlefall:startRound',
+export const YipYapEvent = {
+  StartRound: 'yip-yap:startRound',
   /** Mark the clapper as wrong → ends the round with a -1 penalty. */
-  EndRound: 'castlefall:endRound',
+  EndRound: 'yip-yap:endRound',
   /** Mark the clapper as correct → starts the response timer for the opposing team. */
-  CorrectClap: 'castlefall:correctClap',
+  CorrectClap: 'yip-yap:correctClap',
   /** Resolve the opposing team's guess attempt during/after the response window. */
-  ResolveGuess: 'castlefall:resolveGuess',
-  StartNewRound: 'castlefall:startNewRound',
-  RoundStarted: 'castlefall:roundStarted',
+  ResolveGuess: 'yip-yap:resolveGuess',
+  StartNewRound: 'yip-yap:startNewRound',
+  RoundStarted: 'yip-yap:roundStarted',
   /** Broadcast when the public round state changes mid-round (e.g. response timer started). */
-  RoundUpdated: 'castlefall:roundUpdated',
-  RoundEnded: 'castlefall:roundEnded',
-  NewRound: 'castlefall:newRound',
+  RoundUpdated: 'yip-yap:roundUpdated',
+  RoundEnded: 'yip-yap:roundEnded',
+  NewRound: 'yip-yap:newRound',
 } as const;
 
-export type CastlefallEvent = (typeof CastlefallEvent)[keyof typeof CastlefallEvent];
+export type YipYapEvent = (typeof YipYapEvent)[keyof typeof YipYapEvent];
 
 export type StartRoundPayload = Record<string, never>;
 
@@ -123,24 +123,24 @@ export interface RoundEndedPayload {
   reveal: FullReveal;
 }
 
-export interface CastlefallRejoinGame {
-  phase: CastlefallPhase;
+export interface YipYapRejoinGame {
+  phase: YipYapPhase;
   public?: PublicRoundState | null;
   private?: PrivateRoundState | null;
   reveal?: FullReveal | null;
 }
 
-export interface CastlefallClientToServerEvents {
-  [CastlefallEvent.StartRound]: (payload: StartRoundPayload) => void;
-  [CastlefallEvent.EndRound]: (payload: EndRoundPayload) => void;
-  [CastlefallEvent.CorrectClap]: (payload: CorrectClapPayload) => void;
-  [CastlefallEvent.ResolveGuess]: (payload: ResolveGuessPayload) => void;
-  [CastlefallEvent.StartNewRound]: () => void;
+export interface YipYapClientToServerEvents {
+  [YipYapEvent.StartRound]: (payload: StartRoundPayload) => void;
+  [YipYapEvent.EndRound]: (payload: EndRoundPayload) => void;
+  [YipYapEvent.CorrectClap]: (payload: CorrectClapPayload) => void;
+  [YipYapEvent.ResolveGuess]: (payload: ResolveGuessPayload) => void;
+  [YipYapEvent.StartNewRound]: () => void;
 }
 
-export interface CastlefallServerToClientEvents {
-  [CastlefallEvent.RoundStarted]: (payload: RoundStartedPayload) => void;
-  [CastlefallEvent.RoundUpdated]: (payload: RoundUpdatedPayload) => void;
-  [CastlefallEvent.RoundEnded]: (payload: RoundEndedPayload) => void;
-  [CastlefallEvent.NewRound]: () => void;
+export interface YipYapServerToClientEvents {
+  [YipYapEvent.RoundStarted]: (payload: RoundStartedPayload) => void;
+  [YipYapEvent.RoundUpdated]: (payload: RoundUpdatedPayload) => void;
+  [YipYapEvent.RoundEnded]: (payload: RoundEndedPayload) => void;
+  [YipYapEvent.NewRound]: () => void;
 }
