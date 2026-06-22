@@ -47,7 +47,7 @@ const wordBankUpperButtonClass =
   'inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-surface-raised px-2 py-1 text-[10px] tracking-widest uppercase text-gray-300 transition-all hover:bg-surface-hover active:scale-[0.97] sm:min-h-9 sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2';
 
 const wordBankIconButtonClass =
-  'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-surface-raised text-gray-300 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.95] sm:hidden';
+  'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-surface-raised transition-all hover:bg-surface-hover active:scale-[0.95] sm:hidden';
 
 const CLUE_BANK_SLOTS = [0, 1, 2, 3];
 const CLUE_BANK_SWIPE_THRESHOLD = 56;
@@ -811,12 +811,20 @@ function ClueBankFace({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {canHideWords && (
+            <VisibilitySwipeButton
+              hidden={wordsHidden}
+              onClick={() => setWordsHidden((value) => !value)}
+              hiddenLabel="Show word bank words"
+              visibleLabel="Hide word bank words"
+            />
+          )}
           <button
             type="button"
             onClick={() => setMobileExpanded((expanded) => !expanded)}
             aria-label={mobileExpanded ? 'Shrink word bank' : 'Enlarge word bank'}
             title={mobileExpanded ? 'Shrink' : 'Enlarge'}
-            className={`${wordBankIconButtonClass} ${mobileExpanded ? `${style.border} ${style.bg} ${style.text}` : ''}`}
+            className={`${wordBankIconButtonClass} ${style.text}`}
           >
             <svg
               aria-hidden="true"
@@ -855,14 +863,6 @@ function ClueBankFace({
               )}
             </svg>
           </button>
-          {canHideWords && (
-            <VisibilitySwipeButton
-              hidden={wordsHidden}
-              onClick={() => setWordsHidden((value) => !value)}
-              hiddenLabel="Show word bank words"
-              visibleLabel="Hide word bank words"
-            />
-          )}
           <button
             type="button"
             onClick={onFlip}
