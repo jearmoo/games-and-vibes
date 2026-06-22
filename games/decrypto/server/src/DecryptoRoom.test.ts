@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DecryptoPhase, type Code, type TeamId } from '@games/decrypto-shared';
 import { DecryptoRoom } from './DecryptoRoom.js';
 import {
@@ -110,8 +110,8 @@ function resolveCurrentRound(room: DecryptoRoom) {
       expect(room.submitGuess(interceptor, team, 'intercept', wrongCode(code)).ok).toBe(true);
       expect(room.submitGuess(teammateFor(room, team), team, 'decrypt', code).ok).toBe(true);
       if (team === 'red') {
-        expect(room.continueFromReveal().ok).toBe(true);
         expect(room.phase).toBe(DecryptoPhase.GUESS);
+        expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
       }
     }
   }
@@ -139,12 +139,10 @@ function createInterceptionTie(room: DecryptoRoom) {
   const blueInterceptor = room.getTeamPlayers('blue')[0].id;
   expect(room.submitGuess(blueInterceptor, 'red', 'intercept', redCode).ok).toBe(true);
   expect(room.submitGuess(teammateFor(room, 'red'), 'red', 'decrypt', redCode).ok).toBe(true);
-  expect(room.phase).toBe(DecryptoPhase.REVEAL);
+  expect(room.phase).toBe(DecryptoPhase.GUESS);
+  expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
   expect(room.reveal?.gameOver).toBe(false);
   expect(room.reveal?.winner).toBeUndefined();
-
-  expect(room.continueFromReveal().ok).toBe(true);
-  expect(room.phase).toBe(DecryptoPhase.GUESS);
 
   const blueCode = room.roundTurns!.blue.code;
   const redInterceptor = room.getTeamPlayers('red')[0].id;
@@ -432,7 +430,7 @@ describe('DecryptoRoom', () => {
     expect(room.roundTurns?.red.encryptorId).toBe('p2');
   });
 
-  it('only lets the host change offline awareness in the lobby', () => {
+  it('only lets the host change offline awareness and allows changes during the game', () => {
     const room = new DecryptoRoom('TEST', 'p1');
     addPlayer(room, 'p1', 'Rhea', 'red');
     addPlayer(room, 'p2', 'Ravi', 'red');
@@ -447,10 +445,8 @@ describe('DecryptoRoom', () => {
     expect(room.settings.offlineAwareness).toBe(false);
 
     expect(room.startGame().ok).toBe(true);
-    expect(room.setOfflineAwareness('p1', true)).toEqual({
-      ok: false,
-      message: 'Offline awareness can only be changed in the lobby.',
-    });
+    expect(room.setOfflineAwareness('p1', true).ok).toBe(true);
+    expect(room.settings.offlineAwareness).toBe(true);
   });
 
   it('keeps an offline host as host when returning to lobby with offline awareness off', () => {
@@ -578,6 +574,286 @@ describe('DecryptoRoom', () => {
     expect(blueEncryptors.every((id) => room.getPlayer(id)?.team === 'blue')).toBe(true);
   });
 
+  it('rotates 4v4 teams independently in roster order', () => {
+    const room = new DecryptoRoom('TEST', 'r1');
+    for (const [id, name] of [
+      ['r1', 'Red A'],
+      ['r2', 'Red B'],
+      ['r3', 'Red C'],
+      ['r4', 'Red D'],
+    ] as const) {
+      addPlayer(room, id, name, 'red');
+    }
+    for (const [id, name] of [
+      ['b1', 'Blue A'],
+      ['b2', 'Blue B'],
+      ['b3', 'Blue C'],
+      ['b4', 'Blue D'],
+    ] as const) {
+      addPlayer(room, id, name, 'blue');
+    }
+
+    expect(room.startGame().ok).toBe(true);
+    expect(room.setWordLock('r1', 'red', true).ok).toBe(true);
+    expect(room.setWordLock('b1', 'blue', true).ok).toBe(true);
+
+    const redEncryptors: string[] = [];
+    const blueEncryptors: string[] = [];
+    for (let index = 0; index < 5; index += 1) {
+      redEncryptors.push(room.roundTurns!.red.encryptorId);
+      blueEncryptors.push(room.roundTurns!.blue.encryptorId);
+      if (index < 4) resolveCurrentRound(room);
+    }
+
+    expect(redEncryptors).toEqual(['r1', 'r2', 'r3', 'r4', 'r1']);
+    expect(blueEncryptors).toEqual(['b1', 'b2', 'b3', 'b4', 'b1']);
+  });
+
+  it('rotates uneven teams independently without forcing paired indexes', () => {
+    const room = new DecryptoRoom('TEST', 'r1');
+    for (const [id, name] of [
+      ['r1', 'Red A'],
+      ['r2', 'Red B'],
+      ['r3', 'Red C'],
+    ] as const) {
+      addPlayer(room, id, name, 'red');
+    }
+    for (const [id, name] of [
+      ['b1', 'Blue A'],
+      ['b2', 'Blue B'],
+      ['b3', 'Blue C'],
+      ['b4', 'Blue D'],
+    ] as const) {
+      addPlayer(room, id, name, 'blue');
+    }
+
+    expect(room.startGame().ok).toBe(true);
+    expect(room.setWordLock('r1', 'red', true).ok).toBe(true);
+    expect(room.setWordLock('b1', 'blue', true).ok).toBe(true);
+
+    const redEncryptors: string[] = [];
+    const blueEncryptors: string[] = [];
+    for (let index = 0; index < 5; index += 1) {
+      redEncryptors.push(room.roundTurns!.red.encryptorId);
+      blueEncryptors.push(room.roundTurns!.blue.encryptorId);
+      if (index < 4) resolveCurrentRound(room);
+    }
+
+    expect(redEncryptors).toEqual(['r1', 'r2', 'r3', 'r1', 'r2']);
+    expect(blueEncryptors).toEqual(['b1', 'b2', 'b3', 'b4', 'b1']);
+  });
+
+  it('gates code reveal by name when offline awareness is on', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p4', 'Bo', 'blue');
+    room.players.get('p1')!.connected = false;
+
+    expect(room.startGame()).toEqual({
+      ok: false,
+      message: 'Need 2 players on each team.',
+    });
+
+    room.players.get('p1')!.connected = true;
+    expect(room.startGame().ok).toBe(true);
+    room.encryptorCounts = { p1: 1, p2: 1 };
+    room.players.get('p1')!.connected = false;
+    lockWords(room);
+
+    expect(room.roundTurns?.red.encryptorId).toBe('p1');
+    expect(room.getPublicTurnState()?.codeReveal).toMatchObject({
+      revealed: false,
+      waitingTeams: ['red'],
+      message: 'Waiting for Rhea to reconnect.',
+    });
+    expect(room.getPrivateStateFor('p1').code).toBeUndefined();
+    expect(room.getPrivateStateFor('p3').code).toBeUndefined();
+
+    room.players.get('p1')!.connected = true;
+    expect(room.syncCodeRevealGate()).toBe(true);
+    expect(room.getPrivateStateFor('p1').code).toHaveLength(3);
+    expect(room.getPrivateStateFor('p3').code).toHaveLength(3);
+    expect(room.getPrivateStateFor('p2').code).toBeUndefined();
+  });
+
+  it('skips an offline encryptor only when offline awareness is off and counts stay balanced', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Rina', 'red');
+    addPlayer(room, 'p4', 'Rory', 'red');
+    addPlayer(room, 'p5', 'Bianca', 'blue');
+    addPlayer(room, 'p6', 'Bo', 'blue');
+    expect(room.setOfflineAwareness('p1', false).ok).toBe(true);
+
+    expect(room.startGame().ok).toBe(true);
+    room.encryptorCounts = { p1: 1, p2: 1, p3: 1, p4: 1 };
+    room.players.get('p1')!.connected = false;
+    expect(room.setWordLock('p2', 'red', true).ok).toBe(true);
+    expect(room.setWordLock('p5', 'blue', true).ok).toBe(true);
+
+    expect(room.roundTurns?.red.encryptorId).toBe('p2');
+    expect(room.getPublicTurnState()?.codeReveal.revealed).toBe(true);
+  });
+
+  it('does not skip an offline lowest-count encryptor when offline awareness is off', () => {
+    const room = new DecryptoRoom('TEST', 'p1');
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Rina', 'red');
+    addPlayer(room, 'p4', 'Rory', 'red');
+    addPlayer(room, 'p5', 'Bianca', 'blue');
+    addPlayer(room, 'p6', 'Bo', 'blue');
+    expect(room.setOfflineAwareness('p1', false).ok).toBe(true);
+
+    expect(room.startGame().ok).toBe(true);
+    room.encryptorCounts = { p1: 1, p2: 2, p3: 2, p4: 2 };
+    room.players.get('p1')!.connected = false;
+    expect(room.setWordLock('p2', 'red', true).ok).toBe(true);
+    expect(room.setWordLock('p5', 'blue', true).ok).toBe(true);
+
+    expect(room.roundTurns?.red.encryptorId).toBe('p1');
+    expect(room.getPublicTurnState()?.codeReveal).toMatchObject({
+      revealed: false,
+      waitingTeams: ['red'],
+      message: 'Waiting for both clue-givers to be ready...',
+    });
+    expect(room.getPrivateStateFor('p1').code).toBeUndefined();
+    expect(room.getPrivateStateFor('p5').code).toBeUndefined();
+  });
+
+  it('requires opposing encryptor approval before swapping clue-givers and resetting clues', () => {
+    const room = startReadyRoom();
+    const originalRedEncryptor = room.roundTurns!.red.encryptorId;
+    const originalBlueEncryptor = room.roundTurns!.blue.encryptorId;
+    const replacementId = teammateFor(room, 'red');
+    const initialRevision = room.getPublicTurnState()!.clueRevision;
+    room.roundTurns!.red.code = [1, 2, 3];
+    room.roundTurns!.blue.code = [1, 2, 4];
+
+    expect(room.saveClues(originalRedEncryptor, ['old red', '', '']).ok).toBe(true);
+    expect(room.requestEncryptorSwap(replacementId, 'red', replacementId).ok).toBe(true);
+    expect(room.getPublicTurnState()?.pendingEncryptorSwap).toMatchObject({
+      team: 'red',
+      requestedById: replacementId,
+      replacementId,
+      approvingTeam: 'blue',
+      approverId: originalBlueEncryptor,
+    });
+
+    expect(room.approveEncryptorSwap(replacementId)).toEqual({
+      ok: false,
+      message: 'Only the opposing clue-giver can approve this swap.',
+    });
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      expect(room.approveEncryptorSwap(originalBlueEncryptor).ok).toBe(true);
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    expect(room.roundTurns!.red.encryptorId).toBe(replacementId);
+    expect(room.roundTurns!.red.code).toEqual([2, 3, 4]);
+    expect(room.roundTurns!.blue.code).toEqual([2, 3, 4]);
+    expect(room.roundTurns!.red.clues).toEqual([
+      { kind: 'text', text: '' },
+      { kind: 'text', text: '' },
+      { kind: 'text', text: '' },
+    ]);
+    expect(room.roundTurns!.blue.clues).toEqual([
+      { kind: 'text', text: '' },
+      { kind: 'text', text: '' },
+      { kind: 'text', text: '' },
+    ]);
+    expect(room.getPublicTurnState()?.pendingEncryptorSwap).toBeUndefined();
+    expect(room.getPublicTurnState()?.clueRevision).toBe(initialRevision + 1);
+    expect(room.clueTimerStartedAt).toBeUndefined();
+    expect(room.getPrivateStateFor(originalRedEncryptor).code).toBeUndefined();
+    expect(room.getPrivateStateFor(replacementId).code).toHaveLength(3);
+  });
+
+  it('blocks swaps after either team has locked encryption', () => {
+    const room = startReadyRoom();
+    const redEncryptor = room.roundTurns!.red.encryptorId;
+    expect(room.lockClues(redEncryptor, ['sky', 'river', 'crown']).ok).toBe(true);
+
+    expect(room.requestEncryptorSwap(teammateFor(room, 'red'), 'red', teammateFor(room, 'red'))).toEqual({
+      ok: false,
+      message: 'Cannot reassign since Red team has locked their encryption.',
+    });
+  });
+
+  it('blocks a team from requesting another swap after two same-round rejections', () => {
+    const room = startReadyRoom();
+    const redReplacement = teammateFor(room, 'red');
+    const blueEncryptor = room.roundTurns!.blue.encryptorId;
+
+    expect(room.requestEncryptorSwap(redReplacement, 'red', redReplacement).ok).toBe(true);
+    expect(room.rejectEncryptorSwap(blueEncryptor).ok).toBe(true);
+    expect(room.getPublicTurnState()?.encryptorSwapRejections.red).toBe(1);
+
+    expect(room.requestEncryptorSwap(redReplacement, 'red', redReplacement).ok).toBe(true);
+    expect(room.rejectEncryptorSwap(blueEncryptor).ok).toBe(true);
+    expect(room.getPublicTurnState()?.encryptorSwapRejections.red).toBe(2);
+
+    expect(room.requestEncryptorSwap(redReplacement, 'red', redReplacement)).toEqual({
+      ok: false,
+      message: 'Your team has no swap requests left this round.',
+    });
+
+    resolveCurrentRound(room);
+    const nextRoundRedReplacement = teammateFor(room, 'red');
+    expect(room.getPublicTurnState()?.encryptorSwapRejections.red).toBe(0);
+    expect(room.requestEncryptorSwap(nextRoundRedReplacement, 'red', nextRoundRedReplacement).ok).toBe(true);
+  });
+
+  it('rejects invalid swap requesters and replacement candidates', () => {
+    const room = startReadyRoom();
+    const redReplacement = teammateFor(room, 'red');
+    const bluePlayer = room.roundTurns!.blue.encryptorId;
+    const spectator = room.addPlayer('p9', 'Spectator', 'socket-p9');
+
+    expect(room.requestEncryptorSwap(bluePlayer, 'red', redReplacement)).toEqual({
+      ok: false,
+      message: 'Only teammates can request a clue-giver swap.',
+    });
+    expect(room.requestEncryptorSwap(redReplacement, 'red', bluePlayer)).toEqual({
+      ok: false,
+      message: 'Choose a valid teammate to swap to.',
+    });
+    expect(room.requestEncryptorSwap(spectator.id, 'red', redReplacement)).toEqual({
+      ok: false,
+      message: 'Only teammates can request a clue-giver swap.',
+    });
+  });
+
+  it('lets the approved replacement submit and keeps future assignment fair', () => {
+    const room = startReadyRoom();
+    const originalRedEncryptor = room.roundTurns!.red.encryptorId;
+    const blueEncryptor = room.roundTurns!.blue.encryptorId;
+    const replacementId = teammateFor(room, 'red');
+
+    expect(room.requestEncryptorSwap(replacementId, 'red', replacementId).ok).toBe(true);
+    expect(room.approveEncryptorSwap(blueEncryptor).ok).toBe(true);
+    expect(room.lockClues(originalRedEncryptor, ['old', 'red', 'clues'])).toEqual({
+      ok: false,
+      message: 'Only an encryptor can lock clues.',
+    });
+    expect(room.lockClues(replacementId, ['new', 'red', 'clues']).ok).toBe(true);
+    expect(room.lockClues(blueEncryptor, ['blue', 'team', 'clues']).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.GUESS);
+
+    expect(room.submitGuess(originalRedEncryptor, 'red', 'decrypt', room.roundTurns!.red.code).ok).toBe(true);
+    expect(room.submitGuess(teammateFor(room, 'blue'), 'blue', 'decrypt', room.roundTurns!.blue.code).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.continueFromReveal().ok).toBe(true);
+
+    expect(room.roundTurns!.red.encryptorId).toBe(originalRedEncryptor);
+  });
+
   it('starts and cancels the clue timer when a locked encryptor unlocks', () => {
     const room = startReadyRoom();
     const redEncryptor = room.roundTurns!.red.encryptorId;
@@ -666,14 +942,11 @@ describe('DecryptoRoom', () => {
     expect(room.submitGuess('p3', 'red', 'intercept', room.roundTurns!.red.code).ok).toBe(true);
     expect(room.submitGuess(teammateFor(room, 'red'), 'red', 'decrypt', room.roundTurns!.red.code).ok).toBe(true);
 
-    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.phase).toBe(DecryptoPhase.GUESS);
+    expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
     expect(room.reveal?.winner).toBeUndefined();
     expect(room.reveal?.gameOver).toBe(false);
     expect(room.scores.blue.intercepts).toBe(1);
-
-    expect(room.continueFromReveal().ok).toBe(true);
-    expect(room.phase).toBe(DecryptoPhase.GUESS);
-    expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
 
     expect(room.submitGuess('p1', 'blue', 'intercept', wrongCode(room.roundTurns!.blue.code)).ok).toBe(true);
     expect(room.submitGuess(teammateFor(room, 'blue'), 'blue', 'decrypt', room.roundTurns!.blue.code).ok).toBe(true);
@@ -745,10 +1018,10 @@ describe('DecryptoRoom', () => {
     const redCode = room.roundTurns!.red.code;
     expect(room.submitGuess('p3', 'red', 'intercept', redCode).ok).toBe(true);
     expect(room.submitGuess(teammateFor(room, 'red'), 'red', 'decrypt', redCode).ok).toBe(true);
-    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.phase).toBe(DecryptoPhase.GUESS);
+    expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
     expect(room.clinchedOutcome).toBeUndefined();
 
-    expect(room.continueFromReveal().ok).toBe(true);
     const blueCode = room.roundTurns!.blue.code;
     expect(room.submitGuess('p1', 'blue', 'intercept', blueCode).ok).toBe(true);
     expect(room.submitGuess(teammateFor(room, 'blue'), 'blue', 'decrypt', blueCode).ok).toBe(true);
@@ -773,10 +1046,10 @@ describe('DecryptoRoom', () => {
     const redCode = room.roundTurns!.red.code;
     expect(room.submitGuess('p3', 'red', 'intercept', wrongCode(redCode)).ok).toBe(true);
     expect(room.submitGuess(teammateFor(room, 'red'), 'red', 'decrypt', wrongCode(redCode)).ok).toBe(true);
-    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.phase).toBe(DecryptoPhase.GUESS);
+    expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
     expect(room.clinchedOutcome).toBeUndefined();
 
-    expect(room.continueFromReveal().ok).toBe(true);
     const blueCode = room.roundTurns!.blue.code;
     expect(room.submitGuess('p1', 'blue', 'intercept', wrongCode(blueCode)).ok).toBe(true);
     expect(room.submitGuess(teammateFor(room, 'blue'), 'blue', 'decrypt', wrongCode(blueCode)).ok).toBe(true);
@@ -787,6 +1060,32 @@ describe('DecryptoRoom', () => {
     expect(room.getFinalGameState()?.winner).toBe('red');
     expect(room.getFinalGameState()?.reason).toBe('miscommunications');
     expect(room.getPublicTiebreakerState()).toBeNull();
+  });
+
+  it('moves to keyword tiebreaker when a team reaches winning and losing conditions with tied official score', () => {
+    const room = startReadyRoom();
+    advanceToRoundTwo(room);
+    room.scores = {
+      red: { intercepts: 1, miscommunications: 1 },
+      blue: { intercepts: 1, miscommunications: 1 },
+    };
+    lockBothClueSets(room);
+
+    const redCode = room.roundTurns!.red.code;
+    expect(room.submitGuess('p3', 'red', 'intercept', wrongCode(redCode)).ok).toBe(true);
+    expect(room.submitGuess(teammateFor(room, 'red'), 'red', 'decrypt', wrongCode(redCode)).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.GUESS);
+    expect(room.getPublicTurnState()?.activeGuessTeam).toBe('blue');
+
+    const blueCode = room.roundTurns!.blue.code;
+    expect(room.submitGuess('p1', 'blue', 'intercept', blueCode).ok).toBe(true);
+    expect(room.submitGuess(teammateFor(room, 'blue'), 'blue', 'decrypt', blueCode).ok).toBe(true);
+
+    expect(room.scores.red).toEqual({ intercepts: 2, miscommunications: 2 });
+    expect(room.scores.blue).toEqual({ intercepts: 1, miscommunications: 1 });
+    expect(room.phase).toBe(DecryptoPhase.TIEBREAKER);
+    expect(room.getFinalGameState()).toBeNull();
+    expect(room.getPublicTiebreakerState()?.submissions.red.submitted).toBe(false);
   });
 
   it('moves to a keyword tiebreaker when both teams reach the terminal score after equal turns', () => {

@@ -83,6 +83,21 @@ export interface PublicTeamTurnState {
   revealed: boolean;
 }
 
+export interface PublicCodeRevealState {
+  revealed: boolean;
+  waitingTeams: TeamId[];
+  message?: string;
+}
+
+export interface PublicEncryptorSwapState {
+  team: TeamId;
+  requestedById: string;
+  replacementId: string;
+  approvingTeam: TeamId;
+  approverId: string;
+  requestedAt: number;
+}
+
 export interface ClueTimerState {
   startedAt: number;
   durationSeconds: number;
@@ -91,8 +106,12 @@ export interface ClueTimerState {
 
 export interface PublicTurnState {
   round: number;
+  clueRevision: number;
+  codeReveal: PublicCodeRevealState;
+  encryptorSwapRejections: Record<TeamId, number>;
   activeGuessTeam?: TeamId;
   clueTimer?: ClueTimerState;
+  pendingEncryptorSwap?: PublicEncryptorSwapState;
   teams: Record<TeamId, PublicTeamTurnState>;
 }
 
@@ -212,6 +231,9 @@ export const DecryptoEvent = {
   SaveClues: 'decrypto:saveClues',
   SubmitClues: 'decrypto:submitClues',
   UnlockClues: 'decrypto:unlockClues',
+  RequestEncryptorSwap: 'decrypto:requestEncryptorSwap',
+  ApproveEncryptorSwap: 'decrypto:approveEncryptorSwap',
+  RejectEncryptorSwap: 'decrypto:rejectEncryptorSwap',
   PostGuessShare: 'decrypto:postGuessShare',
   SubmitGuess: 'decrypto:submitGuess',
   SetOfflineAwareness: 'decrypto:setOfflineAwareness',
@@ -248,6 +270,11 @@ export type StartGamePayload = Record<string, never>;
 
 export interface SubmitCluesPayload {
   clues: ClueContent[];
+}
+
+export interface RequestEncryptorSwapPayload {
+  team: TeamId;
+  replacementId: string;
 }
 
 export interface SubmitGuessPayload {
@@ -292,6 +319,9 @@ export interface DecryptoClientToServerEvents {
   [DecryptoEvent.SaveClues]: (payload: SubmitCluesPayload) => void;
   [DecryptoEvent.SubmitClues]: (payload: SubmitCluesPayload) => void;
   [DecryptoEvent.UnlockClues]: () => void;
+  [DecryptoEvent.RequestEncryptorSwap]: (payload: RequestEncryptorSwapPayload) => void;
+  [DecryptoEvent.ApproveEncryptorSwap]: () => void;
+  [DecryptoEvent.RejectEncryptorSwap]: () => void;
   [DecryptoEvent.PostGuessShare]: (payload: PostGuessSharePayload) => void;
   [DecryptoEvent.SubmitGuess]: (payload: SubmitGuessPayload) => void;
   [DecryptoEvent.SetOfflineAwareness]: (payload: SetOfflineAwarenessPayload) => void;

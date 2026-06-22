@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { ConfirmModal, RoomQrButton } from '@games/client-core';
-import { socket } from '../socket';
 import { useGameStore, useIsHost, useMyPlayer, useTeamPlayers, type DecryptoPlayerDTO, type TeamId } from '../store';
 import LeaveRoomButton from './LeaveRoomButton';
 import { HowToPlayPanel } from './shared';
@@ -32,6 +31,7 @@ export default function LobbyScreen() {
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+  const [confirmHostId, setConfirmHostId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const shareUrl = roomCode ? `${window.location.origin}/${roomCode}` : '';
@@ -118,6 +118,8 @@ export default function LobbyScreen() {
               myId={me?.id ?? null}
               canKick={host}
               onKick={setConfirmKickId}
+              canTransferHost={host}
+              onTransferHost={setConfirmHostId}
               showOfflineStatus={offlineAwareness}
             />
             <TeamColumn
@@ -127,6 +129,8 @@ export default function LobbyScreen() {
               myId={me?.id ?? null}
               canKick={host}
               onKick={setConfirmKickId}
+              canTransferHost={host}
+              onTransferHost={setConfirmHostId}
               showOfflineStatus={offlineAwareness}
             />
           </div>
@@ -175,10 +179,23 @@ export default function LobbyScreen() {
           confirmLabel="Kick"
           cancelLabel="Cancel"
           onConfirm={() => {
-            socket.emit('player:kick', { targetId: confirmKickId });
+            useGameStore.getState().kickPlayer(confirmKickId);
             setConfirmKickId(null);
           }}
           onCancel={() => setConfirmKickId(null)}
+        />
+      )}
+      {confirmHostId && (
+        <ConfirmModal
+          title={`Make ${players.find((p) => p.id === confirmHostId)?.name ?? 'player'} host?`}
+          message="They will control lobby settings and starting the game."
+          confirmLabel="Make host"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            useGameStore.getState().transferHost(confirmHostId);
+            setConfirmHostId(null);
+          }}
+          onCancel={() => setConfirmHostId(null)}
         />
       )}
       {helpOpen && <HowToPlayPanel onClose={() => setHelpOpen(false)} />}
@@ -226,6 +243,8 @@ function TeamColumn({
   myId,
   canKick,
   onKick,
+  canTransferHost,
+  onTransferHost,
   showOfflineStatus,
 }: {
   team: TeamId;
@@ -234,6 +253,8 @@ function TeamColumn({
   myId: string | null;
   canKick: boolean;
   onKick: (id: string) => void;
+  canTransferHost: boolean;
+  onTransferHost: (id: string) => void;
   showOfflineStatus: boolean;
 }) {
   const meta = TEAM_META[team];
@@ -284,14 +305,37 @@ function TeamColumn({
                   OFFLINE
                 </span>
               )}
-              {canKick && p.id !== hostId && (
-                <button
-                  onClick={() => onKick(p.id)}
-                  className="px-0.5 text-sm leading-none text-gray-500 transition-colors hover:text-rose-300 sm:px-1 sm:text-base"
-                  title={`Kick ${p.name}`}
-                >
-                  &times;
-                </button>
+              {p.id !== hostId && (
+                <>
+                  {canTransferHost && (
+                    <button
+                      type="button"
+                      onClick={() => onTransferHost(p.id)}
+                      className="flex h-5 w-5 items-center justify-center rounded border border-amber-400/15 text-amber-300/60 transition-all hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-200 active:scale-95"
+                      title={`Make ${p.name} host`}
+                      aria-label={`Make ${p.name} host`}
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none">
+                        <path
+                          d="M4 9.5 8.5 13 12 6l3.5 7L20 9.5 18.5 18h-13L4 9.5Z"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                  {canKick && (
+                    <button
+                      onClick={() => onKick(p.id)}
+                      className="px-0.5 text-sm leading-none text-gray-500 transition-colors hover:text-rose-300 sm:px-1 sm:text-base"
+                      title={`Kick ${p.name}`}
+                    >
+                      &times;
+                    </button>
+                  )}
+                </>
               )}
             </span>
           </div>

@@ -79,6 +79,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
+        removedReason: p.removedReason,
       })),
       teamNames: this.teamNames,
       ...this.serializeGameState(),
@@ -86,7 +87,13 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
   }
 
   override restorePlayers(data: {
-    players?: Array<{ id: string; name: string; team: TeamId | null; removed?: boolean }>;
+    players?: Array<{
+      id: string;
+      name: string;
+      team: TeamId | null;
+      removed?: boolean;
+      removedReason?: 'left' | 'kicked';
+    }>;
   }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
@@ -97,6 +104,7 @@ export class AdtabooRoom extends BaseRoom<AdtabooPlayer> {
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
+        removedReason: p.removedReason,
       });
     }
   }

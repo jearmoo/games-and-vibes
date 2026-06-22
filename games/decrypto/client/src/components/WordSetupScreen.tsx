@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import type { TeamId } from '@games/decrypto-shared';
 import { useGameStore, useTeamPlayers, type DecryptoPlayerDTO } from '../store';
 import { AnimatedLockButton, MobileScoreSummary, TEAM_STYLES, VisibilitySwipeButton } from './shared';
@@ -9,15 +10,19 @@ const TEAMS: TeamId[] = ['red', 'blue'];
 export default function WordSetupScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
+  const playerId = useGameStore((s) => s.playerId);
   const wordLocks = useGameStore((s) => s.room?.wordLocks ?? { red: false, blue: false });
   const redPlayers = useTeamPlayers('red');
   const bluePlayers = useTeamPlayers('blue');
   const [setupDetailsOpen, setSetupDetailsOpen] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
   const playersByTeam: Record<TeamId, DecryptoPlayerDTO[]> = {
     red: redPlayers,
     blue: bluePlayers,
   };
   const visibleTeams: TeamId[] = privateState?.team ? [privateState.team] : TEAMS;
+  const isHost = room?.hostId === playerId;
+  const kickTarget = confirmKickId ? room?.players.find((player) => player.id === confirmKickId) : undefined;
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
@@ -33,7 +38,13 @@ export default function WordSetupScreen() {
             <div className="sm:hidden">
               <div className="rounded-lg border border-white/10 bg-black/15 p-2">
                 <div className="mb-2 font-display text-base tracking-wider text-white">Word setup</div>
-                <MobileScoreSummary scores={room.scores} players={room.players} />
+                <MobileScoreSummary
+                  scores={room.scores}
+                  players={room.players}
+                  currentPlayerId={playerId}
+                  onKickPlayer={isHost ? setConfirmKickId : undefined}
+                  showOfflineStatus={room.settings.offlineAwareness}
+                />
               </div>
             </div>
           )}
@@ -53,6 +64,20 @@ export default function WordSetupScreen() {
           </div>
         </div>
       </div>
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${kickTarget?.name ?? 'player'}?`}
+          message="They will be removed from the game."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="bg-gradient-to-br from-red-600 to-red-500 text-white shadow-[0_0_18px_rgba(239,68,68,0.26)] hover:from-red-500 hover:to-red-400"
+          onConfirm={() => {
+            if (confirmKickId) useGameStore.getState().kickPlayer(confirmKickId);
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

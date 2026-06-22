@@ -10,6 +10,7 @@ import {
   type PostGuessSharePayload,
   type RegenerateKeywordPayload,
   type ReleaseWordsPayload,
+  type RequestEncryptorSwapPayload,
   type SetOfflineAwarenessPayload,
   type SetWordLockPayload,
   type SetTiebreakerVocabularyModePayload,
@@ -190,6 +191,50 @@ export function registerGameHandlers(ctx: SocketContext<DecryptoRoom>) {
     }
     emitGameState(room, io);
     scheduleClueTimer(room, io);
+  });
+
+  socket.on(DecryptoEvent.RequestEncryptorSwap, (payload: RequestEncryptorSwapPayload) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    if (!TEAMS.includes(payload?.team) || typeof payload?.replacementId !== 'string') {
+      socket.emit('room:error', { message: 'Choose a valid teammate to swap to.' });
+      return;
+    }
+    const result = room.requestEncryptorSwap(playerId, payload.team, payload.replacementId);
+    if (!result.ok) {
+      socket.emit('room:error', { message: result.message });
+      return;
+    }
+    emitGameState(room, io);
+  });
+
+  socket.on(DecryptoEvent.ApproveEncryptorSwap, () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    const result = room.approveEncryptorSwap(playerId);
+    if (!result.ok) {
+      socket.emit('room:error', { message: result.message });
+      return;
+    }
+    emitGameState(room, io);
+    scheduleClueTimer(room, io);
+  });
+
+  socket.on(DecryptoEvent.RejectEncryptorSwap, () => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    const result = room.rejectEncryptorSwap(playerId);
+    if (!result.ok) {
+      socket.emit('room:error', { message: result.message });
+      return;
+    }
+    emitGameState(room, io);
   });
 
   socket.on(DecryptoEvent.PostGuessShare, (payload: PostGuessSharePayload) => {

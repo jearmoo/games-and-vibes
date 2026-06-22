@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { ConfirmModal } from '@games/client-core';
 import type { TeamId, TiebreakerVocabularyMode } from '@games/decrypto-shared';
-import { useGameStore, useIsHost } from '../store';
+import { useGameStore } from '../store';
 import { AnimatedLockButton, ClueBank, ScoreStrip, SignalHistory, TEAM_STYLES, TeamBadge, otherTeam } from './shared';
 import GameHeader from './GameHeader';
 
@@ -34,22 +34,20 @@ function rankedSuggestions(prefix: string, vocabulary: string[]): string[] {
 export default function TieBreakerScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
-  const isHost = useIsHost();
+  const playerId = useGameStore((s) => s.playerId);
   const myTeam = privateState?.team;
   const targetTeam = myTeam ? otherTeam(myTeam) : undefined;
   const [guesses, setGuesses] = useState(['', '', '', '']);
   const [submitting, setSubmitting] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [focusedSlot, setFocusedSlot] = useState<number | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tiebreakerDetailsOpen, setTiebreakerDetailsOpen] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
 
   const submitted = !!(myTeam && room?.tiebreaker?.submissions[myTeam]?.submitted);
   const otherSubmitted = !!(targetTeam && room?.tiebreaker?.submissions[targetTeam]?.submitted);
   const canUnlockTiebreaker = submitted && !otherSubmitted;
   const vocabularyMode = room?.tiebreaker?.vocabularyMode ?? room?.settings.tiebreakerVocabularyMode ?? 'english';
-  const hasAnySubmission = !!(
-    room?.tiebreaker?.submissions.red.submitted || room?.tiebreaker?.submissions.blue.submitted
-  );
   const vocabulary = room?.tiebreaker?.vocabulary ?? [];
   const vocabularySet = useMemo(() => new Set(vocabulary), [vocabulary]);
   const suggestionsBySlot = useMemo(
@@ -93,35 +91,34 @@ export default function TieBreakerScreen() {
     useGameStore.getState().submitTiebreaker(guesses);
     setTimeout(() => setSubmitting(false), 5000);
   };
+  const kickTarget = confirmKickId ? room.players.find((player) => player.id === confirmKickId) : undefined;
+  const isHost = room.hostId === playerId;
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
-      <GameHeader roleOverride="Tiebreaker" roundLabel="" />
+      <GameHeader
+        roleOverride="Tiebreaker"
+        roundLabel=""
+        dropdownOpen={tiebreakerDetailsOpen}
+        onDropdownOpenChange={setTiebreakerDetailsOpen}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex min-h-full w-full max-w-5xl mx-auto flex-col gap-4 px-5 pb-5 pt-2 sm:gap-5 sm:pt-4">
+          {tiebreakerDetailsOpen && (
+            <div className="rounded-lg border border-white/10 bg-black/15 p-2">
+              <div className="mb-2 font-display text-base tracking-wider text-white">Sudden decode</div>
+              <ScoreStrip
+                scores={room.scores}
+                players={room.players}
+                currentPlayerId={playerId}
+                onKickPlayer={isHost ? setConfirmKickId : undefined}
+                showOfflineStatus={room.settings.offlineAwareness}
+              />
+            </div>
+          )}
+
           <div className="relative min-h-20 text-center sm:min-h-24">
-            {isHost && (
-              <div className="absolute left-0 top-0 text-[8px] tracking-[0.22em] text-fuchsia-300 uppercase">Host</div>
-            )}
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              aria-label="Open tiebreaker settings"
-              title="Tiebreaker settings"
-              className="absolute right-0 top-1 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-gray-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97] sm:top-0"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <path
-                  d="M9.67 4.14a2.36 2.36 0 0 1 4.66 0 2.36 2.36 0 0 0 3.32 1.91 2.36 2.36 0 0 1 2.33 4.03 2.36 2.36 0 0 0 0 3.84 2.36 2.36 0 0 1-2.33 4.03 2.36 2.36 0 0 0-3.32 1.91 2.36 2.36 0 0 1-4.66 0 2.36 2.36 0 0 0-3.32-1.91 2.36 2.36 0 0 1-2.33-4.03 2.36 2.36 0 0 0 0-3.84 2.36 2.36 0 0 1 2.33-4.03 2.36 2.36 0 0 0 3.32-1.91Z"
-                  stroke="currentColor"
-                  strokeWidth="1.65"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.65" />
-              </svg>
-            </button>
-            <div className="mx-auto max-w-[calc(100%-5rem)] pt-1 sm:max-w-[calc(100%-3rem)] sm:pt-0">
+            <div className="mx-auto max-w-[calc(100%-2rem)] pt-1 sm:pt-0">
               <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Sudden decode</div>
               <div className="font-display text-4xl tracking-wider text-white">Tiebreaker</div>
               <div className="mt-2 text-sm text-gray-400">
@@ -130,7 +127,6 @@ export default function TieBreakerScreen() {
             </div>
           </div>
 
-          <ScoreStrip scores={room.scores} players={room.players} />
           <SubmissionStrip submissions={room.tiebreaker?.submissions} />
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_21rem] gap-4">
@@ -183,18 +179,22 @@ export default function TieBreakerScreen() {
               includeIntercept
             />
           </div>
-
-          {settingsOpen && (
-            <VocabularySettingsPanel
-              mode={vocabularyMode}
-              isHost={isHost}
-              locked={hasAnySubmission}
-              vocabularySize={vocabulary.length}
-              onClose={() => setSettingsOpen(false)}
-            />
-          )}
         </div>
       </div>
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${kickTarget?.name ?? 'player'}?`}
+          message="They will be removed from the game."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="bg-gradient-to-br from-red-600 to-red-500 text-white shadow-[0_0_18px_rgba(239,68,68,0.26)] hover:from-red-500 hover:to-red-400"
+          onConfirm={() => {
+            if (confirmKickId) useGameStore.getState().kickPlayer(confirmKickId);
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -231,111 +231,6 @@ function SubmissionStrip({
         );
       })}
     </div>
-  );
-}
-
-function VocabularySettingsPanel({
-  mode,
-  isHost,
-  locked,
-  vocabularySize,
-  onClose,
-}: {
-  mode: TiebreakerVocabularyMode;
-  isHost: boolean;
-  locked: boolean;
-  vocabularySize: number;
-  onClose: () => void;
-}) {
-  const options: Array<{ mode: TiebreakerVocabularyMode; label: string; caption: string }> = [
-    { mode: 'english', label: 'All English', caption: 'Common words' },
-    { mode: 'word-bank', label: 'Word Bank', caption: 'Decrypto cards' },
-  ];
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [onClose]);
-
-  const setMode = (nextMode: TiebreakerVocabularyMode) => {
-    if (!isHost || locked || nextMode === mode) return;
-    useGameStore.getState().setTiebreakerVocabularyMode(nextMode);
-  };
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Tiebreaker settings"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-md" />
-      <div
-        className="relative w-full max-w-md rounded-2xl border border-white/10 bg-surface/95 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.55)] animate-fade-in"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Tiebreaker settings</div>
-            <div className="font-display text-2xl tracking-wider text-white">Guess pool</div>
-            <div className="mt-1 text-sm text-gray-400">
-              {mode === 'word-bank' ? 'Limited to Decrypto words' : 'Using common English words'}
-              <span className="ml-2 text-gray-500">{vocabularySize.toLocaleString()} words</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close tiebreaker settings"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-surface-raised text-xl leading-none text-gray-400 transition-all hover:bg-surface-hover hover:text-white active:scale-[0.97]"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {options.map((option) => {
-            const active = option.mode === mode;
-            const interactive = isHost && !locked;
-            const optionClass = interactive
-              ? active
-                ? 'border-white/25 bg-white/12 text-white shadow-inner shadow-white/5'
-                : 'border-white/10 bg-black/20 text-gray-400 hover:bg-white/5 hover:text-gray-200'
-              : active
-                ? 'pointer-events-none border-white/20 bg-white/10 text-white shadow-inner shadow-white/5'
-                : 'pointer-events-none border-white/10 bg-black/20 text-gray-500';
-            return (
-              <button
-                key={option.mode}
-                type="button"
-                onClick={() => setMode(option.mode)}
-                disabled={!interactive}
-                aria-pressed={active}
-                className={`rounded-xl border px-3 py-3 text-left transition-all disabled:cursor-not-allowed ${optionClass}`}
-              >
-                <div className="font-display text-xs tracking-wider uppercase">{option.label}</div>
-                <div className="mt-0.5 text-[10px] text-gray-500">{option.caption}</div>
-              </button>
-            );
-          })}
-        </div>
-
-        {!isHost && <div className="mt-3 text-[11px] text-gray-500">Only the host can change this setting.</div>}
-        {isHost && locked && (
-          <div className="mt-3 text-[11px] text-gray-500">Locked after the first tiebreaker submission.</div>
-        )}
-      </div>
-    </div>,
-    document.body,
   );
 }
 

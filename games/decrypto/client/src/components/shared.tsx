@@ -261,7 +261,54 @@ export function DisclosureChevron({ open }: { open: boolean }) {
   );
 }
 
-export function ScoreStrip({ scores, players }: { scores: ScoreBoard; players?: DecryptoPlayerDTO[] }) {
+interface ScorePlayerControls {
+  currentPlayerId?: string | null;
+  onKickPlayer?: (playerId: string) => void;
+  showOfflineStatus?: boolean;
+}
+
+function PlayerPill({
+  player,
+  currentPlayerId,
+  onKickPlayer,
+  showOfflineStatus = false,
+}: {
+  player: DecryptoPlayerDTO;
+  currentPlayerId?: string | null;
+  onKickPlayer?: (playerId: string) => void;
+  showOfflineStatus?: boolean;
+}) {
+  const canKick = !!onKickPlayer && player.id !== currentPlayerId;
+  const isOffline = showOfflineStatus && !player.connected;
+  return (
+    <span
+      className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 transition-colors ${
+        isOffline ? 'text-gray-500 opacity-60' : 'text-gray-300'
+      }`}
+    >
+      <span className="min-w-0 truncate">{player.name}</span>
+      {canKick && (
+        <button
+          type="button"
+          onClick={() => onKickPlayer(player.id)}
+          className="-mr-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs leading-none text-gray-500 transition-colors hover:bg-red-500/15 hover:text-red-300"
+          aria-label={`Kick ${player.name}`}
+          title={`Kick ${player.name}`}
+        >
+          &times;
+        </button>
+      )}
+    </span>
+  );
+}
+
+export function ScoreStrip({
+  scores,
+  players,
+  currentPlayerId,
+  onKickPlayer,
+  showOfflineStatus = false,
+}: { scores: ScoreBoard; players?: DecryptoPlayerDTO[] } & ScorePlayerControls) {
   return (
     <div className="grid w-full grid-cols-2 gap-2">
       {(['red', 'blue'] as TeamId[]).map((team) => {
@@ -293,12 +340,13 @@ export function ScoreStrip({ scores, players }: { scores: ScoreBoard; players?: 
                 {teamPlayers.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {teamPlayers.map((player) => (
-                      <span
+                      <PlayerPill
                         key={player.id}
-                        className="min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 text-gray-300"
-                      >
-                        {player.name}
-                      </span>
+                        player={player}
+                        currentPlayerId={currentPlayerId}
+                        onKickPlayer={onKickPlayer}
+                        showOfflineStatus={showOfflineStatus}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -313,7 +361,13 @@ export function ScoreStrip({ scores, players }: { scores: ScoreBoard; players?: 
   );
 }
 
-export function MobileScoreSummary({ scores, players }: { scores: ScoreBoard; players: DecryptoPlayerDTO[] }) {
+export function MobileScoreSummary({
+  scores,
+  players,
+  currentPlayerId,
+  onKickPlayer,
+  showOfflineStatus = false,
+}: { scores: ScoreBoard; players: DecryptoPlayerDTO[] } & ScorePlayerControls) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {(['red', 'blue'] as TeamId[]).map((team) => {
@@ -338,12 +392,13 @@ export function MobileScoreSummary({ scores, players }: { scores: ScoreBoard; pl
               {teamPlayers.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {teamPlayers.map((player) => (
-                    <span
+                    <PlayerPill
                       key={player.id}
-                      className="min-w-0 max-w-full truncate rounded-md border border-white/10 bg-black/15 px-1.5 py-0.5 text-gray-300"
-                    >
-                      {player.name}
-                    </span>
+                      player={player}
+                      currentPlayerId={currentPlayerId}
+                      onKickPlayer={onKickPlayer}
+                      showOfflineStatus={showOfflineStatus}
+                    />
                   ))}
                 </div>
               ) : (

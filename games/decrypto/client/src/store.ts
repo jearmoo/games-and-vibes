@@ -33,9 +33,11 @@ export interface GameStore {
   setError: (msg: string | null) => void;
   reset: () => void;
 
-  createRoom: (args: { playerName: string }) => void;
+  createRoom: (args: { playerName: string; roomCode?: string }) => void;
   joinRoom: (args: { roomCode: string; playerName: string }) => void;
   leaveRoom: () => void;
+  kickPlayer: (targetId: string) => void;
+  transferHost: (targetId: string) => void;
   joinTeam: (team: TeamId) => void;
   regenerateKeyword: (args: { team: TeamId; index: number }) => void;
   setWordLock: (args: { team: TeamId; locked: boolean }) => void;
@@ -43,6 +45,9 @@ export interface GameStore {
   saveClues: (clues: ClueContent[]) => void;
   submitClues: (clues: ClueContent[]) => void;
   unlockClues: () => void;
+  requestEncryptorSwap: (args: { team: TeamId; replacementId: string }) => void;
+  approveEncryptorSwap: () => void;
+  rejectEncryptorSwap: () => void;
   postGuessShare: (args: { team: TeamId; kind: GuessKind; code: Code }) => void;
   submitGuess: (args: { team: TeamId; kind: GuessKind; code: Code }) => void;
   setOfflineAwareness: (enabled: boolean) => void;
@@ -76,8 +81,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   reset: () => set(initialState),
 
-  createRoom: ({ playerName }) => {
-    socket.emit('room:create', { playerName });
+  createRoom: ({ playerName, roomCode }) => {
+    socket.emit('room:create', { playerName, roomCode });
   },
   joinRoom: ({ roomCode, playerName }) => {
     socket.emit('room:join', { roomCode, playerName });
@@ -87,6 +92,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     clearStoredSession(SESSION_KEY);
     set({ ...initialState, connected: get().connected, playerName: get().playerName });
     window.history.replaceState(null, '', '/');
+  },
+  kickPlayer: (targetId) => {
+    socket.emit('player:kick', { targetId });
+  },
+  transferHost: (targetId) => {
+    socket.emit('host:transfer', { targetId });
+    set((state) => {
+      if (!state.room || state.room.hostId !== state.playerId) return {};
+      if (!state.room.players.some((player) => player.id === targetId)) return {};
+      return { room: { ...state.room, hostId: targetId } };
+    });
   },
   joinTeam: (team) => {
     socket.emit(DecryptoEvent.JoinTeam, { team });
@@ -108,6 +124,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   unlockClues: () => {
     socket.emit(DecryptoEvent.UnlockClues);
+  },
+  requestEncryptorSwap: ({ team, replacementId }) => {
+    socket.emit(DecryptoEvent.RequestEncryptorSwap, { team, replacementId });
+  },
+  approveEncryptorSwap: () => {
+    socket.emit(DecryptoEvent.ApproveEncryptorSwap);
+  },
+  rejectEncryptorSwap: () => {
+    socket.emit(DecryptoEvent.RejectEncryptorSwap);
   },
   postGuessShare: ({ team, kind, code }) => {
     socket.emit(DecryptoEvent.PostGuessShare, { team, kind, code });

@@ -97,6 +97,7 @@ export class YipYapRoom extends BaseRoom<YipYapPlayer> {
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
+        removedReason: p.removedReason,
         points: p.points,
       })),
       ...this.serializeGameState(),
@@ -104,7 +105,14 @@ export class YipYapRoom extends BaseRoom<YipYapPlayer> {
   }
 
   override restorePlayers(data: {
-    players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; points?: number }>;
+    players?: Array<{
+      id: string;
+      name: string;
+      team?: TeamId;
+      removed?: boolean;
+      removedReason?: 'left' | 'kicked';
+      points?: number;
+    }>;
   }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
@@ -115,6 +123,7 @@ export class YipYapRoom extends BaseRoom<YipYapPlayer> {
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
+        removedReason: p.removedReason,
         points: typeof p.points === 'number' && Number.isFinite(p.points) ? p.points : 0,
       });
     }
