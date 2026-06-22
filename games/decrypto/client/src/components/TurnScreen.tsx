@@ -510,7 +510,9 @@ function EncryptorSwapControl({ team }: { team: TeamId }) {
   if (!turn || !teamTurn || player?.team !== team) return null;
 
   const locked = turn.teams.red.clueLocked || turn.teams.blue.clueLocked;
-  const candidates = room.players.filter((candidate) => candidate.team === team && candidate.id !== teamTurn.encryptorId);
+  const candidates = room.players.filter(
+    (candidate) => candidate.team === team && candidate.id !== teamTurn.encryptorId,
+  );
   const swapRequestsExhausted = (turn.encryptorSwapRejections[team] ?? 0) >= 2;
   const canOpen = !turn.pendingEncryptorSwap && !locked && !swapRequestsExhausted && candidates.length > 0;
   const style = TEAM_STYLES[team];
@@ -548,7 +550,9 @@ function EncryptorSwapControl({ team }: { team: TeamId }) {
             >
               <span className="truncate font-semibold text-white">{candidate.name}</span>
               {room.settings.offlineAwareness && (
-                <span className={`text-[10px] uppercase tracking-widest ${candidate.connected ? 'text-emerald-300' : 'text-gray-500'}`}>
+                <span
+                  className={`text-[10px] uppercase tracking-widest ${candidate.connected ? 'text-emerald-300' : 'text-gray-500'}`}
+                >
                   {candidate.connected ? 'Online' : 'Offline'}
                 </span>
               )}

@@ -49,7 +49,8 @@ export default function HomeScreen() {
   };
 
   const customCodeLength = customRoomCode.trim().length;
-  const canCreate = !!name.trim() && !loading && (!showCustomRoomCode || customCodeLength === 0 || customCodeLength === 4);
+  const canCreate =
+    !!name.trim() && !loading && (!showCustomRoomCode || customCodeLength === 0 || customCodeLength === 4);
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-6 gap-10 animate-fade-in decrypto-grid-bg overflow-hidden">
@@ -117,7 +118,12 @@ export default function HomeScreen() {
                   placeholder="Custom room name"
                   value={customRoomCode}
                   onChange={(e) => {
-                    setCustomRoomCode(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4));
+                    setCustomRoomCode(
+                      e.target.value
+                        .replace(/[^A-Za-z0-9]/g, '')
+                        .toUpperCase()
+                        .slice(0, 4),
+                    );
                     setCustomCodeError(null);
                   }}
                   onKeyDown={(e) => {

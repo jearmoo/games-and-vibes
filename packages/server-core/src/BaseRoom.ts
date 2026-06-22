@@ -104,17 +104,15 @@ export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
     };
   }
 
-  restorePlayers(
-    data: {
-      players?: Array<{
-        id: string;
-        name: string;
-        removed?: boolean;
-        removedReason?: 'left' | 'kicked';
-        [key: string]: unknown;
-      }>;
-    },
-  ) {
+  restorePlayers(data: {
+    players?: Array<{
+      id: string;
+      name: string;
+      removed?: boolean;
+      removedReason?: 'left' | 'kicked';
+      [key: string]: unknown;
+    }>;
+  }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,

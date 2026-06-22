@@ -57,9 +57,7 @@ export default function RevealScreen() {
         <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-5 px-5 pt-5 pb-0">
           <div className="text-center">
             <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Transmission revealed</div>
-            <div className="font-display text-4xl tracking-wider text-white">
-              Round {reveals[0].round} results
-            </div>
+            <div className="font-display text-4xl tracking-wider text-white">Round {reveals[0].round} results</div>
           </div>
 
           <ScoreStrip

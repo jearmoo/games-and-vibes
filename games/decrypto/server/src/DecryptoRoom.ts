@@ -417,17 +417,15 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     };
   }
 
-  override restorePlayers(
-    data: {
-      players?: Array<{
-        id: string;
-        name: string;
-        team?: TeamId;
-        removed?: boolean;
-        removedReason?: 'left' | 'kicked';
-      }>;
-    },
-  ) {
+  override restorePlayers(data: {
+    players?: Array<{
+      id: string;
+      name: string;
+      team?: TeamId;
+      removed?: boolean;
+      removedReason?: 'left' | 'kicked';
+    }>;
+  }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,
