@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ConfirmModal } from '@games/client-core';
 import type {
   GameEndReason,
   GameWinner,
@@ -27,12 +28,14 @@ function formatSimilarityScore(score?: number): string {
 export default function GameOverScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
+  const playerId = useGameStore((s) => s.playerId);
   const finalState = room?.finalState;
   const winner = finalState?.winner ?? room?.reveal?.winner;
   const [resetting, setResetting] = useState(false);
   const [releasingTeam, setReleasingTeam] = useState<TeamId | null>(null);
   const [requestingRepeat, setRequestingRepeat] = useState(false);
   const [gameOverDetailsOpen, setGameOverDetailsOpen] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
 
   if (!room || !finalState || !winner) {
     return (
@@ -51,6 +54,8 @@ export default function GameOverScreen() {
     finalState.reason === 'tie' &&
     finalState.tiebreaker?.reason === 'tie' &&
     room.tiebreaker?.repeat;
+  const isHost = room.hostId === playerId;
+  const kickTarget = confirmKickId ? room.players.find((player) => player.id === confirmKickId) : undefined;
 
   const handleReset = () => {
     if (resetting) return;
@@ -89,7 +94,13 @@ export default function GameOverScreen() {
             <div className="sm:hidden">
               <div className="rounded-lg border border-white/10 bg-black/15 p-2">
                 <div className="mb-2 font-display text-base tracking-wider text-white">Game over</div>
-                <MobileScoreSummary scores={room.scores} players={room.players} />
+                <MobileScoreSummary
+                  scores={room.scores}
+                  players={room.players}
+                  currentPlayerId={playerId}
+                  onKickPlayer={isHost ? setConfirmKickId : undefined}
+                  showOfflineStatus={room.settings.offlineAwareness}
+                />
               </div>
             </div>
           )}
@@ -113,7 +124,13 @@ export default function GameOverScreen() {
             <div className="text-gray-300 text-sm tracking-wider mt-3">{reason}</div>
           </div>
 
-          <ScoreStrip scores={room.scores} players={room.players} />
+          <ScoreStrip
+            scores={room.scores}
+            players={room.players}
+            currentPlayerId={playerId}
+            onKickPlayer={isHost ? setConfirmKickId : undefined}
+            showOfflineStatus={room.settings.offlineAwareness}
+          />
 
           <WordReleasePanel
             myTeam={privateState?.team}
@@ -154,6 +171,20 @@ export default function GameOverScreen() {
           </div>
         </div>
       </div>
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${kickTarget?.name ?? 'player'}?`}
+          message="They will be removed from the game."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="bg-gradient-to-br from-red-600 to-red-500 text-white shadow-[0_0_18px_rgba(239,68,68,0.26)] hover:from-red-500 hover:to-red-400"
+          onConfirm={() => {
+            if (confirmKickId) useGameStore.getState().kickPlayer(confirmKickId);
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

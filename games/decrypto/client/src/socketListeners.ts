@@ -21,6 +21,24 @@ function clearSession() {
   clearStoredSession(SESSION_KEY);
 }
 
+function isOnHomeScreenState() {
+  const { roomCode, playerId, room } = useGameStore.getState();
+  return !roomCode && !playerId && !room;
+}
+
+function returnToIdleHome() {
+  const state = useGameStore.getState();
+  useGameStore.setState({
+    ...initialState,
+    connected: state.connected,
+    playerName: state.playerName,
+  });
+  window.history.replaceState(null, '', '/');
+  window.setTimeout(() => {
+    if (!socket.connected) socket.connect();
+  }, 50);
+}
+
 function requestPrivateState() {
   socket.emit(DecryptoEvent.RequestPrivateState);
 }
@@ -45,8 +63,13 @@ socket.on('disconnect', () => {
 });
 
 socket.on('session:taken-over', () => {
-  socket.disconnect();
   clearSession();
+  if (isOnHomeScreenState()) {
+    returnToIdleHome();
+    return;
+  }
+
+  socket.disconnect();
   useGameStore.setState({
     ...initialState,
     kickReason: 'Your name was claimed by another device. You were signed out.',
@@ -55,8 +78,13 @@ socket.on('session:taken-over', () => {
 });
 
 socket.on('room:kicked', () => {
-  socket.disconnect();
   clearSession();
+  if (isOnHomeScreenState()) {
+    returnToIdleHome();
+    return;
+  }
+
+  socket.disconnect();
   useGameStore.setState({
     ...initialState,
     kickReason: 'The host removed you from the room.',
@@ -158,8 +186,11 @@ socket.on('room:player-reconnected', ({ playerId: pid }: { playerId: string }) =
   });
 });
 
-socket.on('room:host-updated', ({ hostId }: { hostId: string }) => {
-  useGameStore.setState((s) => (s.room ? { room: { ...s.room, hostId } } : {}));
+socket.on('room:host-updated', ({ hostId, room }: { hostId: string; room?: DecryptoRoomDTO }) => {
+  useGameStore.setState((s) => {
+    if (room) return { room };
+    return s.room ? { room: { ...s.room, hostId } } : {};
+  });
 });
 
 socket.on(DecryptoEvent.StateUpdated, ({ room }: { room: DecryptoRoomDTO }) => {

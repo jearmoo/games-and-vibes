@@ -57,8 +57,8 @@ export class RoomManager<T extends BaseRoom> {
     return code;
   }
 
-  createRoom(hostId: string): T {
-    const code = this.generateCode();
+  createRoom(hostId: string, requestedCode?: string): T {
+    const code = requestedCode?.toUpperCase() ?? this.generateCode();
     const room = this.roomFactory(code, hostId);
     this.rooms.set(code, room);
     return room;

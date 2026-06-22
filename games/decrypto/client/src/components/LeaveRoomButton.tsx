@@ -37,7 +37,7 @@ export default function LeaveRoomButton({
           message="You'll be removed from the room. You can rejoin with the same name or create a new room."
           confirmLabel="Leave"
           cancelLabel="Stay"
-          confirmClass="btn-team-b"
+          confirmClass="bg-gradient-to-br from-red-600 to-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:from-red-500 hover:to-red-400"
           onConfirm={handleConfirm}
           onCancel={() => setConfirming(false)}
         />

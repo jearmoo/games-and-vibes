@@ -2,7 +2,8 @@ import { Component, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ErrorToast, KickedScreen, ReconnectBanner } from '@games/client-core';
 import { DecryptoPhase } from '@games/decrypto-shared';
-import { useGameStore, usePhase } from './store';
+import { initialState, useGameStore, usePhase } from './store';
+import { socket } from './socket';
 import HomeScreen from './components/HomeScreen';
 import LobbyScreen from './components/LobbyScreen';
 import WordSetupScreen from './components/WordSetupScreen';
@@ -19,7 +20,7 @@ export default function App() {
   const kickReason = useGameStore((s) => s.kickReason);
 
   if (kickReason) {
-    return <KickedScreen reason={kickReason} onReturn={() => useGameStore.setState({ kickReason: null })} />;
+    return <KickedScreen reason={kickReason} onReturn={returnHomeFromDisconnectedScreen} />;
   }
 
   if (!connected && !roomCode) {
@@ -60,6 +61,16 @@ export default function App() {
       <ErrorToast message={error} onDismiss={() => useGameStore.setState({ error: null })} />
     </div>
   );
+}
+
+function returnHomeFromDisconnectedScreen() {
+  socket.connect();
+  useGameStore.setState((state) => ({
+    ...initialState,
+    connected: true,
+    playerName: state.playerName,
+  }));
+  window.history.replaceState(null, '', '/');
 }
 
 function ScreenRouter({ phase }: { phase: DecryptoPhase }) {

@@ -41,6 +41,8 @@ describe('BaseRoom', () => {
       expect(room.players.size).toBe(2);
       expect(room.getPlayer('p2')?.removed).toBe(true);
       expect(room.getPlayer('p2')?.connected).toBe(false);
+      expect(room.getPlayer('p2')?.socketId).toBe('');
+      expect(room.getPlayer('p2')?.removedReason).toBe('left');
     });
 
     it('calls onPlayerRemoved hook', () => {
@@ -62,6 +64,8 @@ describe('BaseRoom', () => {
       expect(room.players.size).toBe(2);
       expect(room.getPlayer('p2')?.removed).toBe(true);
       expect(room.getPlayer('p2')?.connected).toBe(false);
+      expect(room.getPlayer('p2')?.socketId).toBe('');
+      expect(room.getPlayer('p2')?.removedReason).toBe('kicked');
     });
 
     it('returns false for nonexistent player', () => {

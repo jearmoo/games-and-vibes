@@ -140,7 +140,7 @@ export class TwoRoomsRoom extends BaseRoom<TwoRoomsPlayer> {
     lastActivity?: number;
     settings?: Partial<TwoRoomsSettings>;
     game?: TwoRoomsGameState | null;
-    players?: Array<{ id: string; name: string; removed?: boolean }>;
+    players?: Array<{ id: string; name: string; removed?: boolean; removedReason?: 'left' | 'kicked' }>;
   }): TwoRoomsRoom {
     const room = new TwoRoomsRoom(data.code, data.hostId);
     room.restorePlayers(data);

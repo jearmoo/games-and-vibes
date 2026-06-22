@@ -47,6 +47,10 @@ createGameServer<DecryptoRoom>({
       if (!room.settings.offlineAwareness) return undefined;
       return room.getActivePlayers().find((player) => player.connected && player.id !== oldHostId)?.id;
     },
+    onPlayerDisconnect: (room, _playerId, io) => {
+      room.syncCodeRevealGate();
+      emitGameState(room, io);
+    },
   },
 
   onRoomRestored: (room, io) => {
@@ -55,6 +59,10 @@ createGameServer<DecryptoRoom>({
 
   lobbyCallbacks: {
     buildGameState,
+    onPlayerReconnect: (room, _playerId, io) => {
+      room.syncCodeRevealGate();
+      emitGameState(room, io);
+    },
     onMidGameJoin: (room, playerId, io) => {
       logger.info('game', 'Mid-game player joined as Decrypto spectator', {
         room: room.code,
@@ -63,6 +71,9 @@ createGameServer<DecryptoRoom>({
       emitGameState(room, io);
     },
     onPlayerKicked: (room, _playerId, io) => {
+      emitGameState(room, io);
+    },
+    onHostTransferred: (room, _oldHostId, _newHostId, io) => {
       emitGameState(room, io);
     },
   },

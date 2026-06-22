@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
-import { Timer } from '@games/client-core';
+import { ConfirmModal, Timer } from '@games/client-core';
 import {
   CODE_DIGITS,
   DecryptoPhase,
@@ -47,15 +47,17 @@ function createEmptyClues(): ClueContent[] {
 export default function TurnScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
+  const playerId = useGameStore((s) => s.playerId);
   const [clues, setClues] = useState<ClueContent[]>(createEmptyClues);
   const [submitting, setSubmitting] = useState(false);
   const [roundDetailsOpen, setRoundDetailsOpen] = useState(false);
   const [wordsHidden, setWordsHidden] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
 
   const turn = room?.turn;
   const myTeam = privateState?.team;
   const myTurn = myTeam && turn ? turn.teams[myTeam] : undefined;
-  const turnKey = myTurn ? `${turn?.round}:${myTurn.team}:${myTurn.encryptorId}` : '';
+  const turnKey = myTurn ? `${turn?.round}:${myTurn.team}:${myTurn.encryptorId}:${turn?.clueRevision}` : '';
 
   useEffect(() => {
     setClues(createEmptyClues());
@@ -77,6 +79,8 @@ export default function TurnScreen() {
   const phase = room.phase;
   const clueTimer = phase === DecryptoPhase.CLUE ? turn.clueTimer : undefined;
   const phaseLabel = phase === DecryptoPhase.CLUE ? 'Transmit signal' : 'Decode transmissions';
+  const isHost = room.hostId === playerId;
+  const kickTarget = confirmKickId ? room.players.find((player) => player.id === confirmKickId) : undefined;
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
@@ -88,12 +92,18 @@ export default function TurnScreen() {
             <div className="sm:hidden">
               <div className="rounded-lg border border-white/10 bg-black/15 p-2">
                 <div className="mb-2 font-display text-base tracking-wider text-white">{phaseLabel}</div>
-                <MobileScoreSummary scores={room.scores} players={room.players} />
+                <MobileScoreSummary
+                  scores={room.scores}
+                  players={room.players}
+                  currentPlayerId={playerId}
+                  onKickPlayer={isHost ? setConfirmKickId : undefined}
+                  showOfflineStatus={room.settings.offlineAwareness}
+                />
               </div>
             </div>
           )}
           <div className="space-y-2 min-w-0 sm:space-y-4">
-            <HeaderPanel />
+            <HeaderPanel currentPlayerId={playerId} onKickPlayer={isHost ? setConfirmKickId : undefined} />
             <KeywordPanel
               team={privateState?.team}
               keywords={privateState?.keywords}
@@ -103,6 +113,7 @@ export default function TurnScreen() {
 
             {phase === DecryptoPhase.CLUE ? (
               <CluePhase
+                key={turnKey}
                 clues={clues}
                 setClues={setClues}
                 submitting={submitting}
@@ -128,11 +139,31 @@ export default function TurnScreen() {
           </div>
         </div>
       </div>
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${kickTarget?.name ?? 'player'}?`}
+          message="They will be removed from the game."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="bg-gradient-to-br from-red-600 to-red-500 text-white shadow-[0_0_18px_rgba(239,68,68,0.26)] hover:from-red-500 hover:to-red-400"
+          onConfirm={() => {
+            if (confirmKickId) useGameStore.getState().kickPlayer(confirmKickId);
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }
 
-function HeaderPanel() {
+function HeaderPanel({
+  currentPlayerId,
+  onKickPlayer,
+}: {
+  currentPlayerId?: string | null;
+  onKickPlayer?: (playerId: string) => void;
+}) {
   const room = useGameStore((s) => s.room)!;
   const turn = room.turn!;
   const phaseLabel = room.phase === DecryptoPhase.CLUE ? 'Transmit signal' : 'Decode transmissions';
@@ -159,7 +190,13 @@ function HeaderPanel() {
           </div>
         </div>
         <div className="w-full min-w-0">
-          <ScoreStrip scores={room.scores} players={room.players} />
+          <ScoreStrip
+            scores={room.scores}
+            players={room.players}
+            currentPlayerId={currentPlayerId}
+            onKickPlayer={onKickPlayer}
+            showOfflineStatus={room.settings.offlineAwareness}
+          />
         </div>
       </div>
     </div>
@@ -196,6 +233,8 @@ function CluePhase({
   const myTurn = myTeam ? room.turn?.teams[myTeam] : undefined;
   const isEncryptor = privateState?.isEncryptor ?? false;
   const locked = myTurn?.clueLocked ?? false;
+  const codeRevealed = room.turn?.codeReveal.revealed ?? false;
+  const pendingSwap = room.turn?.pendingEncryptorSwap;
   const [drawingIndex, setDrawingIndex] = useState<number | null>(null);
   const [drawingDrafts, setDrawingDrafts] = useState<Record<number, string>>({});
 
@@ -209,6 +248,25 @@ function CluePhase({
 
   const encryptor = room.players.find((p) => p.id === myTurn.encryptorId);
 
+  if (pendingSwap) {
+    return (
+      <div className="space-y-4">
+        <TeamClueStatus />
+        <SwapPendingPanel />
+      </div>
+    );
+  }
+
+  if (!codeRevealed || (isEncryptor && !privateState?.code)) {
+    return (
+      <div className="space-y-4">
+        <TeamClueStatus />
+        <StatusPanel text={room.turn?.codeReveal.message ?? 'Waiting for both clue-givers to be ready...'} />
+        <EncryptorSwapControl team={myTeam} />
+      </div>
+    );
+  }
+
   if (!isEncryptor) {
     return (
       <div className="space-y-4">
@@ -220,6 +278,7 @@ function CluePhase({
               : `${encryptor?.name ?? 'Your encryptor'} is writing clues for your team.`
           }
         />
+        <EncryptorSwapControl team={myTeam} />
       </div>
     );
   }
@@ -387,6 +446,119 @@ function CluePhase({
           }}
           onClose={() => setDrawingIndex(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function SwapPendingPanel() {
+  const room = useGameStore((s) => s.room)!;
+  const playerId = useGameStore((s) => s.playerId);
+  const myTeam = useGameStore((s) => s.privateState?.team);
+  const pending = room.turn?.pendingEncryptorSwap;
+  if (!pending) return null;
+
+  const swapTeamStyle = TEAM_STYLES[pending.team];
+  const approvingStyle = TEAM_STYLES[pending.approvingTeam];
+  const replacement = room.players.find((p) => p.id === pending.replacementId);
+  const requester = room.players.find((p) => p.id === pending.requestedById);
+  const isApprover = playerId === pending.approverId;
+  const ownTeamRequested = myTeam === pending.team;
+
+  return (
+    <div className={`glass-card rounded-2xl border ${swapTeamStyle.border} p-4`}>
+      <div className="text-[10px] tracking-[0.3em] text-gray-500 uppercase">Clue-giver swap</div>
+      <div className="mt-2 font-display text-xl tracking-wider text-white">
+        {swapTeamStyle.label} wants to swap to {replacement?.name ?? 'a teammate'}
+      </div>
+      <div className="mt-2 text-sm text-gray-400">
+        {isApprover
+          ? `Approve to reset both secret codes and clear both teams' clue drafts.`
+          : ownTeamRequested
+            ? `Waiting for approval from ${approvingStyle.label} encryptor.`
+            : `${requester?.name ?? swapTeamStyle.label} requested a swap. Waiting for ${approvingStyle.label}.`}
+      </div>
+      {isApprover && (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => useGameStore.getState().rejectEncryptorSwap()}
+            className="rounded-xl border border-white/10 bg-surface-raised py-3 font-display tracking-wider text-gray-300 transition hover:bg-surface-hover active:scale-[0.97]"
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            onClick={() => useGameStore.getState().approveEncryptorSwap()}
+            className="btn-success rounded-xl py-3 font-display tracking-wider text-white transition active:scale-[0.97]"
+          >
+            Approve
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EncryptorSwapControl({ team }: { team: TeamId }) {
+  const room = useGameStore((s) => s.room)!;
+  const playerId = useGameStore((s) => s.playerId);
+  const [open, setOpen] = useState(false);
+  const turn = room.turn;
+  const player = room.players.find((p) => p.id === playerId);
+  const teamTurn = turn?.teams[team];
+  if (!turn || !teamTurn || player?.team !== team) return null;
+
+  const locked = turn.teams.red.clueLocked || turn.teams.blue.clueLocked;
+  const candidates = room.players.filter(
+    (candidate) => candidate.team === team && candidate.id !== teamTurn.encryptorId,
+  );
+  const swapRequestsExhausted = (turn.encryptorSwapRejections[team] ?? 0) >= 2;
+  const canOpen = !turn.pendingEncryptorSwap && !locked && !swapRequestsExhausted && candidates.length > 0;
+  const style = TEAM_STYLES[team];
+  const helperText = swapRequestsExhausted
+    ? 'No swap requests left this round.'
+    : candidates.length > 0
+      ? 'Choose a teammate and request approval.'
+      : 'No teammate is available to swap to.';
+
+  return (
+    <div className={`glass-card rounded-2xl border ${style.border} p-3 sm:p-4`}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        disabled={!canOpen}
+        className="flex w-full items-center justify-between gap-3 text-left disabled:opacity-40"
+      >
+        <span>
+          <span className="block text-[10px] tracking-[0.28em] text-gray-500 uppercase">Swap cluer</span>
+          <span className="block text-sm text-gray-300">{helperText}</span>
+        </span>
+        <span className={`font-display text-lg ${style.text}`}>{open ? '-' : '+'}</span>
+      </button>
+      {open && canOpen && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {candidates.map((candidate) => (
+            <button
+              key={candidate.id}
+              type="button"
+              onClick={() => {
+                useGameStore.getState().requestEncryptorSwap({ team, replacementId: candidate.id });
+                setOpen(false);
+              }}
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left transition hover:bg-surface-hover active:scale-[0.98]"
+            >
+              <span className="truncate font-semibold text-white">{candidate.name}</span>
+              {room.settings.offlineAwareness && (
+                <span
+                  className={`text-[10px] uppercase tracking-widest ${candidate.connected ? 'text-emerald-300' : 'text-gray-500'}`}
+                >
+                  {candidate.connected ? 'Online' : 'Offline'}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -64,13 +64,20 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
+        removedReason: p.removedReason,
       })),
       ...this.serializeGameState(),
     };
   }
 
   override restorePlayers(data: {
-    players?: Array<{ id: string; name: string; team: TeamId | null; removed?: boolean }>;
+    players?: Array<{
+      id: string;
+      name: string;
+      team: TeamId | null;
+      removed?: boolean;
+      removedReason?: 'left' | 'kicked';
+    }>;
   }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
@@ -81,6 +88,7 @@ export class CaveRoom extends BaseRoom<CavePlayer> {
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
+        removedReason: p.removedReason,
       });
     }
   }

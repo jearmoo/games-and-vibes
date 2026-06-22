@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmModal } from '@games/client-core';
 import type { PublicClinchedOutcome, RevealState, TeamId } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
 import {
@@ -18,10 +19,12 @@ import GameHeader from './GameHeader';
 export default function RevealScreen() {
   const room = useGameStore((s) => s.room);
   const privateState = useGameStore((s) => s.privateState);
+  const playerId = useGameStore((s) => s.playerId);
   const reveals = room?.reveals ?? [];
   const clinchedOutcome = room?.clinchedOutcome;
   const [continuing, setContinuing] = useState(false);
   const [takingWin, setTakingWin] = useState(false);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
 
   if (!room || reveals.length === 0) {
     return (
@@ -44,6 +47,8 @@ export default function RevealScreen() {
     useGameStore.getState().takeWin();
     setTimeout(() => setTakingWin(false), 5000);
   };
+  const isHost = room.hostId === playerId;
+  const kickTarget = confirmKickId ? room.players.find((player) => player.id === confirmKickId) : undefined;
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
@@ -52,12 +57,16 @@ export default function RevealScreen() {
         <div className="flex min-h-full w-full max-w-4xl mx-auto flex-col gap-5 px-5 pt-5 pb-0">
           <div className="text-center">
             <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-2">Transmission revealed</div>
-            <div className="font-display text-4xl tracking-wider text-white">
-              Round {reveals[0].round} {reveals.length === 2 ? 'results' : 'transmission'}
-            </div>
+            <div className="font-display text-4xl tracking-wider text-white">Round {reveals[0].round} results</div>
           </div>
 
-          <ScoreStrip scores={room.scores} players={room.players} />
+          <ScoreStrip
+            scores={room.scores}
+            players={room.players}
+            currentPlayerId={playerId}
+            onKickPlayer={isHost ? setConfirmKickId : undefined}
+            showOfflineStatus={room.settings.offlineAwareness}
+          />
 
           {clinchedOutcome && <ClinchedWinPanel outcome={clinchedOutcome} />}
 
@@ -97,6 +106,20 @@ export default function RevealScreen() {
           </div>
         </div>
       </div>
+      {confirmKickId && (
+        <ConfirmModal
+          title={`Kick ${kickTarget?.name ?? 'player'}?`}
+          message="They will be removed from the game."
+          confirmLabel="Kick"
+          cancelLabel="Cancel"
+          confirmClass="bg-gradient-to-br from-red-600 to-red-500 text-white shadow-[0_0_18px_rgba(239,68,68,0.26)] hover:from-red-500 hover:to-red-400"
+          onConfirm={() => {
+            if (confirmKickId) useGameStore.getState().kickPlayer(confirmKickId);
+            setConfirmKickId(null);
+          }}
+          onCancel={() => setConfirmKickId(null)}
+        />
+      )}
     </div>
   );
 }

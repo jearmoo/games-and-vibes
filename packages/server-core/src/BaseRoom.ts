@@ -29,7 +29,9 @@ export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
     const player = this.players.get(id);
     if (player && gameActive) {
       player.connected = false;
+      player.socketId = '';
       player.removed = true;
+      player.removedReason = 'left';
     } else {
       this.players.delete(id);
     }
@@ -43,7 +45,9 @@ export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
     if (!player) return false;
     if (this.isGameActive()) {
       player.connected = false;
+      player.socketId = '';
       player.removed = true;
+      player.removedReason = 'kicked';
     } else {
       this.players.delete(id);
     }
@@ -94,12 +98,21 @@ export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
         connected: p.connected,
         disconnectedAt: p.disconnectedAt,
         removed: p.removed,
+        removedReason: p.removedReason,
       })),
       ...this.serializeGameState(),
     };
   }
 
-  restorePlayers(data: { players?: Array<{ id: string; name: string; removed?: boolean; [key: string]: unknown }> }) {
+  restorePlayers(data: {
+    players?: Array<{
+      id: string;
+      name: string;
+      removed?: boolean;
+      removedReason?: 'left' | 'kicked';
+      [key: string]: unknown;
+    }>;
+  }) {
     for (const p of data.players ?? []) {
       this.players.set(p.id, {
         id: p.id,
@@ -108,6 +121,7 @@ export abstract class BaseRoom<P extends BasePlayer = BasePlayer> {
         connected: false,
         disconnectedAt: Date.now(),
         removed: p.removed ?? false,
+        removedReason: p.removedReason,
       } as P);
     }
   }

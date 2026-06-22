@@ -3,6 +3,7 @@ import { SocketContext } from './socketContext.js';
 import { BaseRoom } from './BaseRoom.js';
 import { logger } from './logger.js';
 import { randomUUID } from 'crypto';
+import type { BasePlayer } from './types.js';
 
 export interface LobbyCallbacks<T extends BaseRoom> {
   /** Build full game state for reconnecting player. Return null if no game in progress. */
@@ -15,6 +16,8 @@ export interface LobbyCallbacks<T extends BaseRoom> {
   onMidGameJoin?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
   /** Called after a player is kicked by the host. Use for game-specific role reassignment. */
   onPlayerKicked?: (room: T, playerId: string, io: SocketContext<T>['io']) => void;
+  /** Called after lobby host ownership is manually transferred. */
+  onHostTransferred?: (room: T, oldHostId: string, newHostId: string, io: SocketContext<T>['io']) => void;
 }
 
 function validatePlayerName(name: unknown): string | null {
@@ -23,18 +26,38 @@ function validatePlayerName(name: unknown): string | null {
   return trimmed || null;
 }
 
+function canReconnectPlayer(player: BasePlayer): boolean {
+  return !player.removed || player.removedReason !== 'kicked';
+}
+
+function validateCustomRoomCode(roomCode: unknown): string | null {
+  if (roomCode === undefined || roomCode === null || roomCode === '') return null;
+  if (typeof roomCode !== 'string') return null;
+  const normalized = roomCode.trim().toUpperCase();
+  return /^[A-Z0-9]{4}$/.test(normalized) ? normalized : null;
+}
+
 export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>, callbacks: LobbyCallbacks<T>) {
   const { io, socket, rooms, metrics } = ctx;
 
-  socket.on('room:create', ({ playerName }: { playerName: string }) => {
+  socket.on('room:create', ({ playerName, roomCode }: { playerName: string; roomCode?: string }) => {
     const validName = validatePlayerName(playerName);
     if (!validName) {
       socket.emit('room:error', { message: 'Player name is required' });
       return;
     }
+    const validRoomCode = validateCustomRoomCode(roomCode);
+    if (roomCode && !validRoomCode) {
+      socket.emit('room:error', { message: 'Custom room code must be 4 letters or numbers.' });
+      return;
+    }
+    if (validRoomCode && rooms.getRoom(validRoomCode)) {
+      socket.emit('room:error', { message: 'That room code is already taken.' });
+      return;
+    }
     const playerId = randomUUID();
     ctx.setPlayerId(playerId);
-    const room = rooms.createRoom(playerId);
+    const room = rooms.createRoom(playerId, validRoomCode ?? undefined);
     room.addPlayer(playerId, validName, socket.id);
     rooms.trackPlayer(playerId, room.code);
     socket.join(room.code);
@@ -62,7 +85,10 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
       // 1. Reconnection — match by sessionId first, then by name
       const existingBySession = sessionId ? room.getPlayer(sessionId) : undefined;
       const existingByName = room.getPlayerByName(validName);
-      const existing = existingBySession || existingByName;
+      const reconnectableBySession =
+        existingBySession && canReconnectPlayer(existingBySession) ? existingBySession : undefined;
+      const reconnectableByName = existingByName && canReconnectPlayer(existingByName) ? existingByName : undefined;
+      const existing = reconnectableBySession || reconnectableByName;
 
       if (existing) {
         // Force-disconnect old socket to prevent stale actions
@@ -80,6 +106,7 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
         existing.socketId = socket.id;
         existing.disconnectedAt = undefined;
         existing.removed = false;
+        existing.removedReason = undefined;
         room.touch();
         ctx.setPlayerId(existing.id);
         rooms.trackPlayer(existing.id, room.code);
@@ -184,5 +211,29 @@ export function registerLobbyHandlers<T extends BaseRoom>(ctx: SocketContext<T>,
       players: room.playerDTOs(),
     });
     logger.info('room', 'Player kicked by host', { room: room.code, player: targetName });
+  });
+
+  socket.on('host:transfer', ({ targetId }: { targetId: string }) => {
+    const playerId = ctx.getPlayerId();
+    if (!playerId) return;
+    const room = rooms.getRoomForPlayer(playerId);
+    if (!room) return;
+    if (room.isGameActive()) return;
+    if (room.hostId !== playerId) return;
+    if (targetId === playerId) return;
+
+    const target = room.getPlayer(targetId);
+    if (!target || target.removed) return;
+
+    const oldHostId = playerId;
+    room.hostId = target.id;
+    room.touch();
+    io.to(room.code).emit('room:host-updated', { hostId: target.id, room: room.toDTO() });
+    callbacks.onHostTransferred?.(room, oldHostId, target.id, io);
+    logger.info('room', 'Host transferred room ownership', {
+      room: room.code,
+      from: room.getPlayer(playerId)?.name,
+      to: target.name,
+    });
   });
 }

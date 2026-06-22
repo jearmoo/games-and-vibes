@@ -6,6 +6,7 @@ export interface BasePlayer {
   connected: boolean;
   disconnectedAt?: number;
   removed?: boolean;
+  removedReason?: 'left' | 'kicked';
 }
 
 /** Minimal client-facing player. Games extend for game-specific fields. */
