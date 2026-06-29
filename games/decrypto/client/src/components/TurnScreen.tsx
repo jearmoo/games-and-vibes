@@ -34,7 +34,9 @@ import {
   clueHasContent,
   clueListLabel,
   createTextClue,
+  decryptoRoleLabel,
   formatCode,
+  isThreePlayerMode,
   otherTeam,
   possessiveName,
 } from './shared';
@@ -98,6 +100,9 @@ export default function TurnScreen() {
                   currentPlayerId={playerId}
                   onKickPlayer={isHost ? setConfirmKickId : undefined}
                   showOfflineStatus={room.settings.offlineAwareness}
+                  gameMode={room.gameMode}
+                  threePlayer={room.threePlayer}
+                  round={turn.round}
                 />
               </div>
             </div>
@@ -109,6 +114,8 @@ export default function TurnScreen() {
               keywords={privateState?.keywords}
               wordsHidden={wordsHidden}
               setWordsHidden={setWordsHidden}
+              gameMode={room.gameMode}
+              threePlayer={room.threePlayer}
             />
 
             {phase === DecryptoPhase.CLUE ? (
@@ -131,6 +138,8 @@ export default function TurnScreen() {
               history={room.clueHistory}
               wordsHidden={wordsHidden}
               setWordsHidden={setWordsHidden}
+              gameMode={room.gameMode}
+              threePlayer={room.threePlayer}
             />
           </div>
 
@@ -167,6 +176,8 @@ function HeaderPanel({
   const room = useGameStore((s) => s.room)!;
   const turn = room.turn!;
   const phaseLabel = room.phase === DecryptoPhase.CLUE ? 'Transmit signal' : 'Decode transmissions';
+  const transmissionTeams =
+    isThreePlayerMode(room.gameMode, room.threePlayer) ? [room.threePlayer.encryptorTeam] : (['red', 'blue'] as TeamId[]);
 
   return (
     <div className="glass-card hidden rounded-2xl border border-white/10 p-4 sm:block">
@@ -175,12 +186,12 @@ function HeaderPanel({
           <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Round {turn.round}</div>
           <div className="font-display text-3xl tracking-wider text-white">{phaseLabel}</div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
-            {(['red', 'blue'] as TeamId[]).map((team) => {
+            {transmissionTeams.map((team) => {
               const teamTurn = turn.teams[team];
               const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
               return (
                 <span key={team} className={`rounded-lg border ${TEAM_STYLES[team].border} px-2 py-1`}>
-                  <span className={TEAM_STYLES[team].text}>{TEAM_STYLES[team].label}</span>
+                  <span className={TEAM_STYLES[team].text}>{decryptoRoleLabel(team, room.gameMode, room.threePlayer)}</span>
                   <span className="text-gray-500"> by </span>
                   <span className="text-white">{encryptor?.name ?? 'Unknown'}</span>
                   {teamTurn.clueLocked && <span className="text-emerald-300"> locked</span>}
@@ -196,6 +207,9 @@ function HeaderPanel({
             currentPlayerId={currentPlayerId}
             onKickPlayer={onKickPlayer}
             showOfflineStatus={room.settings.offlineAwareness}
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
+            round={turn.round}
           />
         </div>
       </div>
@@ -231,6 +245,8 @@ function CluePhase({
   const privateState = useGameStore((s) => s.privateState);
   const myTeam = privateState?.team;
   const myTurn = myTeam ? room.turn?.teams[myTeam] : undefined;
+  const threePlayer = isThreePlayerMode(room.gameMode, room.threePlayer) ? room.threePlayer : undefined;
+  const isThreePlayerInterceptor = !!threePlayer && myTeam === threePlayer.interceptorTeam;
   const isEncryptor = privateState?.isEncryptor ?? false;
   const locked = myTurn?.clueLocked ?? false;
   const codeRevealed = room.turn?.codeReveal.revealed ?? false;
@@ -242,7 +258,20 @@ function CluePhase({
     setSubmitting(false);
   }, [locked, setSubmitting]);
 
-  if (!myTeam || !myTurn) {
+  if (!myTeam || (!myTurn && !isThreePlayerInterceptor)) {
+    return <StatusPanel text="You joined mid-game and are spectating until the next lobby." />;
+  }
+
+  if (isThreePlayerInterceptor) {
+    return (
+      <div className="space-y-4">
+        <TeamClueStatus />
+        <StatusPanel text="You are the Interceptor. The Encryptor team is writing clues." />
+      </div>
+    );
+  }
+
+  if (!myTurn) {
     return <StatusPanel text="You joined mid-game and are spectating until the next lobby." />;
   }
 
@@ -507,6 +536,7 @@ function EncryptorSwapControl({ team }: { team: TeamId }) {
   const turn = room.turn;
   const player = room.players.find((p) => p.id === playerId);
   const teamTurn = turn?.teams[team];
+  if (isThreePlayerMode(room.gameMode, room.threePlayer)) return null;
   if (!turn || !teamTurn || player?.team !== team) return null;
 
   const locked = turn.teams.red.clueLocked || turn.teams.blue.clueLocked;
@@ -567,16 +597,20 @@ function EncryptorSwapControl({ team }: { team: TeamId }) {
 function TeamClueStatus() {
   const room = useGameStore((s) => s.room)!;
   const turn = room.turn!;
+  const teams =
+    isThreePlayerMode(room.gameMode, room.threePlayer) ? [room.threePlayer.encryptorTeam] : (['red', 'blue'] as TeamId[]);
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:gap-3">
-      {(['red', 'blue'] as TeamId[]).map((team) => {
+    <div className={`grid gap-2 sm:gap-3 ${teams.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+      {teams.map((team) => {
         const teamTurn = turn.teams[team];
         const style = TEAM_STYLES[team];
         const encryptor = room.players.find((p) => p.id === teamTurn.encryptorId);
         return (
           <div key={team} className={`min-w-0 rounded-2xl border ${style.border} ${style.bg} p-3 sm:p-4`}>
-            <div className={`font-display text-base sm:text-lg tracking-wider ${style.text}`}>{style.label}</div>
+            <div className={`font-display text-base sm:text-lg tracking-wider ${style.text}`}>
+              {decryptoRoleLabel(team, room.gameMode, room.threePlayer)}
+            </div>
             <div className="mt-1 truncate text-xs text-gray-400 sm:text-sm">{encryptor?.name ?? 'Unknown'}</div>
             <div
               className={`mt-2 text-[10px] tracking-widest uppercase sm:mt-3 sm:text-xs ${
@@ -755,12 +789,56 @@ function GuessPhase() {
   const activeTeam = turn.activeGuessTeam;
   const playerId = useGameStore((s) => s.playerId);
   const [showOtherTeamClues, setShowOtherTeamClues] = useState(false);
+  const threePlayer = isThreePlayerMode(room.gameMode, room.threePlayer) ? room.threePlayer : undefined;
 
   useEffect(() => {
     setShowOtherTeamClues(false);
   }, [activeTeam, myTeam, turn.round]);
 
   if (!myTeam) return <StatusPanel text="You joined mid-game and are spectating until the next lobby." />;
+
+  if (threePlayer) {
+    const transmissionTeam = threePlayer.encryptorTeam;
+    const activeTurn = turn.teams[transmissionTeam];
+    const isEncryptorTeam = myTeam === transmissionTeam;
+    const isInterceptor = myTeam === threePlayer.interceptorTeam;
+    const isEncryptor = activeTurn.encryptorId === playerId;
+
+    return (
+      <div className="space-y-4">
+        <CluesInOrder team={transmissionTeam} teamTurn={activeTurn} />
+
+        {isEncryptorTeam && !isEncryptor && (
+          <GuessPanel
+            team={transmissionTeam}
+            kind="decrypt"
+            title="Decrypt your team's code"
+            description="Use the clues to choose the 3 keyword numbers in order."
+            disabled={activeTurn.guesses.decryptSubmitted}
+            submittedText="Your team submitted its decryption."
+          />
+        )}
+
+        {isEncryptorTeam && isEncryptor && (
+          <StatusPanel text="Your teammate is decrypting. The encryptor cannot submit the team guess." />
+        )}
+
+        {isInterceptor &&
+          (activeTurn.guesses.interceptRequired ? (
+            <GuessPanel
+              team={transmissionTeam}
+              kind="intercept"
+              title="Intercept the Encryptor team's code"
+              description="Guess the same 3-digit sequence before the Encryptor team reveals it."
+              disabled={activeTurn.guesses.interceptSubmitted}
+              submittedText="You submitted the intercept."
+            />
+          ) : (
+            <StatusPanel text="Round 1 has no interception attempt. Watch the first transmission resolve." />
+          ))}
+      </div>
+    );
+  }
 
   if (!activeTeam) {
     const myTurn = turn.teams[myTeam];
@@ -1055,6 +1133,15 @@ function StatusPanel({ text }: { text: string }) {
 }
 
 function HistoryPanel() {
-  const history = useGameStore((s) => s.room?.clueHistory ?? []);
-  return <SignalHistory history={history} limit={6} />;
+  const room = useGameStore((s) => s.room);
+  const history = room?.clueHistory ?? [];
+  return (
+    <SignalHistory
+      history={history}
+      limit={6}
+      includeIntercept
+      gameMode={room?.gameMode}
+      threePlayer={room?.threePlayer}
+    />
+  );
 }

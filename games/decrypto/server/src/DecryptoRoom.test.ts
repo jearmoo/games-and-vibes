@@ -130,6 +130,74 @@ function advanceToRoundTwo(room: DecryptoRoom) {
   expect(room.round).toBe(2);
 }
 
+function startThreePlayerWordSetup(encryptorTeam: TeamId = 'red') {
+  const room = new DecryptoRoom('TEST', 'p1');
+  if (encryptorTeam === 'red') {
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Ravi', 'red');
+    addPlayer(room, 'p3', 'Bianca', 'blue');
+  } else {
+    addPlayer(room, 'p1', 'Rhea', 'red');
+    addPlayer(room, 'p2', 'Bianca', 'blue');
+    addPlayer(room, 'p3', 'Bo', 'blue');
+  }
+
+  expect(room.startGame().ok).toBe(true);
+  expect(room.phase).toBe(DecryptoPhase.WORDS);
+  expect(room.gameMode).toBe('three-player');
+  expect(room.threePlayer).toMatchObject({
+    encryptorTeam,
+    interceptorTeam: otherTeam(encryptorTeam),
+    maxRounds: 5,
+  });
+  return room;
+}
+
+function lockThreePlayerWords(room: DecryptoRoom) {
+  const team = room.threePlayer!.encryptorTeam;
+  const player = room.getTeamPlayers(team)[0];
+  expect(room.setWordLock(player.id, team, true).ok).toBe(true);
+  expect(room.phase).toBe(DecryptoPhase.CLUE);
+}
+
+function lockThreePlayerClues(room: DecryptoRoom) {
+  const team = room.threePlayer!.encryptorTeam;
+  const turn = room.roundTurns![team]!;
+  expect(room.lockClues(turn.encryptorId, ['one', 'two', 'three']).ok).toBe(true);
+  expect(room.phase).toBe(DecryptoPhase.GUESS);
+}
+
+function resolveThreePlayerRound(
+  room: DecryptoRoom,
+  {
+    interceptCorrect = false,
+    decryptCorrect = true,
+  }: {
+    interceptCorrect?: boolean;
+    decryptCorrect?: boolean;
+  } = {},
+) {
+  const { encryptorTeam, interceptorTeam } = room.threePlayer!;
+  lockThreePlayerClues(room);
+  const turn = room.roundTurns![encryptorTeam]!;
+  const decryptor = teammateFor(room, encryptorTeam);
+  const interceptor = room.getTeamPlayers(interceptorTeam)[0].id;
+
+  if (room.round > 1) {
+    expect(
+      room.submitGuess(
+        interceptor,
+        encryptorTeam,
+        'intercept',
+        interceptCorrect ? turn.code : wrongCode(turn.code),
+      ).ok,
+    ).toBe(true);
+  }
+  expect(
+    room.submitGuess(decryptor, encryptorTeam, 'decrypt', decryptCorrect ? turn.code : wrongCode(turn.code)).ok,
+  ).toBe(true);
+}
+
 function createInterceptionTie(room: DecryptoRoom) {
   room.settings.maxIntercepts = 1;
   advanceToRoundTwo(room);
@@ -359,23 +427,25 @@ describe('DecryptoRoom', () => {
     }
   });
 
-  it('requires two available players on each team to start word setup', () => {
+  it('starts standard word setup with two available players on each team and rejects invalid splits', () => {
     const room = new DecryptoRoom('TEST', 'p1');
     addPlayer(room, 'p1', 'Rhea', 'red');
     addPlayer(room, 'p2', 'Ravi', 'red');
-    addPlayer(room, 'p3', 'Bianca', 'blue');
+    addPlayer(room, 'p3', 'Rina', 'red');
 
     expect(room.startGame()).toEqual({
       ok: false,
-      message: 'Need 2 players on each team.',
+      message: 'Need 4 players for standard or a 2v1 split for 3-player.',
     });
 
-    addPlayer(room, 'p4', 'Bo', 'blue');
+    addPlayer(room, 'p4', 'Bianca', 'blue');
+    addPlayer(room, 'p5', 'Bo', 'blue');
     expect(room.startGame().ok).toBe(true);
+    expect(room.gameMode).toBe('standard');
     expect(room.phase).toBe(DecryptoPhase.WORDS);
   });
 
-  it('requires online players to start when offline awareness is on', () => {
+  it('requires a valid online standard or 2v1 split when offline awareness is on', () => {
     const room = new DecryptoRoom('TEST', 'p1');
     addPlayer(room, 'p1', 'Rhea', 'red');
     addPlayer(room, 'p2', 'Ravi', 'red');
@@ -385,11 +455,14 @@ describe('DecryptoRoom', () => {
     const redOffline = room.players.get('p2');
     expect(redOffline).toBeDefined();
     redOffline!.connected = false;
+    const blueOffline = room.players.get('p4');
+    expect(blueOffline).toBeDefined();
+    blueOffline!.connected = false;
 
     expect(room.canStart()).toBe(false);
     expect(room.startGame()).toEqual({
       ok: false,
-      message: 'Need 2 players on each team.',
+      message: 'Need 4 players for standard or a 2v1 split for 3-player.',
     });
   });
 
@@ -408,6 +481,160 @@ describe('DecryptoRoom', () => {
     expect(room.canStart()).toBe(true);
     expect(room.startGame().ok).toBe(true);
     expect(room.phase).toBe(DecryptoPhase.WORDS);
+  });
+
+  it('starts 3-player mode for an exact 2v1 split and assigns the two-player team as Encryptors', () => {
+    const redEncryptors = startThreePlayerWordSetup('red');
+    expect(redEncryptors.threePlayer).toMatchObject({
+      encryptorTeam: 'red',
+      interceptorTeam: 'blue',
+      maxRounds: 5,
+    });
+
+    const blueEncryptors = startThreePlayerWordSetup('blue');
+    expect(blueEncryptors.threePlayer).toMatchObject({
+      encryptorTeam: 'blue',
+      interceptorTeam: 'red',
+      maxRounds: 5,
+    });
+  });
+
+  it('limits 3-player word setup and private keywords to the Encryptor team', () => {
+    const room = startThreePlayerWordSetup('red');
+
+    expect(room.getPrivateStateFor('p1').keywords).toHaveLength(4);
+    expect(room.getPrivateStateFor('p3').keywords).toBeUndefined();
+    expect(room.regenerateKeyword('p3', 'blue', 0)).toEqual({
+      ok: false,
+      message: 'Only the Encryptor team has words in 3-player mode.',
+    });
+    expect(room.setWordLock('p3', 'blue', true)).toEqual({
+      ok: false,
+      message: 'Only the Encryptor team locks words in 3-player mode.',
+    });
+
+    lockThreePlayerWords(room);
+    expect(room.roundTurns?.red).toBeDefined();
+    expect(room.roundTurns?.blue).toBeUndefined();
+    expect(room.getPrivateStateFor('p3').code).toBeUndefined();
+  });
+
+  it('resolves 3-player round one with decrypt only and rejects intercept attempts', () => {
+    const room = startThreePlayerWordSetup('red');
+    lockThreePlayerWords(room);
+    lockThreePlayerClues(room);
+
+    expect(room.getPublicTurnState()?.activeGuessTeam).toBe('red');
+    expect(room.submitGuess('p3', 'red', 'intercept', room.roundTurns!.red!.code)).toEqual({
+      ok: false,
+      message: 'There is no interception attempt in round 1.',
+    });
+
+    expect(room.submitGuess('p2', 'red', 'decrypt', room.roundTurns!.red!.code).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.reveals).toHaveLength(1);
+    expect(room.scores.blue.intercepts).toBe(0);
+    expect(room.scores.red.miscommunications).toBe(0);
+  });
+
+  it('requires both 3-player intercept and decrypt guesses from round two onward', () => {
+    const room = startThreePlayerWordSetup('red');
+    lockThreePlayerWords(room);
+    resolveThreePlayerRound(room);
+    expect(room.continueFromReveal().ok).toBe(true);
+    expect(room.round).toBe(2);
+
+    lockThreePlayerClues(room);
+    const code = room.roundTurns!.red!.code;
+    expect(room.submitGuess(teammateFor(room, 'red'), 'red', 'decrypt', code).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.GUESS);
+    expect(room.clueHistory).toHaveLength(1);
+
+    expect(room.submitGuess('p3', 'red', 'intercept', wrongCode(code)).ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.reveals).toHaveLength(1);
+  });
+
+  it('scores 3-player intercepts and misdecrypts as Interceptor tokens without miscommunication tokens', () => {
+    const room = startThreePlayerWordSetup('red');
+    lockThreePlayerWords(room);
+    resolveThreePlayerRound(room);
+    expect(room.continueFromReveal().ok).toBe(true);
+
+    resolveThreePlayerRound(room, { interceptCorrect: true, decryptCorrect: false });
+
+    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.scores.blue.intercepts).toBe(2);
+    expect(room.scores.red.miscommunications).toBe(0);
+    expect(room.reveal).toMatchObject({
+      gameOver: true,
+      winner: 'blue',
+      reason: 'interceptions',
+    });
+    expect(room.reveals[0]).toMatchObject({
+      gameOver: true,
+      winner: 'blue',
+      reason: 'interceptions',
+    });
+    expect(room.getFinalGameState()).toBeNull();
+    expect(room.continueFromReveal().ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.GAME_OVER);
+    expect(room.getFinalGameState()).toMatchObject({
+      gameMode: 'three-player',
+      threePlayer: { encryptorTeam: 'red', interceptorTeam: 'blue', maxRounds: 5 },
+      winner: 'blue',
+      reason: 'interceptions',
+    });
+    expect(room.getPublicTiebreakerState()).toBeNull();
+  });
+
+  it('awards the 3-player Encryptor team a round-limit win after round five with fewer than two tokens', () => {
+    const room = startThreePlayerWordSetup('red');
+    lockThreePlayerWords(room);
+
+    for (let round = 1; round <= 5; round += 1) {
+      resolveThreePlayerRound(room);
+      if (round < 5) {
+        expect(room.phase).toBe(DecryptoPhase.REVEAL);
+        expect(room.continueFromReveal().ok).toBe(true);
+        expect(room.phase).toBe(DecryptoPhase.CLUE);
+      }
+    }
+
+    expect(room.phase).toBe(DecryptoPhase.REVEAL);
+    expect(room.scores.blue.intercepts).toBe(0);
+    expect(room.reveal).toMatchObject({
+      gameOver: true,
+      winner: 'red',
+      reason: 'round-limit',
+    });
+    expect(room.reveals[0]).toMatchObject({
+      gameOver: true,
+      winner: 'red',
+      reason: 'round-limit',
+    });
+    expect(room.getFinalGameState()).toBeNull();
+    expect(room.continueFromReveal().ok).toBe(true);
+    expect(room.phase).toBe(DecryptoPhase.GAME_OVER);
+    expect(room.getFinalGameState()).toMatchObject({
+      winner: 'red',
+      reason: 'round-limit',
+    });
+    expect(room.getPublicTiebreakerState()).toBeNull();
+  });
+
+  it('serializes and restores 3-player mode configuration', () => {
+    const room = startThreePlayerWordSetup('blue');
+    lockThreePlayerWords(room);
+
+    const restored = DecryptoRoom.fromJSON(room.toJSON());
+
+    expect(restored.gameMode).toBe('three-player');
+    expect(restored.threePlayer).toEqual({ encryptorTeam: 'blue', interceptorTeam: 'red', maxRounds: 5 });
+    expect(restored.roundTurns?.blue).toBeDefined();
+    expect(restored.roundTurns?.red).toBeUndefined();
+    expect(restored.getPrivateStateFor('p2').keywords).toHaveLength(4);
+    expect(restored.getPrivateStateFor('p1').keywords).toBeUndefined();
   });
 
   it('keeps offline roster members in clue-giver rotation when offline awareness is off', () => {
@@ -649,14 +876,7 @@ describe('DecryptoRoom', () => {
     addPlayer(room, 'p2', 'Ravi', 'red');
     addPlayer(room, 'p3', 'Bianca', 'blue');
     addPlayer(room, 'p4', 'Bo', 'blue');
-    room.players.get('p1')!.connected = false;
 
-    expect(room.startGame()).toEqual({
-      ok: false,
-      message: 'Need 2 players on each team.',
-    });
-
-    room.players.get('p1')!.connected = true;
     expect(room.startGame().ok).toBe(true);
     room.encryptorCounts = { p1: 1, p2: 1 };
     room.players.get('p1')!.connected = false;

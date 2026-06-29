@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ConfirmModal } from '@games/client-core';
 import type {
+  DecryptoGameMode,
   GameEndReason,
   GameWinner,
   PublicTiebreakerRepeatState,
   TeamId,
+  ThreePlayerConfig,
   TiebreakerResult,
   TiebreakerTeamResult,
 } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
-import { ClueBank, MobileScoreSummary, ScoreStrip, SignalHistory, TEAM_STYLES, otherTeam } from './shared';
+import { ClueBank, MobileScoreSummary, ScoreStrip, SignalHistory, TEAM_STYLES, isThreePlayerMode, otherTeam } from './shared';
 import GameHeader from './GameHeader';
 
 const TEAMS: TeamId[] = ['red', 'blue'];
@@ -100,6 +102,9 @@ export default function GameOverScreen() {
                   currentPlayerId={playerId}
                   onKickPlayer={isHost ? setConfirmKickId : undefined}
                   showOfflineStatus={room.settings.offlineAwareness}
+                  gameMode={room.gameMode}
+                  threePlayer={room.threePlayer}
+                  round={room.turn?.round}
                 />
               </div>
             </div>
@@ -130,6 +135,9 @@ export default function GameOverScreen() {
             currentPlayerId={playerId}
             onKickPlayer={isHost ? setConfirmKickId : undefined}
             showOfflineStatus={room.settings.offlineAwareness}
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
+            round={room.turn?.round}
           />
 
           <WordReleasePanel
@@ -137,6 +145,8 @@ export default function GameOverScreen() {
             releasedWords={room.finalState?.releasedWords}
             releasingTeam={releasingTeam}
             onRelease={handleReleaseWords}
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
           />
 
           {finalState.tiebreaker && <TiebreakerResultPanel result={finalState.tiebreaker} />}
@@ -156,9 +166,16 @@ export default function GameOverScreen() {
             history={room.clueHistory}
             finalKeywords={room.finalState?.keywords}
             compactMobile
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
           />
 
-          <SignalHistory history={room.clueHistory} includeIntercept />
+          <SignalHistory
+            history={room.clueHistory}
+            includeIntercept
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
+          />
 
           <div className="fixed bottom-0 left-1/2 z-50 w-full max-w-4xl -translate-x-1/2 border-t border-white/10 bg-surface/85 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
             <button
@@ -271,6 +288,9 @@ function getReasonText(
   }
   if (reason === 'miscommunications') {
     return `${losingStyle.label} recorded ${settings.maxMiscommunications} miscommunications.`;
+  }
+  if (reason === 'round-limit') {
+    return `${winnerStyle.label} survived all 5 rounds.`;
   }
   if (reason === 'tiebreaker-exact' && tiebreaker) {
     const winnerResult = tiebreaker.results[winner];
@@ -502,19 +522,24 @@ function WordReleasePanel({
   releasedWords,
   releasingTeam,
   onRelease,
+  gameMode,
+  threePlayer,
 }: {
   myTeam?: TeamId;
   releasedWords?: Record<TeamId, boolean>;
   releasingTeam: TeamId | null;
   onRelease: (team: TeamId) => void;
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
 }) {
+  const teams = isThreePlayerMode(gameMode, threePlayer) ? [threePlayer.encryptorTeam] : TEAMS;
   return (
     <div className="rounded-2xl border border-white/10 bg-black/15 p-3 sm:p-4">
       <div className="mb-2 text-gray-500 text-[9px] tracking-[0.24em] uppercase sm:mb-3 sm:text-[10px] sm:tracking-[0.3em]">
         Word release
       </div>
       <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-        {TEAMS.map((team) => {
+        {teams.map((team) => {
           const style = TEAM_STYLES[team];
           const released = releasedWords?.[team] ?? false;
           const canRelease = myTeam === team && !released;

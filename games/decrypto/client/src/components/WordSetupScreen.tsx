@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { ConfirmModal } from '@games/client-core';
 import type { TeamId } from '@games/decrypto-shared';
 import { useGameStore, useTeamPlayers, type DecryptoPlayerDTO } from '../store';
-import { AnimatedLockButton, MobileScoreSummary, TEAM_STYLES, VisibilitySwipeButton } from './shared';
+import {
+  AnimatedLockButton,
+  MobileScoreSummary,
+  TEAM_STYLES,
+  VisibilitySwipeButton,
+  isThreePlayerMode,
+} from './shared';
 import GameHeader from './GameHeader';
 
 const TEAMS: TeamId[] = ['red', 'blue'];
@@ -20,7 +26,18 @@ export default function WordSetupScreen() {
     red: redPlayers,
     blue: bluePlayers,
   };
-  const visibleTeams: TeamId[] = privateState?.team ? [privateState.team] : TEAMS;
+  const threePlayer = room?.threePlayer;
+  const threePlayerActive = isThreePlayerMode(room?.gameMode, threePlayer);
+  const isInterceptor = threePlayerActive && privateState?.team === threePlayer.interceptorTeam;
+  const visibleTeams: TeamId[] = threePlayerActive
+    ? privateState?.team === threePlayer.encryptorTeam
+      ? [threePlayer.encryptorTeam]
+      : privateState?.team
+        ? []
+        : [threePlayer.encryptorTeam]
+    : privateState?.team
+      ? [privateState.team]
+      : TEAMS;
   const isHost = room?.hostId === playerId;
   const kickTarget = confirmKickId ? room?.players.find((player) => player.id === confirmKickId) : undefined;
 
@@ -44,11 +61,16 @@ export default function WordSetupScreen() {
                   currentPlayerId={playerId}
                   onKickPlayer={isHost ? setConfirmKickId : undefined}
                   showOfflineStatus={room.settings.offlineAwareness}
+                  gameMode={room.gameMode}
+                  threePlayer={room.threePlayer}
+                  round={room.turn?.round}
                 />
               </div>
             </div>
           )}
-          <SetupDetailsCard wordLocks={wordLocks} />
+          {room && <SetupDetailsCard wordLocks={wordLocks} gameMode={room.gameMode} threePlayer={room.threePlayer} />}
+
+          {isInterceptor && threePlayerActive && <InterceptorSetupCard encryptorTeam={threePlayer.encryptorTeam} />}
 
           <div className={`grid grid-cols-1 gap-4 ${visibleTeams.length > 1 ? 'lg:grid-cols-2' : ''}`}>
             {visibleTeams.map((team) => (
@@ -59,6 +81,7 @@ export default function WordSetupScreen() {
                 mine={privateState?.team === team}
                 keywords={privateState?.team === team ? (privateState.keywords ?? []) : []}
                 locked={wordLocks[team]}
+                roleLabel={threePlayerActive && team === threePlayer.encryptorTeam ? 'Encryptor Team words' : undefined}
               />
             ))}
           </div>
@@ -82,15 +105,28 @@ export default function WordSetupScreen() {
   );
 }
 
-function SetupDetailsCard({ wordLocks }: { wordLocks: Record<TeamId, boolean> }) {
+function SetupDetailsCard({
+  wordLocks,
+  gameMode,
+  threePlayer,
+}: {
+  wordLocks: Record<TeamId, boolean>;
+  gameMode?: 'standard' | 'three-player';
+  threePlayer?: { encryptorTeam: TeamId; interceptorTeam: TeamId };
+}) {
+  const teams = gameMode === 'three-player' && threePlayer ? [threePlayer.encryptorTeam] : TEAMS;
   return (
     <div className="glass-card rounded-2xl border border-white/10 p-4">
       <div>
         <div className="mb-1 text-[10px] tracking-[0.3em] text-gray-500 uppercase">Game started</div>
         <div className="font-display text-3xl tracking-wider text-white">Choose team words</div>
-        <div className="mt-1 text-sm text-gray-400">Lock your team's words when you're ready.</div>
+        <div className="mt-1 text-sm text-gray-400">
+          {gameMode === 'three-player'
+            ? 'The Encryptor team locks words; the Interceptor waits for round 1.'
+            : "Lock your team's words when you're ready."}
+        </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-400">
-          {TEAMS.map((team) => (
+          {teams.map((team) => (
             <span key={team} className={`rounded-lg border ${TEAM_STYLES[team].border} px-2 py-1`}>
               <span className={TEAM_STYLES[team].text}>{TEAM_STYLES[team].label}</span>
               <span className="text-gray-500"> · </span>
@@ -105,18 +141,34 @@ function SetupDetailsCard({ wordLocks }: { wordLocks: Record<TeamId, boolean> })
   );
 }
 
+function InterceptorSetupCard({ encryptorTeam }: { encryptorTeam: TeamId }) {
+  const style = TEAM_STYLES[encryptorTeam];
+  return (
+    <div className="glass-card rounded-2xl border border-white/10 p-5 text-center">
+      <div className="mb-1 text-[10px] tracking-[0.3em] text-gray-500 uppercase">Interceptor</div>
+      <div className="font-display text-2xl tracking-wider text-white">Waiting for the Encryptor team</div>
+      <div className="mt-2 text-sm text-gray-400">
+        The <span className={style.text}>{style.label}</span> team is choosing keywords. You will try to intercept from
+        round 2 onward.
+      </div>
+    </div>
+  );
+}
+
 function TeamWordsCard({
   team,
   players,
   mine,
   keywords,
   locked,
+  roleLabel,
 }: {
   team: TeamId;
   players: DecryptoPlayerDTO[];
   mine: boolean;
   keywords: string[];
   locked: boolean;
+  roleLabel?: string;
 }) {
   const style = TEAM_STYLES[team];
 
@@ -124,7 +176,7 @@ function TeamWordsCard({
     <div className={`glass-card rounded-2xl border ${style.border} p-4 ${mine ? `shadow-lg ${style.ring}` : ''}`}>
       <div className="mb-4">
         <div>
-          <div className={`font-display text-xl tracking-wider ${style.text}`}>{style.label} words</div>
+          <div className={`font-display text-xl tracking-wider ${style.text}`}>{roleLabel ?? `${style.label} words`}</div>
           <div className="mt-1 text-gray-500 text-xs">
             {players.map((player) => player.name).join(' · ') || 'No players'}
           </div>

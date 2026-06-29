@@ -45,7 +45,11 @@ export default function LobbyScreen() {
 
   const redEligibleCount = offlineAwareness ? red.filter((p) => p.connected).length : red.length;
   const blueEligibleCount = offlineAwareness ? blue.filter((p) => p.connected).length : blue.length;
-  const canStart = redEligibleCount >= 2 && blueEligibleCount >= 2;
+  const standardCanStart = redEligibleCount >= 2 && blueEligibleCount >= 2;
+  const threePlayerCanStart =
+    redEligibleCount + blueEligibleCount === 3 &&
+    ((redEligibleCount === 2 && blueEligibleCount === 1) || (redEligibleCount === 1 && blueEligibleCount === 2));
+  const canStart = standardCanStart || threePlayerCanStart;
 
   const handleStart = () => {
     if (!canStart || starting) return;
@@ -56,11 +60,13 @@ export default function LobbyScreen() {
 
   const startLabel = !canStart
     ? offlineAwareness
-      ? 'Need 2 online per team'
-      : 'Need 2 per team'
+      ? 'Need 4 online or 2v1'
+      : 'Need 4 players or 2v1'
     : starting
       ? 'Starting...'
-      : 'Start Game';
+      : threePlayerCanStart && !standardCanStart
+        ? 'Start 3-Player Game'
+        : 'Start Game';
 
   return (
     <div className="h-full flex flex-col animate-fade-in">
@@ -141,8 +147,8 @@ export default function LobbyScreen() {
                 <div className="text-gray-400 text-xs tracking-widest uppercase">Players</div>
                 <div className="text-gray-500 text-xs mt-1">
                   {offlineAwareness
-                    ? 'Decrypto needs 2 online players on each channel.'
-                    : 'Decrypto needs 2 players on each channel.'}
+                    ? 'Standard needs 2 online per channel. A 2v1 split starts 3-player mode.'
+                    : 'Standard needs 2 per channel. A 2v1 split starts 3-player mode.'}
                 </div>
               </div>
               <div className="text-right font-display text-white tracking-wider">

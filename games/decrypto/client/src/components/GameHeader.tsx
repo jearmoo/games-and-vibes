@@ -4,7 +4,7 @@ import { DecryptoPhase } from '@games/decrypto-shared';
 import type { TiebreakerVocabularyMode } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
 import LeaveRoomButton from './LeaveRoomButton';
-import { HowToPlayPanel, TEAM_STYLES } from './shared';
+import { HowToPlayPanel, TEAM_STYLES, isThreePlayerMode } from './shared';
 
 const VOCABULARY_OPTIONS: Array<{ mode: TiebreakerVocabularyMode; label: string; caption: string }> = [
   { mode: 'english', label: 'All English', caption: 'Common words' },
@@ -36,9 +36,16 @@ export default function GameHeader({
   const teamStyle = team ? TEAM_STYLES[team] : undefined;
   const turn = room?.turn;
   const myTeamTurn = team && turn ? turn.teams[team] : undefined;
+  const threePlayer = isThreePlayerMode(room?.gameMode, room?.threePlayer) ? room.threePlayer : undefined;
   const role =
     roleOverride ??
-    (team && playerId && myTeamTurn ? (myTeamTurn.encryptorId === playerId ? 'Encryptor' : 'Decoder') : 'Spectator');
+    (threePlayer && team === threePlayer.interceptorTeam
+      ? 'Interceptor'
+      : team && playerId && myTeamTurn
+        ? myTeamTurn.encryptorId === playerId
+          ? 'Encryptor'
+          : 'Decoder'
+        : 'Spectator');
   const name = me?.name || playerName || 'Spectator';
   const detailLabel = roundLabel ?? (turn ? `R${turn.round}` : room?.phase === DecryptoPhase.WORDS ? 'Setup' : '');
   const canExpand = !!onDropdownOpenChange;

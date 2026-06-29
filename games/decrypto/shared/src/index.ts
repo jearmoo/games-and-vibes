@@ -4,6 +4,14 @@ export type TeamId = 'red' | 'blue';
 
 export type GameWinner = TeamId | 'tie';
 
+export type DecryptoGameMode = 'standard' | 'three-player';
+
+export interface ThreePlayerConfig {
+  encryptorTeam: TeamId;
+  interceptorTeam: TeamId;
+  maxRounds: number;
+}
+
 export type CodeDigit = 1 | 2 | 3 | 4;
 
 export type Code = [CodeDigit, CodeDigit, CodeDigit];
@@ -139,12 +147,17 @@ export interface ClueRecord {
 
 export type StandardGameEndReason = 'interceptions' | 'miscommunications';
 
-export type GameEndReason = StandardGameEndReason | 'tiebreaker-exact' | 'tiebreaker-similarity' | 'tie';
+export type GameEndReason =
+  | StandardGameEndReason
+  | 'round-limit'
+  | 'tiebreaker-exact'
+  | 'tiebreaker-similarity'
+  | 'tie';
 
 export interface RevealState extends ClueRecord {
   gameOver: boolean;
   winner?: TeamId;
-  reason?: StandardGameEndReason;
+  reason?: StandardGameEndReason | 'round-limit';
 }
 
 export interface PublicClinchedOutcome {
@@ -199,6 +212,8 @@ export interface PublicTiebreakerState {
 }
 
 export interface FinalGameState {
+  gameMode: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
   keywords: Partial<Record<TeamId, string[]>>;
   releasedWords: Record<TeamId, boolean>;
   scores: ScoreBoard;
@@ -212,6 +227,8 @@ export interface DecryptoRoomDTO extends RoomDTO {
   players: DecryptoPlayerDTO[];
   settings: DecryptoSettings;
   phase: DecryptoPhase | null;
+  gameMode: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
   scores: ScoreBoard;
   wordLocks: Record<TeamId, boolean>;
   turn: PublicTurnState | null;

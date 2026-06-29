@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ConfirmModal } from '@games/client-core';
-import type { PublicClinchedOutcome, RevealState, TeamId } from '@games/decrypto-shared';
+import type { DecryptoGameMode, PublicClinchedOutcome, RevealState, TeamId, ThreePlayerConfig } from '@games/decrypto-shared';
 import { useGameStore } from '../store';
 import {
   ClueBank,
@@ -9,8 +9,10 @@ import {
   SignalHistory,
   TEAM_STYLES,
   TeamBadge,
+  decryptoRoleLabel,
   clueListLabel,
   formatCode,
+  isThreePlayerMode,
   otherTeam,
   possessiveName,
 } from './shared';
@@ -25,6 +27,7 @@ export default function RevealScreen() {
   const [continuing, setContinuing] = useState(false);
   const [takingWin, setTakingWin] = useState(false);
   const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+  const terminalReveal = reveals.some((reveal) => reveal.gameOver);
 
   if (!room || reveals.length === 0) {
     return (
@@ -66,13 +69,21 @@ export default function RevealScreen() {
             currentPlayerId={playerId}
             onKickPlayer={isHost ? setConfirmKickId : undefined}
             showOfflineStatus={room.settings.offlineAwareness}
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
+            round={reveals[0].round}
           />
 
           {clinchedOutcome && <ClinchedWinPanel outcome={clinchedOutcome} />}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {reveals.map((reveal) => (
-              <RevealCard key={`${reveal.round}-${reveal.team}`} reveal={reveal} />
+              <RevealCard
+                key={`${reveal.round}-${reveal.team}`}
+                reveal={reveal}
+                gameMode={room.gameMode}
+                threePlayer={room.threePlayer}
+              />
             ))}
           </div>
 
@@ -81,8 +92,16 @@ export default function RevealScreen() {
             keywords={privateState?.keywords}
             history={room.clueHistory}
             compactMobile
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
           />
-          <SignalHistory history={room.clueHistory} limit={6} />
+          <SignalHistory
+            history={room.clueHistory}
+            limit={6}
+            includeIntercept
+            gameMode={room.gameMode}
+            threePlayer={room.threePlayer}
+          />
 
           <div className="sticky bottom-0 z-30 -mx-5 mt-auto border-t border-white/10 bg-surface/85 px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 shadow-[0_-20px_50px_rgba(0,0,0,0.38)] backdrop-blur-xl">
             {clinchedOutcome ? (
@@ -100,7 +119,7 @@ export default function RevealScreen() {
                 disabled={continuing}
                 className="btn-decrypto w-full py-4 rounded-2xl text-white font-display text-lg tracking-wider active:scale-[0.97] transition-all disabled:opacity-50"
               >
-                {continuing ? 'Continuing...' : 'Continue'}
+                {continuing ? 'Continuing...' : terminalReveal ? 'View Final Result' : 'Continue'}
               </button>
             )}
           </div>
@@ -188,16 +207,29 @@ function ClinchedActionBar({
   );
 }
 
-function RevealCard({ reveal }: { reveal: RevealState }) {
+function RevealCard({
+  reveal,
+  gameMode,
+  threePlayer,
+}: {
+  reveal: RevealState;
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
+}) {
   const teamStyle = TEAM_STYLES[reveal.team];
   const opponent = otherTeam(reveal.team);
   const opponentStyle = TEAM_STYLES[opponent];
+  const threePlayerActive = isThreePlayerMode(gameMode, threePlayer);
+  const transmittingLabel = decryptoRoleLabel(reveal.team, gameMode, threePlayer);
+  const interceptorLabel = threePlayerActive ? 'Interceptor' : opponentStyle.label;
 
   return (
     <div className={`glass-card rounded-2xl border ${teamStyle.border} p-3 space-y-3 sm:p-5 sm:space-y-4`}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className={`font-display text-xl tracking-wider sm:text-2xl ${teamStyle.text}`}>{teamStyle.label}</div>
+          <div className={`font-display text-xl tracking-wider sm:text-2xl ${teamStyle.text}`}>
+            {threePlayerActive ? transmittingLabel : teamStyle.label}
+          </div>
           <div className="truncate text-xs text-gray-400 sm:text-sm">
             Clues by <span className="text-white">{reveal.encryptorName}</span>
           </div>
@@ -238,18 +270,18 @@ function RevealCard({ reveal }: { reveal: RevealState }) {
 
       <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
         <ResultCard
-          title={`${teamStyle.label} decrypted`}
+          title={`${threePlayerActive ? 'Encryptor Team' : teamStyle.label} decrypted`}
           code={formatCode(reveal.decryptGuess)}
           correct={reveal.decryptCorrect}
           successText="Message received"
-          failureText={`+1 miscommunication for ${teamStyle.label}`}
+          failureText={threePlayerActive ? '+1 token for Interceptor' : `+1 miscommunication for ${teamStyle.label}`}
           neutralSuccess
         />
         <ResultCard
-          title={`${opponentStyle.label} intercepted`}
+          title={`${interceptorLabel} intercepted`}
           code={reveal.interceptGuess ? formatCode(reveal.interceptGuess) : 'Skipped'}
           correct={reveal.interceptCorrect}
-          successText={`+1 intercept for ${opponentStyle.label}`}
+          successText={threePlayerActive ? '+1 token for Interceptor' : `+1 intercept for ${opponentStyle.label}`}
           failureText={reveal.interceptGuess ? 'Intercept missed' : 'No intercept in round 1'}
           neutralFailure
         />
