@@ -8,6 +8,7 @@ import {
   type ClueRecord,
   type Code,
   type CodeDigit,
+  type DecryptoGameMode,
   type DecryptoPlayer,
   type DecryptoPlayerDTO,
   type DecryptoRoomDTO,
@@ -27,6 +28,7 @@ import {
   type ScoreBoard,
   type StandardGameEndReason,
   type TeamId,
+  type ThreePlayerConfig,
   type TiebreakerVocabularyMode,
   type TiebreakerResult,
   type TiebreakerSubmission,
@@ -70,6 +72,8 @@ interface PersistedDecryptoRoom {
   settings?: Partial<DecryptoSettings>;
   players?: Array<{ id: string; name: string; team?: TeamId; removed?: boolean; removedReason?: 'left' | 'kicked' }>;
   phase?: string;
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
   scores?: ScoreBoard;
   keywords?: Record<TeamId, string[]>;
   wordLocks?: Record<TeamId, boolean>;
@@ -77,7 +81,7 @@ interface PersistedDecryptoRoom {
   encryptorCursor?: Record<TeamId, number>;
   encryptorQueue?: Record<TeamId, string[]>;
   encryptorCounts?: Record<string, number>;
-  roundTurns?: Record<TeamId, TeamTurn>;
+  roundTurns?: Partial<Record<TeamId, TeamTurn>>;
   codesRevealedAt?: number;
   clueRevision?: number;
   pendingEncryptorSwap?: PendingEncryptorSwap;
@@ -101,8 +105,9 @@ interface PersistedDecryptoRoom {
 }
 
 type ActionResult = { ok: true } | { ok: false; message: string };
-type TerminalOutcome = { team: TeamId; reason: StandardGameEndReason };
+type TerminalOutcome = { team: TeamId; reason: StandardGameEndReason | 'round-limit' };
 type SanitizedTiebreakerGuesses = { ok: true; guesses: string[] } | { ok: false; message: string };
+type StartMode = { mode: 'standard' } | { mode: 'three-player'; threePlayer: ThreePlayerConfig };
 
 const TEAMS: TeamId[] = ['red', 'blue'];
 const TIEBREAKER_GUESS_COUNT = 4;
@@ -120,6 +125,8 @@ const EMPTY_SCORES: ScoreBoard = {
   red: { intercepts: 0, miscommunications: 0 },
   blue: { intercepts: 0, miscommunications: 0 },
 };
+
+const THREE_PLAYER_MAX_ROUNDS = 5;
 
 function cloneScores(scores: ScoreBoard): ScoreBoard {
   return {
@@ -142,6 +149,10 @@ function cloneTeamBooleans(values: Record<TeamId, boolean>): Record<TeamId, bool
 
 function cloneTeamNumbers(values: Record<TeamId, number>): Record<TeamId, number> {
   return { red: values.red, blue: values.blue };
+}
+
+function cloneThreePlayerConfig(config: ThreePlayerConfig | undefined): ThreePlayerConfig | undefined {
+  return config ? { ...config } : undefined;
 }
 
 function otherTeam(team: TeamId): TeamId {
@@ -322,13 +333,15 @@ function sanitizeTiebreakerGuesses(value: unknown, mode: TiebreakerVocabularyMod
 export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   declare settings: DecryptoSettings;
   phase: DecryptoPhase = DecryptoPhase.LOBBY;
+  gameMode: DecryptoGameMode = 'standard';
+  threePlayer?: ThreePlayerConfig;
   scores: ScoreBoard = cloneScores(EMPTY_SCORES);
   keywords: Record<TeamId, string[]> = pickKeywordSets();
   wordLocks: Record<TeamId, boolean> = { red: false, blue: false };
   round = 0;
   encryptorQueue: Record<TeamId, string[]> = { red: [], blue: [] };
   encryptorCounts: Record<string, number> = {};
-  roundTurns?: Record<TeamId, TeamTurn>;
+  roundTurns?: Partial<Record<TeamId, TeamTurn>>;
   codesRevealedAt?: number;
   clueRevision = 0;
   pendingEncryptorSwap?: PendingEncryptorSwap;
@@ -386,6 +399,8 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       players: this.playerDTOs(),
       settings: { ...this.settings },
       phase: this.phase,
+      gameMode: this.gameMode,
+      ...(this.threePlayer ? { threePlayer: cloneThreePlayerConfig(this.threePlayer) } : {}),
       scores: cloneScores(this.scores),
       wordLocks: cloneWordLocks(this.wordLocks),
       turn: this.getPublicTurnState(),
@@ -444,6 +459,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (!this.roundTurns) return;
     for (const team of TEAMS) {
       const turn = this.roundTurns[team];
+      if (!turn) continue;
       if (turn.encryptorId !== playerId) continue;
       const replacement = this.getTeamPlayers(team).find((p) => p.id !== playerId && p.connected);
       if (replacement) turn.encryptorId = replacement.id;
@@ -467,6 +483,8 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   serializeGameState(): object {
     return {
       phase: this.phase,
+      gameMode: this.gameMode,
+      threePlayer: cloneThreePlayerConfig(this.threePlayer),
       scores: this.scores,
       keywords: this.keywords,
       wordLocks: this.wordLocks,
@@ -529,6 +547,8 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       if (nextHost) this.hostId = nextHost.id;
     }
     this.phase = DecryptoPhase.LOBBY;
+    this.gameMode = 'standard';
+    this.threePlayer = undefined;
     this.scores = cloneScores(EMPTY_SCORES);
     this.keywords = pickKeywordSets();
     this.wordLocks = { red: false, blue: false };
@@ -571,9 +591,29 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     return { ok: true };
   }
 
+  isThreePlayerMode(): boolean {
+    return this.gameMode === 'three-player' && !!this.threePlayer;
+  }
+
+  private getEligibleTeamPlayers(team: TeamId): DecryptoPlayer[] {
+    const teamPlayers = this.getTeamPlayers(team);
+    return this.settings.offlineAwareness ? teamPlayers.filter((player) => player.connected) : teamPlayers;
+  }
+
+  private getWordLockTeams(): TeamId[] {
+    return this.isThreePlayerMode() && this.threePlayer ? [this.threePlayer.encryptorTeam] : TEAMS;
+  }
+
+  private getTransmissionTeams(): TeamId[] {
+    return this.isThreePlayerMode() && this.threePlayer ? [this.threePlayer.encryptorTeam] : TEAMS;
+  }
+
   regenerateKeyword(playerId: string, team: TeamId, index: number): ActionResult {
     if (this.phase !== DecryptoPhase.WORDS) {
       return { ok: false, message: 'Words can only be regenerated during word setup.' };
+    }
+    if (this.isThreePlayerMode() && team !== this.threePlayer?.encryptorTeam) {
+      return { ok: false, message: 'Only the Encryptor team has words in 3-player mode.' };
     }
     const player = this.players.get(playerId);
     if (!player || player.team !== team) {
@@ -595,6 +635,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (this.phase !== DecryptoPhase.WORDS) {
       return { ok: false, message: 'Team words can only be locked during word setup.' };
     }
+    if (this.isThreePlayerMode() && team !== this.threePlayer?.encryptorTeam) {
+      return { ok: false, message: 'Only the Encryptor team locks words in 3-player mode.' };
+    }
     const player = this.players.get(playerId);
     if (!player || player.team !== team) {
       return { ok: false, message: 'Only members of that team can lock its words.' };
@@ -603,7 +646,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       return { ok: false, message: 'Your team needs four words before locking.' };
     }
     this.wordLocks[team] = locked;
-    if (this.wordLocks.red && this.wordLocks.blue) {
+    if (this.getWordLockTeams().every((lockTeam) => this.wordLocks[lockTeam])) {
       this.round = 1;
       this.startRound();
     }
@@ -611,14 +654,34 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     return { ok: true };
   }
 
+  getStartMode(): StartMode | null {
+    const eligibleCounts = {
+      red: this.getEligibleTeamPlayers('red').length,
+      blue: this.getEligibleTeamPlayers('blue').length,
+    };
+    if (eligibleCounts.red >= 2 && eligibleCounts.blue >= 2) return { mode: 'standard' };
+
+    const totalEligible = eligibleCounts.red + eligibleCounts.blue;
+    if (totalEligible === 3) {
+      if (eligibleCounts.red === 2 && eligibleCounts.blue === 1) {
+        return {
+          mode: 'three-player',
+          threePlayer: { encryptorTeam: 'red', interceptorTeam: 'blue', maxRounds: THREE_PLAYER_MAX_ROUNDS },
+        };
+      }
+      if (eligibleCounts.blue === 2 && eligibleCounts.red === 1) {
+        return {
+          mode: 'three-player',
+          threePlayer: { encryptorTeam: 'blue', interceptorTeam: 'red', maxRounds: THREE_PLAYER_MAX_ROUNDS },
+        };
+      }
+    }
+
+    return null;
+  }
+
   canStart(): boolean {
-    return TEAMS.every((team) => {
-      const teamPlayers = this.getTeamPlayers(team);
-      const eligiblePlayers = this.settings.offlineAwareness
-        ? teamPlayers.filter((player) => player.connected)
-        : teamPlayers;
-      return eligiblePlayers.length >= 2;
-    });
+    return !!this.getStartMode();
   }
 
   startGame(): ActionResult {
@@ -626,9 +689,15 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       return { ok: false, message: 'The game has already started.' };
     }
     if (!this.canStart()) {
-      return { ok: false, message: 'Need 2 players on each team.' };
+      return { ok: false, message: 'Need 4 players for standard or a 2v1 split for 3-player.' };
+    }
+    const startMode = this.getStartMode();
+    if (!startMode) {
+      return { ok: false, message: 'Need 4 players for standard or a 2v1 split for 3-player.' };
     }
 
+    this.gameMode = startMode.mode;
+    this.threePlayer = startMode.mode === 'three-player' ? cloneThreePlayerConfig(startMode.threePlayer) : undefined;
     this.scores = cloneScores(EMPTY_SCORES);
     this.wordLocks = { red: false, blue: false };
     this.round = 0;
@@ -710,7 +779,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     turn.clueHasLocked = true;
     turn.clueLockedAt = Date.now();
     if (!this.clueTimerStartedAt) this.clueTimerStartedAt = turn.clueLockedAt;
-    if (TEAMS.every((team) => this.roundTurns?.[team].clueLocked)) {
+    if (this.getTransmissionTeams().every((team) => this.roundTurns?.[team]?.clueLocked)) {
       this.finishCluePhase();
     }
     this.touch();
@@ -730,7 +799,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     }
     turn.clueLocked = false;
     turn.clueLockedAt = undefined;
-    if (!TEAMS.some((team) => this.roundTurns?.[team].clueLocked)) {
+    if (!this.getTransmissionTeams().some((team) => this.roundTurns?.[team]?.clueLocked)) {
       this.clueTimerStartedAt = undefined;
       this.clearTimer();
     }
@@ -846,6 +915,11 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (this.phase !== DecryptoPhase.REVEAL) {
       return { ok: false, message: 'There is no revealed turn to continue from.' };
     }
+    if (this.reveal?.gameOver && this.reveal.winner && this.reveal.reason) {
+      this.finishGame(this.reveal.winner, this.reveal.reason);
+      this.touch();
+      return { ok: true };
+    }
     if (this.clinchedOutcome && playerId) {
       const player = this.players.get(playerId);
       if (player?.team !== this.clinchedOutcome.winner) {
@@ -886,8 +960,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
 
   finishCluePhase(): void {
     if (this.phase !== DecryptoPhase.CLUE || !this.roundTurns) return;
-    for (const team of TEAMS) {
+    for (const team of this.getTransmissionTeams()) {
       const turn = this.roundTurns[team];
+      if (!turn) continue;
       turn.clues = fillClues(turn.clues);
       turn.clueLocked = true;
       turn.clueHasLocked = true;
@@ -903,11 +978,12 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     this.phase = DecryptoPhase.GUESS;
     this.guessShares = [];
     if (this.round === 1) {
-      this.activeGuessTeam = undefined;
+      this.activeGuessTeam = this.isThreePlayerMode() ? this.threePlayer?.encryptorTeam : undefined;
       this.guessQueue = [];
     } else {
-      this.activeGuessTeam = 'red';
-      this.guessQueue = ['blue'];
+      const transmissionTeams = this.getTransmissionTeams();
+      this.activeGuessTeam = transmissionTeams[0];
+      this.guessQueue = transmissionTeams.slice(1);
     }
     this.touch();
   }
@@ -943,7 +1019,10 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     const team = player?.team;
     const turn = team ? this.roundTurns?.[team] : undefined;
     const isEncryptor = !!turn && turn.encryptorId === playerId && this.phase === DecryptoPhase.CLUE;
-    const showTeamWords = !!team && this.phase !== DecryptoPhase.LOBBY;
+    const showTeamWords =
+      !!team &&
+      this.phase !== DecryptoPhase.LOBBY &&
+      (!this.isThreePlayerMode() || team === this.threePlayer?.encryptorTeam);
     return {
       team,
       ...(showTeamWords && team ? { keywords: [...this.keywords[team]], wordsLocked: this.wordLocks[team] } : {}),
@@ -1043,6 +1122,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (this.phase !== DecryptoPhase.CLUE || !this.roundTurns) {
       return { ok: false, message: 'Clue-givers can only be swapped during clue writing.' };
     }
+    if (this.isThreePlayerMode()) {
+      return { ok: false, message: 'Clue-giver swaps are not available in 3-player mode.' };
+    }
     const lockedTeam = this.getSwapBlockingTeam();
     if (lockedTeam) return { ok: false, message: this.lockedEncryptionMessage(lockedTeam) };
     if (this.pendingEncryptorSwap) {
@@ -1057,6 +1139,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       return { ok: false, message: 'Only teammates can request a clue-giver swap.' };
     }
     const currentTurn = this.roundTurns[team];
+    if (!currentTurn) {
+      return { ok: false, message: 'That team does not have an active clue-giver.' };
+    }
     if (currentTurn.encryptorId === replacementId) {
       return { ok: false, message: 'Choose a different teammate.' };
     }
@@ -1066,7 +1151,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     }
 
     const approvingTeam = otherTeam(team);
-    const approverId = this.roundTurns[approvingTeam].encryptorId;
+    const approverId = this.roundTurns[approvingTeam]?.encryptorId;
     if (!approverId) return { ok: false, message: 'The other team does not have an active clue-giver.' };
 
     this.pendingEncryptorSwap = {
@@ -1092,12 +1177,14 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (lockedTeam) return { ok: false, message: this.lockedEncryptionMessage(lockedTeam) };
 
     const { team, replacementId } = this.pendingEncryptorSwap;
+    const turn = this.roundTurns[team];
+    if (!turn) return { ok: false, message: 'That team does not have an active clue-giver.' };
     const replacement = this.players.get(replacementId);
     if (!replacement || replacement.removed || replacement.team !== team) {
       return { ok: false, message: 'The selected teammate is no longer available.' };
     }
 
-    this.roundTurns[team].encryptorId = replacementId;
+    turn.encryptorId = replacementId;
     this.resetClueWritingAfterEncryptorChange();
     this.pendingEncryptorSwap = undefined;
     this.maybeRevealCodes();
@@ -1147,6 +1234,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (this.phase !== DecryptoPhase.GAME_OVER) {
       return { ok: false, message: 'Words can only be released after the game ends.' };
     }
+    if (this.isThreePlayerMode() && team !== this.threePlayer?.encryptorTeam) {
+      return { ok: false, message: 'Only the Encryptor team has words to release.' };
+    }
     const player = this.players.get(playerId);
     if (!player || player.team !== team) {
       return { ok: false, message: 'Only members of that team can release its words.' };
@@ -1165,6 +1255,8 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       if (this.releasedWords[team]) keywords[team] = [...this.keywords[team]];
     }
     return {
+      gameMode: this.gameMode,
+      ...(this.threePlayer ? { threePlayer: cloneThreePlayerConfig(this.threePlayer) } : {}),
       keywords,
       releasedWords: cloneReleaseState(this.releasedWords),
       scores: cloneScores(this.scores),
@@ -1215,10 +1307,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   }
 
   private startRound(): void {
-    this.roundTurns = {
-      red: this.createTurn('red'),
-      blue: this.createTurn('blue'),
-    };
+    this.roundTurns = Object.fromEntries(
+      this.getTransmissionTeams().map((team) => [team, this.createTurn(team)]),
+    ) as Partial<Record<TeamId, TeamTurn>>;
     this.activeGuessTeam = undefined;
     this.guessQueue = [];
     this.guessShares = [];
@@ -1280,8 +1371,10 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
 
   private getConnectedWaitingTeams(): TeamId[] {
     if (!this.roundTurns || this.phase !== DecryptoPhase.CLUE || this.codesRevealedAt) return [];
-    return TEAMS.filter((team) => {
-      const encryptor = this.players.get(this.roundTurns![team].encryptorId);
+    return this.getTransmissionTeams().filter((team) => {
+      const turn = this.roundTurns?.[team];
+      if (!turn) return false;
+      const encryptor = this.players.get(turn.encryptorId);
       return !encryptor?.connected;
     });
   }
@@ -1294,7 +1387,10 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     const waitingTeams = this.getConnectedWaitingTeams();
     if (this.settings.offlineAwareness && waitingTeams.length > 0) {
       const names = waitingTeams
-        .map((team) => this.players.get(this.roundTurns![team].encryptorId)?.name)
+        .map((team) => {
+          const turn = this.roundTurns?.[team];
+          return turn ? this.players.get(turn.encryptorId)?.name : undefined;
+        })
         .filter((name): name is string => !!name);
       return {
         revealed: false,
@@ -1341,6 +1437,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (!this.roundTurns) return;
     for (const team of TEAMS) {
       const turn = this.roundTurns[team];
+      if (!turn) continue;
       turn.code = this.pickCode();
       turn.clues = createEmptyClues();
       turn.clueLocked = false;
@@ -1367,7 +1464,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (!this.roundTurns) return null;
     for (const team of TEAMS) {
       const turn = this.roundTurns[team];
-      if (turn.encryptorId === playerId) return turn;
+      if (turn?.encryptorId === playerId) return turn;
     }
     return null;
   }
@@ -1384,7 +1481,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
         guesses: {
           decryptSubmitted: false,
           interceptSubmitted: false,
-          interceptRequired: this.round > 1,
+          interceptRequired: false,
         },
         revealed: false,
       };
@@ -1426,8 +1523,9 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   private resolveReadyGuesses(): void {
     if (!this.roundTurns) return;
     if (this.round === 1) {
-      if (TEAMS.every((team) => this.isTurnReadyToReveal(team))) {
-        for (const team of TEAMS) this.revealTurn(team);
+      const transmissionTeams = this.getTransmissionTeams();
+      if (transmissionTeams.every((team) => this.isTurnReadyToReveal(team))) {
+        for (const team of transmissionTeams) this.revealTurn(team);
         this.finalizeTerminalOutcomeIfReady();
         if (this.phase === DecryptoPhase.GUESS) this.phase = DecryptoPhase.REVEAL;
       }
@@ -1459,8 +1557,14 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     const decryptCorrect = codesEqual(turn.decryptGuess, turn.code);
     const interceptCorrect = codesEqual(turn.interceptGuess, turn.code);
 
-    if (interceptCorrect) this.scores[opponent].intercepts += 1;
-    if (!decryptCorrect) this.scores[team].miscommunications += 1;
+    if (this.isThreePlayerMode() && this.threePlayer) {
+      const interceptor = this.threePlayer.interceptorTeam;
+      if (interceptCorrect) this.scores[interceptor].intercepts += 1;
+      if (!decryptCorrect) this.scores[interceptor].intercepts += 1;
+    } else {
+      if (interceptCorrect) this.scores[opponent].intercepts += 1;
+      if (!decryptCorrect) this.scores[team].miscommunications += 1;
+    }
 
     const encryptor = this.players.get(turn.encryptorId);
     const record: ClueRecord = {
@@ -1486,6 +1590,17 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
   }
 
   private getTerminalOutcomes(): TerminalOutcome[] {
+    if (this.isThreePlayerMode() && this.threePlayer) {
+      const { encryptorTeam, interceptorTeam, maxRounds } = this.threePlayer;
+      if (this.scores[interceptorTeam].intercepts >= this.settings.maxIntercepts) {
+        return [{ team: interceptorTeam, reason: 'interceptions' }];
+      }
+      if (!this.hasUnrevealedTurnThisRound() && this.round >= maxRounds) {
+        return [{ team: encryptorTeam, reason: 'round-limit' }];
+      }
+      return [];
+    }
+
     const outcomes: TerminalOutcome[] = [];
     if (this.scores.red.intercepts >= this.settings.maxIntercepts) {
       outcomes.push({ team: 'red', reason: 'interceptions' });
@@ -1523,6 +1638,7 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     if (unrevealedTeam) {
       if (
         outcomes.length === 1 &&
+        outcomes[0].reason !== 'round-limit' &&
         !this.canUnrevealedTurnCreateOutcomeFor(otherTeam(outcomes[0].team), unrevealedTeam)
       ) {
         this.clinchedOutcome = {
@@ -1538,7 +1654,26 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
       this.startTiebreaker();
       return;
     }
+    if (this.isThreePlayerMode()) {
+      this.markCurrentRevealGameOver(scoreTiebreakOutcome.team, scoreTiebreakOutcome.reason);
+      this.phase = DecryptoPhase.REVEAL;
+      return;
+    }
     this.finishGame(scoreTiebreakOutcome.team, scoreTiebreakOutcome.reason);
+  }
+
+  private markCurrentRevealGameOver(winner: TeamId, reason: StandardGameEndReason | 'round-limit'): void {
+    if (!this.reveal) return;
+    this.reveal.gameOver = true;
+    this.reveal.winner = winner;
+    this.reveal.reason = reason;
+    const revealIndex = this.reveals.findIndex(
+      (reveal) =>
+        reveal.round === this.reveal?.round &&
+        reveal.team === this.reveal.team &&
+        reveal.encryptorId === this.reveal.encryptorId,
+    );
+    if (revealIndex >= 0) this.reveals[revealIndex] = cloneReveal(this.reveal);
   }
 
   private canUnrevealedTurnCreateOutcomeFor(team: TeamId, unrevealedTeam: TeamId): boolean {
@@ -1663,6 +1798,21 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     const room = new DecryptoRoom(d.code, d.hostId);
     room.lastActivity = d.lastActivity ?? Date.now();
     room.settings = { ...room.settings, ...d.settings };
+    room.gameMode = d.gameMode === 'three-player' ? 'three-player' : 'standard';
+    if (
+      room.gameMode === 'three-player' &&
+      (d.threePlayer?.encryptorTeam === 'red' || d.threePlayer?.encryptorTeam === 'blue') &&
+      d.threePlayer.interceptorTeam === otherTeam(d.threePlayer.encryptorTeam)
+    ) {
+      room.threePlayer = {
+        encryptorTeam: d.threePlayer.encryptorTeam,
+        interceptorTeam: d.threePlayer.interceptorTeam,
+        maxRounds: d.threePlayer.maxRounds ?? THREE_PLAYER_MAX_ROUNDS,
+      };
+    } else {
+      room.gameMode = 'standard';
+      room.threePlayer = undefined;
+    }
     const validPhases = Object.values(DecryptoPhase) as string[];
     if (d.phase !== undefined && validPhases.includes(d.phase)) {
       room.phase = d.phase as DecryptoPhase;
@@ -1678,8 +1828,8 @@ export class DecryptoRoom extends BaseRoom<DecryptoPlayer> {
     room.encryptorCounts = d.encryptorCounts ?? {};
     room.roundTurns = d.roundTurns
       ? {
-          red: cloneTurn(d.roundTurns.red),
-          blue: cloneTurn(d.roundTurns.blue),
+          ...(d.roundTurns.red ? { red: cloneTurn(d.roundTurns.red) } : {}),
+          ...(d.roundTurns.blue ? { blue: cloneTurn(d.roundTurns.blue) } : {}),
         }
       : undefined;
     room.codesRevealedAt = d.codesRevealedAt;
