@@ -4,9 +4,11 @@ import type {
   ClueContent,
   ClueRecord,
   Code,
+  DecryptoGameMode,
   DecryptoPlayerDTO,
   ScoreBoard,
   TeamId,
+  ThreePlayerConfig,
   TiebreakerResult,
 } from '@games/decrypto-shared';
 
@@ -34,6 +36,18 @@ export const TEAM_STYLES: Record<
 
 export function otherTeam(team: TeamId): TeamId {
   return team === 'red' ? 'blue' : 'red';
+}
+
+export function isThreePlayerMode(
+  gameMode?: DecryptoGameMode,
+  threePlayer?: ThreePlayerConfig,
+): threePlayer is ThreePlayerConfig {
+  return gameMode === 'three-player' && !!threePlayer;
+}
+
+export function decryptoRoleLabel(team: TeamId, gameMode?: DecryptoGameMode, threePlayer?: ThreePlayerConfig): string {
+  if (!isThreePlayerMode(gameMode, threePlayer)) return TEAM_STYLES[team].label;
+  return team === threePlayer.encryptorTeam ? 'Encryptor Team' : 'Interceptor';
 }
 
 export function formatCode(code?: Code): string {
@@ -227,6 +241,10 @@ export function HowToPlayPanel({ onClose }: { onClose: () => void }) {
             Round 1 has no intercept. Clues can be typed or drawn, but keep them clear enough for your team and vague
             enough to hide your keywords.
           </p>
+          <p className="text-xs text-gray-500">
+            With exactly three players split 2v1, the two-player side encrypts for up to 5 rounds while the solo
+            Interceptor tries to collect 2 tokens.
+          </p>
         </div>
       </div>
     </div>,
@@ -308,33 +326,66 @@ export function ScoreStrip({
   currentPlayerId,
   onKickPlayer,
   showOfflineStatus = false,
-}: { scores: ScoreBoard; players?: DecryptoPlayerDTO[] } & ScorePlayerControls) {
+  gameMode,
+  threePlayer,
+  round,
+}: {
+  scores: ScoreBoard;
+  players?: DecryptoPlayerDTO[];
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
+  round?: number;
+} & ScorePlayerControls) {
+  const threePlayerActive = isThreePlayerMode(gameMode, threePlayer);
   return (
     <div className="grid w-full grid-cols-2 gap-2">
       {(['red', 'blue'] as TeamId[]).map((team) => {
         const style = TEAM_STYLES[team];
         const teamPlayers = players?.filter((player) => player.team === team) ?? [];
+        const roleLabel = decryptoRoleLabel(team, gameMode, threePlayer);
+        const isInterceptor = threePlayerActive && team === threePlayer.interceptorTeam;
         return (
           <div key={team} className={`min-w-0 rounded-xl border ${style.border} ${style.bg} px-3 py-2`}>
             <div className={`font-display tracking-wider ${style.text}`}>{style.label}</div>
-            <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-              <div>
-                <span className="block text-gray-500 uppercase tracking-widest">
-                  <span className="sm:hidden">Ints</span>
-                  <span className="hidden sm:inline">Intercepts</span>
-                </span>
-                <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
-                <span className="text-gray-600"> /2</span>
+            {threePlayerActive && (
+              <div className="mt-0.5 truncate text-[10px] uppercase tracking-widest text-gray-500">{roleLabel}</div>
+            )}
+            {threePlayerActive ? (
+              <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest">
+                    {isInterceptor ? 'Tokens' : 'Round'}
+                  </span>
+                  <span className="font-display text-white text-lg">
+                    {isInterceptor ? scores[team].intercepts : Math.min(round ?? 0, threePlayer.maxRounds)}
+                  </span>
+                  <span className="text-gray-600"> /{isInterceptor ? 2 : threePlayer.maxRounds}</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Goal</span>
+                  <span className="font-display text-white text-lg">{isInterceptor ? '2' : '5'}</span>
+                </div>
               </div>
-              <div>
-                <span className="block text-gray-500 uppercase tracking-widest text-[10px]">
-                  <span className="sm:hidden">Miscoms</span>
-                  <span className="hidden sm:inline">Miscommunications</span>
-                </span>
-                <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
-                <span className="text-gray-600"> /2</span>
+            ) : (
+              <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest">
+                    <span className="sm:hidden">Ints</span>
+                    <span className="hidden sm:inline">Intercepts</span>
+                  </span>
+                  <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
+                  <span className="text-gray-600"> /2</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest text-[10px]">
+                    <span className="sm:hidden">Miscoms</span>
+                    <span className="hidden sm:inline">Miscommunications</span>
+                  </span>
+                  <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
+                  <span className="text-gray-600"> /2</span>
+                </div>
               </div>
-            </div>
+            )}
             {players && (
               <div className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-snug text-gray-300">
                 {teamPlayers.length > 0 ? (
@@ -367,27 +418,60 @@ export function MobileScoreSummary({
   currentPlayerId,
   onKickPlayer,
   showOfflineStatus = false,
-}: { scores: ScoreBoard; players: DecryptoPlayerDTO[] } & ScorePlayerControls) {
+  gameMode,
+  threePlayer,
+  round,
+}: {
+  scores: ScoreBoard;
+  players: DecryptoPlayerDTO[];
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
+  round?: number;
+} & ScorePlayerControls) {
+  const threePlayerActive = isThreePlayerMode(gameMode, threePlayer);
   return (
     <div className="grid grid-cols-2 gap-2">
       {(['red', 'blue'] as TeamId[]).map((team) => {
         const style = TEAM_STYLES[team];
         const teamPlayers = players.filter((player) => player.team === team);
+        const roleLabel = decryptoRoleLabel(team, gameMode, threePlayer);
+        const isInterceptor = threePlayerActive && team === threePlayer.interceptorTeam;
         return (
           <div key={team} className={`min-w-0 rounded-xl border ${style.border} ${style.bg} px-3 py-2`}>
             <div className={`font-display tracking-wider ${style.text}`}>{style.label}</div>
-            <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
-              <div>
-                <span className="block text-gray-500 uppercase tracking-widest">Ints</span>
-                <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
-                <span className="text-gray-600"> /2</span>
+            {threePlayerActive && (
+              <div className="mt-0.5 truncate text-[9px] uppercase tracking-widest text-gray-500">{roleLabel}</div>
+            )}
+            {threePlayerActive ? (
+              <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest">
+                    {isInterceptor ? 'Tokens' : 'Round'}
+                  </span>
+                  <span className="font-display text-white text-lg">
+                    {isInterceptor ? scores[team].intercepts : Math.min(round ?? 0, threePlayer.maxRounds)}
+                  </span>
+                  <span className="text-gray-600"> /{isInterceptor ? 2 : threePlayer.maxRounds}</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Goal</span>
+                  <span className="font-display text-white text-lg">{isInterceptor ? '2' : '5'}</span>
+                </div>
               </div>
-              <div>
-                <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Miscoms</span>
-                <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
-                <span className="text-gray-600"> /2</span>
+            ) : (
+              <div className="mt-1 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest">Ints</span>
+                  <span className="font-display text-white text-lg">{scores[team].intercepts}</span>
+                  <span className="text-gray-600"> /2</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 uppercase tracking-widest text-[10px]">Miscoms</span>
+                  <span className="font-display text-white text-lg">{scores[team].miscommunications}</span>
+                  <span className="text-gray-600"> /2</span>
+                </div>
               </div>
-            </div>
+            )}
             <div className="mt-2 border-t border-white/10 pt-2 text-[11px] leading-snug text-gray-300">
               {teamPlayers.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
@@ -417,21 +501,30 @@ export function KeywordPanel({
   keywords,
   wordsHidden,
   setWordsHidden,
+  gameMode,
+  threePlayer,
 }: {
   team?: TeamId;
   keywords?: string[];
   wordsHidden?: boolean;
   setWordsHidden?: Dispatch<SetStateAction<boolean>>;
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
 }) {
   const [internalHidden, setInternalHidden] = useState(false);
   const hidden = wordsHidden ?? internalHidden;
   const updateHidden = setWordsHidden ?? setInternalHidden;
+  const interceptorWithoutWords = isThreePlayerMode(gameMode, threePlayer) && team === threePlayer.interceptorTeam;
 
   if (!team || !keywords?.length) {
     return (
       <div className="glass-card rounded-2xl border border-white/10 p-4 text-center">
         <div className="text-gray-500 text-[10px] tracking-[0.3em] uppercase mb-1">Private keywords</div>
-        <div className="text-gray-400 text-sm">Spectators do not receive team keywords.</div>
+        <div className="text-gray-400 text-sm">
+          {interceptorWithoutWords
+            ? 'The Interceptor does not receive keywords in 3-player mode.'
+            : 'Spectators do not receive team keywords.'}
+        </div>
       </div>
     );
   }
@@ -608,6 +701,8 @@ export function ClueBank({
   compactMobile = false,
   wordsHidden,
   setWordsHidden,
+  gameMode,
+  threePlayer,
 }: {
   myTeam?: TeamId;
   keywords?: string[];
@@ -616,6 +711,8 @@ export function ClueBank({
   compactMobile?: boolean;
   wordsHidden?: boolean;
   setWordsHidden?: Dispatch<SetStateAction<boolean>>;
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
 }) {
   const [flipRotation, setFlipRotation] = useState(0);
   const [internalWordsHidden, setInternalWordsHidden] = useState(false);
@@ -625,6 +722,34 @@ export function ClueBank({
   if (!myTeam) return null;
   const effectiveWordsHidden = wordsHidden ?? internalWordsHidden;
   const updateWordsHidden = setWordsHidden ?? setInternalWordsHidden;
+  const threePlayerActive = isThreePlayerMode(gameMode, threePlayer);
+
+  if (threePlayerActive) {
+    const displayTeam = threePlayer.encryptorTeam;
+    const isEncryptorSide = myTeam === threePlayer.encryptorTeam;
+    return (
+      <div className="touch-pan-y">
+        <ClueBankFace
+          team={displayTeam}
+          myTeam={isEncryptorSide ? displayTeam : threePlayer.interceptorTeam}
+          keywords={isEncryptorSide ? keywords : undefined}
+          history={history}
+          finalKeywords={finalKeywords}
+          compactMobile={compactMobile}
+          mobileExpanded={mobileExpanded}
+          setMobileExpanded={setMobileExpanded}
+          wordsHidden={isEncryptorSide ? effectiveWordsHidden : false}
+          setWordsHidden={updateWordsHidden}
+          flipped={false}
+          flipCueRotation={0}
+          active
+          onFlip={() => undefined}
+          showFlip={false}
+          className=""
+        />
+      </div>
+    );
+  }
 
   const opponentTeam = otherTeam(myTeam);
   const activeSide = ((Math.round(flipRotation / 180) % 2) + 2) % 2;
@@ -713,6 +838,7 @@ export function ClueBank({
           flipCueRotation={flipRotation}
           active={!flipped}
           onFlip={() => rotateCard(180)}
+          showFlip
           className="[grid-area:1/1] [backface-visibility:hidden]"
         />
         <ClueBankFace
@@ -729,6 +855,7 @@ export function ClueBank({
           flipCueRotation={flipRotation}
           active={flipped}
           onFlip={() => rotateCard(180)}
+          showFlip
           className="[grid-area:1/1] [backface-visibility:hidden] [transform:rotateY(180deg)]"
         />
       </div>
@@ -756,6 +883,7 @@ function ClueBankFace({
   flipCueRotation,
   active,
   onFlip,
+  showFlip,
   className,
 }: {
   team: TeamId;
@@ -772,6 +900,7 @@ function ClueBankFace({
   flipCueRotation: number;
   active: boolean;
   onFlip: () => void;
+  showFlip: boolean;
   className: string;
 }) {
   const style = TEAM_STYLES[team];
@@ -863,27 +992,29 @@ function ClueBankFace({
               )}
             </svg>
           </button>
-          <button
-            type="button"
-            onClick={onFlip}
-            aria-pressed={flipped}
-            className={`${wordBankUpperButtonClass} ${flipped ? `${style.border} ${style.bg} ${style.text}` : ''}`}
-          >
-            <span aria-hidden="true" className="relative h-4 w-5 shrink-0 [perspective:120px]">
-              <span
-                className="absolute inset-0 rounded-md transition-transform duration-500 [transform-style:preserve-3d]"
-                style={{ transform: `rotateY(${visibleFlipCueRotation}deg)` }}
-              >
-                <span className="absolute inset-0 rounded-md border border-white/15 bg-black/25 shadow-sm [backface-visibility:hidden]">
-                  <span className={`absolute bottom-1 left-1 top-1 w-1 rounded-full ${frontFlipCueColor}`} />
-                </span>
-                <span className="absolute inset-0 rounded-md border border-white/15 bg-black/25 shadow-sm [backface-visibility:hidden] [transform:rotateY(180deg)]">
-                  <span className={`absolute bottom-1 right-1 top-1 w-1 rounded-full ${backFlipCueColor}`} />
+          {showFlip && (
+            <button
+              type="button"
+              onClick={onFlip}
+              aria-pressed={flipped}
+              className={`${wordBankUpperButtonClass} ${flipped ? `${style.border} ${style.bg} ${style.text}` : ''}`}
+            >
+              <span aria-hidden="true" className="relative h-4 w-5 shrink-0 [perspective:120px]">
+                <span
+                  className="absolute inset-0 rounded-md transition-transform duration-500 [transform-style:preserve-3d]"
+                  style={{ transform: `rotateY(${visibleFlipCueRotation}deg)` }}
+                >
+                  <span className="absolute inset-0 rounded-md border border-white/15 bg-black/25 shadow-sm [backface-visibility:hidden]">
+                    <span className={`absolute bottom-1 left-1 top-1 w-1 rounded-full ${frontFlipCueColor}`} />
+                  </span>
+                  <span className="absolute inset-0 rounded-md border border-white/15 bg-black/25 shadow-sm [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                    <span className={`absolute bottom-1 right-1 top-1 w-1 rounded-full ${backFlipCueColor}`} />
+                  </span>
                 </span>
               </span>
-            </span>
-            <span>Flip</span>
-          </button>
+              <span>Flip</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1108,12 +1239,16 @@ export function SignalHistory({
   limit,
   includeIntercept = false,
   sticky = false,
+  gameMode,
+  threePlayer,
 }: {
   history: ClueRecord[];
   tiebreakerHistory?: TiebreakerResult[];
   limit?: number;
   includeIntercept?: boolean;
   sticky?: boolean;
+  gameMode?: DecryptoGameMode;
+  threePlayer?: ThreePlayerConfig;
 }) {
   const recent = history
     .slice()
@@ -1134,10 +1269,15 @@ export function SignalHistory({
         ))}
         {recent.map((record) => {
           const style = TEAM_STYLES[record.team];
-          const outcomes = [
-            ...(record.interceptCorrect ? [{ label: 'INTERCEPT', className: 'text-emerald-300' }] : []),
-            ...(!record.decryptCorrect ? [{ label: 'MISCOMMUNICATION', className: 'text-rose-300' }] : []),
-          ];
+          const outcomes = isThreePlayerMode(gameMode, threePlayer)
+            ? [
+                ...(record.interceptCorrect ? [{ label: 'INTERCEPT +1', className: 'text-emerald-300' }] : []),
+                ...(!record.decryptCorrect ? [{ label: 'MISDECRYPT +1', className: 'text-rose-300' }] : []),
+              ]
+            : [
+                ...(record.interceptCorrect ? [{ label: 'INTERCEPT', className: 'text-emerald-300' }] : []),
+                ...(!record.decryptCorrect ? [{ label: 'MISCOMMUNICATION', className: 'text-rose-300' }] : []),
+              ];
           return (
             <div
               key={`${record.round}-${record.team}-${record.encryptorId}`}
